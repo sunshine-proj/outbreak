@@ -56,9 +56,14 @@ outbreak/
 ├── README.md
 ├── ROADMAP.md
 ├── SKILLS.md
+├── Outbreak.uproject
 │
 ├── Source/
+│   ├── Outbreak.Target.cs
+│   ├── OutbreakEditor.Target.cs
 │   └── Outbreak/
+│       ├── Outbreak.Build.cs
+│       ├── Outbreak.h / Outbreak.cpp
 │       ├── Characters/
 │       ├── Player/
 │       ├── Squad/

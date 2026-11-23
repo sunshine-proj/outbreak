@@ -1,0 +1,63 @@
+
+I can't start implementing yet. The first task on the roadmap is installing Unreal Engine 5, which isn't on this machine, and every other task depends on it. I can't install it for you because the download requires signing in to your Epic Games account.
+
+What's on this machine:
+
+Not installed: Unreal Engine, clang, dotnet and cmake. That's fine, because Unreal's Linux build ships its own clang toolchain and .NET.
+Installed: g++, make, mono and VS Code.
+Resources: about 586 GB of free disk and 62 GB of RAM, which is plenty. The editor plus its derived data cache needs roughly 100–150 GB.
+Possible problem: the only graphics is integrated Intel UHD 770. The UE5 editor needs Vulkan and will run on it, but slowly, and it won't tell you anything useful about the PRD's 60 FPS target. I logged this as O-007.
+How to unblock:
+
+Download the prebuilt Linux build from https://www.unrealengine.com/linux. You'll need to sign in with your Epic account.
+Unzip it to somewhere like ~/UnrealEngine/.
+Check that it runs: ~/UnrealEngine/Engine/Binaries/Linux/UnrealEditor
+Optionally install JetBrains Rider. It has the best Unreal support on Linux; VS Code also works.
+Tell me the install path and the version. The version is in Engine/Build/Build.version, and pinning it settles O-004.
+After that I can go straight on to the rest of Phase 0.2: create the C++ project and module, the logging category, Enhanced Input, collision channels and a test map. I'll build it from the command line and record the build and test commands in the README.
+
+What I changed in ROADMAP.md: 0.1 "Install Unreal Engine 5" is now [!], with a row in the Blockers table, and I added O-007 about the GPU.
+
+While you install, I could write the project skeleton by hand: Outbreak.uproject, Outbreak.Build.cs, the target files, the game module and a log category. It's small, but I couldn't compile it until the engine is installed, so it would stay [-] and unverified. Should I go ahead with that, or wait for the engine?
+
+
+================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

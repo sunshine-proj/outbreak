@@ -54,7 +54,7 @@ Do not mark tasks complete unless their acceptance criteria are satisfied.
 
 ### 0.1 Development Environment
 
-- [ ] Install Unreal Engine 5.
+- [!] Install Unreal Engine 5. (See [Blockers](#blockers).)
 - [ ] Install Visual Studio 2022 or JetBrains Rider.
 - [ ] Install required C++ toolchain.
 - [ ] Install Git.
@@ -64,13 +64,13 @@ Do not mark tasks complete unless their acceptance criteria are satisfied.
 
 ### 0.2 Project Initialization
 
-- [ ] Create Unreal Engine C++ project.
-- [ ] Configure project name: Outbreak.
-- [ ] Configure initial game module.
+- [-] Create Unreal Engine C++ project. — written, not compiled (engine not installed)
+- [-] Configure project name: Outbreak. — written, not compiled (engine not installed)
+- [-] Configure initial game module. — written, not compiled (engine not installed)
 - [ ] Configure project settings.
-- [ ] Configure Enhanced Input.
+- [-] Configure Enhanced Input. — default input classes set in `Config/DefaultInput.ini`; not verified
 - [ ] Configure collision channels.
-- [ ] Configure logging categories.
+- [-] Configure logging categories. — written, not compiled (engine not installed)
 - [ ] Create initial playable map.
 - [ ] Verify project startup.
 - [ ] Document command-line build and automation test commands in `README.md`.
@@ -898,7 +898,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 
 | Task | Blocker | Since |
 | --- | --- | --- |
-| — | None | — |
+| 0.1 Install Unreal Engine 5 | Not installed on the development machine (Ubuntu 24.04). The download requires the developer's Epic Games account, so an agent cannot install it. All later tasks depend on it. | 2026-11-23 |
 
 ## Decision Log
 
@@ -922,6 +922,7 @@ Record architectural and planning decisions here.
 | O-004 | Pinned Unreal Engine 5 minor version. | Phase 0 |
 | O-005 | Supported development platforms (the PRD targets Windows; Linux development is also in use). | Phase 0 |
 | O-006 | Replication stance: explicitly single-player only, or server-authoritative patterns from the start to keep P3 co-op possible? | Phase 2 |
+| O-007 | Development hardware: the current machine has only integrated Intel UHD 770 graphics. Is that acceptable for editor work, or will a dedicated GPU be used? | Phase 0 |
 
 ## Agent Execution Instructions
 
