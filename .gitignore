@@ -1,0 +1,62 @@
+# Unreal Engine 5 — generated directories
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+.vs/
+.vscode/
+.idea/
+
+# Plugin generated directories
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# Generated IDE / project files
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.code-workspace
+*.xcodeproj
+*.xcworkspace
+/Makefile
+/CMakeLists.txt
+compile_commands.json
+.clangd/
+.cache/
+
+# Compiled objects and libraries
+# (*.obj is not ignored: it is also the Wavefront 3D model format, tracked by LFS.
+#  MSVC object files are generated inside Intermediate/, which is ignored.)
+*.slo
+*.lo
+*.o
+*.pch
+*.gch
+*.so
+*.dylib
+*.dll
+*.lib
+*.a
+*.exe
+*.pdb
+*.ipa
+*.app
+
+# Unreal temporary and backup files
+*.tmp
+*.uasset.bak
+*.umap.bak
+Content/**/*.uasset.tmp
+*.target.xml
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+*~

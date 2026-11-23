@@ -77,9 +77,9 @@ Do not mark tasks complete unless their acceptance criteria are satisfied.
 
 ### 0.3 Repository
 
-- [ ] Initialize Git repository.
-- [ ] Configure `.gitignore`.
-- [ ] Configure Git LFS.
+- [x] Initialize Git repository.
+- [x] Configure `.gitignore`.
+- [x] Configure Git LFS. (`.gitattributes` tracks assets; push to LFS untested until a remote with LFS support is configured.)
 - [ ] Add `PRD.md`.
 - [ ] Add `README.md`.
 - [ ] Add `AGENTS.md`.
