@@ -71,7 +71,8 @@ outbreak/
 │       ├── Missions/
 │       ├── Interaction/
 │       ├── UI/
-│       └── SaveGame/
+│       ├── SaveGame/
+│       └── Tests/
 │
 ├── Content/
 │   ├── Characters/
@@ -88,10 +89,10 @@ outbreak/
 │
 ├── Docs/
 │
-├── Tests/
-│
 └── .gitignore
 ```
+
+Automation tests live under `Source/Outbreak/Tests/` (or a dedicated test module under `Source/`), because Unreal Build Tool only compiles code inside `Source/`.
 
 The directory structure may evolve as the project grows. Architectural changes should be documented.
 
@@ -136,6 +137,13 @@ git lfs pull
 ```
 
 The Unreal project file will be added during the initial project bootstrap phase.
+
+### Build and Test Commands
+
+To be documented during Phase 0 (see `ROADMAP.md` 0.2), once the project exists. This section must include:
+
+- The command-line build of the Development Editor target.
+- The command to run the Outbreak automation tests headlessly.
 
 ## Development Philosophy
 
@@ -198,7 +206,7 @@ The player is included in the total squad size.
 5. Implement the smallest complete solution.
 6. Build and test.
 7. Update documentation if necessary.
-8. Mark the task complete only after verification.
+8. Mark the task complete only after verification (see the verification rules in `ROADMAP.md`).
 9. Commit the changes.
 
 AI agents must not silently mark incomplete work as finished.

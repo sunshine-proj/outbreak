@@ -239,8 +239,10 @@ For example:
 
 ```cpp
 UPROPERTY()
-TArray<TObjectPtr<AOutbreakSquadMember>> SquadMembers;
+TArray<TObjectPtr<UOutbreakSquadMemberComponent>> SquadMembers;
 ```
+
+Squad membership is a component (`UOutbreakSquadMemberComponent`) attached to both the player and AI teammates. Do not store squad members as a teammate-only actor class: the player is an `AOutbreakPlayerCharacter` and must count as a squad member.
 
 The architecture should allow the maximum squad size to be changed through configuration.
 
@@ -469,6 +471,14 @@ Use the following status convention:
 ```
 
 Only use `[x]` when the acceptance criteria are satisfied.
+
+Verification responsibilities:
+
+- **Automated-verifiable tasks:** an agent may mark `[x]` when the code compiles and the relevant automation tests pass in the same session, and the task does not require playable validation.
+- **Tasks requiring playable or in-editor validation:** an agent marks the task `[-]` with the note `— implemented, awaiting manual verification` and states what was verified. The developer marks `[x]` after validating it.
+- **Phase acceptance criteria:** always marked `[x]` by the developer.
+
+Record blockers in the **Blockers** section of `ROADMAP.md`, and architectural decisions in its **Decision Log**. If a task depends on an open decision, ask the developer instead of choosing silently.
 
 ## 13. Agent Workflow
 

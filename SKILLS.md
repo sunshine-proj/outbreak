@@ -158,8 +158,8 @@ Agents should select the relevant skill before implementing a feature.
 ### Procedure
 
 1. Define squad member interface.
-2. Implement squad member component.
-3. Implement squad management component.
+2. Implement squad member component (`UOutbreakSquadMemberComponent`), attached to both the player and AI teammates.
+3. Implement squad component (`UOutbreakSquadComponent`).
 4. Implement dynamic membership.
 5. Implement configurable squad limits.
 6. Implement command representation.
@@ -313,7 +313,7 @@ The player counts as one squad member.
 ### Procedure
 
 1. Define mission data.
-2. Implement mission manager.
+2. Implement mission subsystem (`UOutbreakMissionSubsystem`).
 3. Define objective interface.
 4. Implement basic objective types.
 5. Implement objective progression.
@@ -405,7 +405,7 @@ The player counts as one squad member.
 5. Execute tests.
 6. Perform manual gameplay verification.
 7. Record failures.
-8. Update `ROADMAP.md`.
+8. Update `ROADMAP.md` following the verification rules in `AGENTS.md` §12.
 
 ### Required Squad Test Matrix
 
