@@ -587,7 +587,7 @@ Additional verification:
 - [-] Implement utility equipment. — C++ written, not compiled (engine not installed). Utility items with Throw action, cycle and use input
 - [-] Implement ammunition storage. — C++ written, not compiled (engine not installed). Weapon component reserve, weighed by the inventory; ammo pickups
 - [-] Implement equipment configuration. — C++ written, not compiled (engine not installed). `UOutbreakLoadoutDefinition`; role and member loadouts; player loadout
-- [-] Implement squad equipment selection. — C++ written, not compiled (engine not installed). `SelectMemberLoadout` from the configuration's Available Loadouts; selection UI with the Phase 11 briefing
+- [-] Implement squad equipment selection. — C++ written, not compiled (engine not installed). `SelectMemberLoadout` from the configuration's Available Loadouts; selection UI in the Phase 11 briefing
 
 ### 10.3 Medical System
 
@@ -614,33 +614,33 @@ Additional verification:
 
 ### 11.1 Mission Architecture
 
-- [ ] Implement mission cleanup.
-- [ ] Implement objective dependencies.
+- [-] Implement mission cleanup. — C++ written, not compiled (engine not installed). Ending deactivates running objectives, stops evaluation and unbinds player events; re-initializing resets everything
+- [-] Implement objective dependencies. — C++ written, not compiled (engine not installed). `OutbreakObjectiveGraph`: IDs, After Previous / At Mission Start / After Prerequisites, optional and hidden objectives, validation (D-019)
 
 ### 11.2 Objectives
 
-- [ ] Implement Destroy Object objective.
-- [ ] Implement Protect Location objective.
-- [ ] Implement Retrieve Item objective.
-- [ ] Implement Activate Equipment objective.
-- [ ] Implement Extraction objective.
+- [-] Implement Destroy Object objective. — C++ written, not compiled (engine not installed). `UOutbreakDestroyObjectObjective` and `AOutbreakDestructibleObject`
+- [-] Implement Protect Location objective. — C++ written, not compiled (engine not installed). Duration, contested zone with Max Hostile Time, optional protected actors
+- [-] Implement Retrieve Item objective. — C++ written, not compiled (engine not installed). Carried by any squad member; optional delivery marker
+- [-] Implement Activate Equipment objective. — C++ written, not compiled (engine not installed). `AOutbreakMissionEquipment`: locked until its objective, optional required item
+- [-] Implement Extraction objective. — C++ written, not compiled (engine not installed). Players and standing teammates hold the zone; downed soldiers left behind
 
 ### 11.3 Mission UI
 
-- [ ] Implement mission briefing screen.
-- [ ] Implement full objective display.
-- [ ] Implement objective completion notifications.
-- [ ] Implement mission summary.
-- [ ] Implement mission results.
+- [-] Implement mission briefing screen. — C++ written, not compiled (engine not installed). `UOutbreakBriefingWidget`, default C++ layout or Widget Blueprint
+- [-] Implement full objective display. — C++ written, not compiled (engine not installed). HUD lists active objectives; Tab shows every revealed objective with its state
+- [-] Implement objective completion notifications. — C++ written, not compiled (engine not installed). New, completed and failed objectives, from replicated status changes
+- [-] Implement mission summary. — C++ written, not compiled (engine not installed). Objectives, time and each soldier's fate (`OutbreakMissionText::BuildSummary`)
+- [-] Implement mission results. — C++ written, not compiled (engine not installed). `FOutbreakMissionResults`, replicated through the game state for the summary and the Phase 14 campaign
 
 ### 11.4 Mission Flow
 
-- [ ] Implement squad selection.
-- [ ] Implement equipment selection.
-- [ ] Implement deployment.
-- [ ] Implement mission progression.
-- [ ] Implement extraction.
-- [ ] Implement mission completion screen.
+- [-] Implement squad selection. — C++ written, not compiled (engine not installed). Squad size and roster soldiers per slot (`FOutbreakSquadSelection`), validated on the server
+- [-] Implement equipment selection. — C++ written, not compiled (engine not installed). A loadout per member in the briefing, applied through the Phase 10 `SelectMemberLoadout` rules; closes at deployment
+- [-] Implement deployment. — C++ written, not compiled (engine not installed). Briefing state with the game paused; starting location marker; mission starts when every player has deployed
+- [-] Implement mission progression. — C++ written, not compiled (engine not installed). Objectives activate as dependencies complete; several can run at once
+- [-] Implement extraction. — C++ written, not compiled (engine not installed). Extraction objective records who extracted; the results report it
+- [-] Implement mission completion screen. — C++ written, not compiled (engine not installed). `UOutbreakMissionSummaryWidget` with Retry and Quit; automatic restart now off by default
 
 ### Phase 11 Acceptance Criteria
 
@@ -876,7 +876,7 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–8 C++ were written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–11 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
 **Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through the `Docs/Phase*-EditorSetup.md` guides in order.
 
@@ -909,6 +909,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 8 verification (all `[-]` tasks in Phase 8) | Same as above. Editor work: stealth input action, lighting volumes, stealth test map; enemy Blackboard enum refresh. Steps: `Docs/Phase8-EditorSetup.md`. | 2026-11-26 |
 | Phase 9 verification (all `[-]` tasks in Phase 9) | Same as above. Editor assets: enemy cover EQS query, stalker and brute weapons, definitions and Blueprints, tactics test map; enemy Blackboard enum refresh. Steps: `Docs/Phase9-EditorSetup.md`. | 2026-11-26 |
 | Phase 10 verification (all `[-]` tasks in Phase 10) | Same as above. Editor assets: item, loadout and pickup assets, weapon weights and slots, four input actions, Medical settings, teammate AI priority order refresh, medical test map. Steps: `Docs/Phase10-EditorSetup.md`. | 2026-11-26 |
+| Phase 11 verification (all `[-]` tasks in Phase 11) | Same as above. Editor work: mission items, destructible relay and uplink terminal Blueprints, squad roster names, Phase 11 mission asset, mission test map; optional Widget Blueprints for the briefing and summary. Steps: `Docs/Phase11-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -936,6 +937,7 @@ Record architectural and planning decisions here.
 | D-016 | 2026-11-26 | Squad stealth is a replicated squad mode, not an order, so it combines with every order. In stealth, teammates crouch, soften footsteps, use the Stealth formation, hold fire, and freeze when an enemy is noticing them. Any shot from the squad, a teammate being fully detected or shot compromises the squad (weapons free) for a configurable time. | "Integrate squad commands with stealth" (8.4) needs stealth to apply to Move, Hold, Defend etc.; holding fire is what keeps teammates from exposing the squad. |
 | D-017 | 2026-11-26 | Enemy tactics are a per-archetype `FOutbreakEnemyTacticsSettings` on the enemy definition. In Combat, a pure decision picks one movement (Retreat > Charge > Flank > TakeCover > Engage); firing stays concurrent. Combat styles Ranged / Melee / Advance distinguish infantry, melee attackers and heavies. Coordination is a world subsystem of engagement reports (shared sightings, one pin plus flankers per target, target spreading), refreshed by each enemy and expiring otherwise. Retreating is a new enemy state appended to the enum. Disengagement is a leash around the home position. Melee attacks use the weapon system (a Melee fire behaviour, `bUnlimitedAmmo`) so the shared combat service drives them. | Phase 9 acceptance (behaviours differ, cover and flanking, configured without AI code); reuses the Phase 7 EQS contexts and the shared combat service; decision logic stays unit-testable without navmesh or perception. |
 | D-018 | 2026-11-26 | Inventory and medical model (developer decisions: weight-based capacity; everyone can be downed). Carryable things implement `IOutbreakItem`: weapon and ammunition definitions stay where they are (weapons in the weapon component, one per Primary/Secondary slot; ammunition in its reserve, loaded rounds weighed too), other items are `UOutbreakItemDefinition`s with instanced use actions in the inventory component. Capacity is carried weight. Loadouts are data assets applied without the weight check (validated as assets). Squad soldiers are incapacitated at zero health, bleed out after a configurable time, can be revived a configurable number of times by a timed revive without an item, and further damage kills. Interaction now runs on the server. Teammate AI gets a Medical Assistance layer, second by default: reviving overrides orders, healing does not. The mission fails when no player stands and no squadmate can revive one. | PRD §9 (simple medical), §10 (capacity, no unlimited loot); avoids duplicating the weapon and ammunition state; downing keeps squad play meaningful without a respawn system. |
+| D-019 | 2026-11-26 | Mission framework (Phase 11). Objectives form a dependency graph: each has an optional ID and an activation rule (After Previous = after the nearest earlier required objective, the default, so Phase 6 missions run unchanged; At Mission Start; After Prerequisites by ID); optional objectives never fail the mission and a required objective may depend only on required ones; objectives cut off by a failed prerequisite are cancelled; every active objective is evaluated, and the mission completes when all required objectives have. Mission time advances with the update timer, so timed objectives are testable. The briefing runs in the mission level, not a separate front-end map: a Briefing mission state with the game paused; each player sends one validated `FOutbreakSquadSelection` (size, roster soldier per slot, loadout per member) and is moved to the starting-location marker; the squad is built then, equipment selection closes, and the mission starts when every player has deployed. Results are a replicated `FOutbreakMissionResults`; the summary screen replaces the automatic restart (Restart Delay now defaults to 0). Screens and notifications follow the replicated status, so they work for remote players (D-006). | Agent decision, open to change: no campaign or menu exists until Phase 14, so a separate briefing map would have nothing to return to; building the squad at deployment means selection never has to replace spawned teammates; the graph keeps existing missions valid. |
 
 ### Open
 

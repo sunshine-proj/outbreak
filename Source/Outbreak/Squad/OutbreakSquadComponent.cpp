@@ -13,6 +13,7 @@
 #include "Squad/OutbreakSquadConfiguration.h"
 #include "Squad/OutbreakSquadMemberComponent.h"
 #include "Squad/OutbreakSquadRoleDefinition.h"
+#include "Squad/OutbreakSquadSelection.h"
 #include "Squad/OutbreakSquadSettings.h"
 #include "Squad/OutbreakTeammateCharacter.h"
 #include "Weapons/OutbreakWeaponComponent.h"
@@ -70,6 +71,18 @@ bool UOutbreakSquadComponent::HasOwnerAuthority() const
 bool UOutbreakSquadComponent::InitializeSquad(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn,
 	int32 RequestedSizeOverride)
 {
+	return InitializeSquadInternal(Configuration, PlayerPawn, RequestedSizeOverride, nullptr);
+}
+
+bool UOutbreakSquadComponent::InitializeSquadWithSelection(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn,
+	const FOutbreakSquadSelection& Selection)
+{
+	return InitializeSquadInternal(Configuration, PlayerPawn, 0, &Selection);
+}
+
+bool UOutbreakSquadComponent::InitializeSquadInternal(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn,
+	int32 RequestedSizeOverride, const FOutbreakSquadSelection* RequestedSelection)
+{
 	if (!HasOwnerAuthority() || bSquadInitialized)
 	{
 		return false;
@@ -100,14 +113,32 @@ bool UOutbreakSquadComponent::InitializeSquad(const UOutbreakSquadConfiguration*
 	}
 
 	FOutbreakSquadSizeLimits ResolvedLimits;
-	int32 SquadSize = 0;
-	const bool bValid = Error.IsEmpty()
+	const bool bLimitsValid = Error.IsEmpty()
 		&& OutbreakSquadRules::ResolveLimits(Settings->SizeLimits,
 			Configuration ? Configuration->MinSquadSizeOverride : 0,
 			Configuration ? Configuration->MaxSquadSizeOverride : 0,
-			ResolvedLimits, Error)
+			ResolvedLimits, Error);
+
+	// A briefing selection replaces the configuration's size and composition (Phase 11).
+	FOutbreakSquadSelection Selection;
+	if (RequestedSelection && bLimitsValid)
+	{
+		TArray<FText> SelectionErrors;
+		Selection = *RequestedSelection;
+		if (!OutbreakSquadSelection::Validate(Configuration, ResolvedLimits, Selection, SelectionErrors))
+		{
+			UE_LOG(LogOutbreak, Warning, TEXT("%s: squad selection rejected (%s); using the default squad."), *GetNameSafe(GetOwner()),
+				*FText::Join(FText::FromString(TEXT(" ")), SelectionErrors).ToString());
+			Selection = OutbreakSquadSelection::MakeDefault(Configuration, ResolvedLimits);
+		}
+	}
+	const bool bUseSelection = RequestedSelection && bLimitsValid;
+
+	int32 SquadSize = 0;
+	const bool bValid = bLimitsValid
 		&& OutbreakSquadRules::ResolveSquadSize(ResolvedLimits,
-			RequestedSizeOverride > 0 ? RequestedSizeOverride : (Configuration ? Configuration->SquadSize : 0),
+			bUseSelection ? Selection.SquadSize
+				: (RequestedSizeOverride > 0 ? RequestedSizeOverride : (Configuration ? Configuration->SquadSize : 0)),
 			SquadSize, Error);
 
 	if (bValid)
@@ -138,13 +169,20 @@ bool UOutbreakSquadComponent::InitializeSquad(const UOutbreakSquadConfiguration*
 		return false;
 	}
 
+	// Member per selection slot: [0] the player, then each teammate slot (null where spawning failed).
+	TArray<UOutbreakSquadMemberComponent*> SlotMembers;
+	SlotMembers.Add(PlayerMemberComponent);
+
 	const FOutbreakSquadMemberConfig EmptyConfig;
 	for (int32 TeammateIndex = 0; TeammateIndex < SquadSize - 1; ++TeammateIndex)
 	{
-		const FOutbreakSquadMemberConfig& MemberConfig = !Configuration
-			? EmptyConfig
-			: (Configuration->Teammates.IsValidIndex(TeammateIndex) ? Configuration->Teammates[TeammateIndex] : Configuration->FillerTeammate);
+		const FOutbreakSquadMemberConfig& MemberConfig = bUseSelection
+			? OutbreakSquadSelection::GetTeammateConfig(Configuration, Selection, TeammateIndex)
+			: (!Configuration
+				? EmptyConfig
+				: (Configuration->Teammates.IsValidIndex(TeammateIndex) ? Configuration->Teammates[TeammateIndex] : Configuration->FillerTeammate));
 
+		SlotMembers.Add(nullptr);
 		AOutbreakCharacter* Teammate = SpawnTeammate(MemberConfig, PlayerPawn, TeammateIndex);
 		if (!Teammate)
 		{
@@ -158,6 +196,22 @@ bool UOutbreakSquadComponent::InitializeSquad(const UOutbreakSquadConfiguration*
 			UE_LOG(LogOutbreak, Warning, TEXT("%s: teammate %s not registered (%s); destroying it."),
 				*GetNameSafe(GetOwner()), *Teammate->GetName(), *UEnum::GetValueAsString(Result));
 			Teammate->Destroy();
+			continue;
+		}
+		SlotMembers.Last() = Teammate->GetSquadMemberComponent();
+	}
+
+	// Equipment selection from the briefing, through the same checks as SelectMemberLoadout.
+	if (bUseSelection)
+	{
+		for (int32 MemberIndex = 0; MemberIndex < SlotMembers.Num(); ++MemberIndex)
+		{
+			UOutbreakLoadoutDefinition* Loadout = OutbreakSquadSelection::GetLoadout(Selection, MemberIndex);
+			if (Loadout && SlotMembers[MemberIndex] && !AuthSelectMemberLoadout(SlotMembers[MemberIndex], Loadout))
+			{
+				UE_LOG(LogOutbreak, Warning, TEXT("%s: selected loadout %s could not be given to %s; it keeps its default equipment."),
+					*GetNameSafe(GetOwner()), *Loadout->GetName(), *SlotMembers[MemberIndex]->GetDisplayName().ToString());
+			}
 		}
 	}
 

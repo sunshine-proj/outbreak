@@ -393,6 +393,46 @@ Phase 11 (mission framework) is next, and no open decision blocks it. That's now
 ================================
 
 
+I've written all of Phase 11 in C++, but none of it has been compiled or run. Unreal Engine still isn't installed, so this is code review only. Every Phase 11 task in ROADMAP.md is [-] and the phase is recorded as blocked.
+
+What a mission does now:
+
+Briefing: the mission waits with the game paused. The briefing screen shows the mission text and lets each player pick squad size (within the 2–6 limits), which roster soldiers fill the slots, and a loadout for each member, including themselves.
+Deploy: the player is moved to the mission's starting marker and the squad is built there. Equipment selection then closes. The mission starts once every player has deployed. ?SkipBriefing deploys at once with the default squad.
+Objectives:
+Dependencies: each objective has an ID, an activation rule (after the previous required one by default, at mission start, or after named objectives), and Optional/Hidden flags. Several can run at once.
+Validation: invalid setups are rejected, such as cycles, unknown IDs, or a required objective depending on an optional one.
+New types: Destroy Object, Protect Location, Retrieve Item, Activate Equipment and Extraction.
+New level actors: a destructible object, and an interactable terminal that unlocks when its objective activates and can require a keycard.
+HUD: shows active objectives, and Tab shows the full list with states. Notifications announce new, completed and failed objectives.
+End: the mission results are built and replicated, and a summary screen shows outcome, time, objectives and each soldier's fate (extracted, left behind, KIA), with Retry and Quit.
+Choices you may want to change (recorded as D-019 in the roadmap):
+
+Briefing in the mission level: it runs inside the mission level, not a separate menu map, because there's no menu to go back to until Phase 14.
+Squad built at deployment: teammates are only spawned once the selection is made, so nothing has to be replaced.
+No automatic restart: I changed the mission's Restart Delay default from 8 s to 0, since the summary screen now offers Retry. Phase 6 assets saved with 8 s still restart by themselves.
+Retry for everyone: any player's Retry restarts the level for all players.
+Verification so far:
+
+Compile: not compiled, so expect some fixes once the engine version is known.
+Tests: I wrote 15 new automation tests in Tests/OutbreakMissionFrameworkTests.cpp, but none have been run.
+Existing tests: the existing mission tests should still pass, because missions with no dependency settings run objectives in order as before. That is unconfirmed until they run.
+Editor: nothing has been tested in the editor.
+What's in the change: 30 new source files (objectives, level actors, dependency graph, squad selection, briefing and summary screens, UI text, tests). I modified the mission definition, mission subsystem, game mode, game state, player controller, squad component and HUD. Docs: a new Docs/Phase11-EditorSetup.md with the assets to create, a test mission and a manual checklist for the acceptance criteria, plus updates to ROADMAP.md and README.md. Nothing is committed.
+
+Known gaps:
+
+UI: the screens are plain mouse-only buttons.
+Equipment: activation is instant.
+Retrieve Item: it can't fail.
+Downed soldiers: they can't be carried to extraction.
+Enemy waves: counterattacks use enemies placed in the level in advance.
+Next step: it's unchanged. Install Unreal Engine, build, run all Outbreak.* tests, then work through the setup guides in order.
+
+
+
+================================
+
 
 
 

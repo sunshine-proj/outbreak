@@ -54,9 +54,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void SetSquadMenu(const FText& MenuText);
 
-	/** Current objective line and, when the mission has ended, the result. */
+	/**
+	 * Objective display and, when the mission has ended, the result. Compact by default (the active
+	 * objectives); bShowAllObjectives lists every revealed objective with its state (the Tab panel).
+	 */
 	UFUNCTION(BlueprintCallable, Category = "HUD")
-	void SetMissionStatus(const FOutbreakMissionStatus& Status);
+	void SetMissionStatus(const FOutbreakMissionStatus& Status, bool bShowAllObjectives = false);
+
+	/** Objective notifications ("Objective complete: ..."), one per line. Empty hides them. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetNotifications(const FText& Notifications);
 
 	/** Inventory summary, or the full panel when open (Phase 10). */
 	UFUNCTION(BlueprintCallable, Category = "HUD")
@@ -104,6 +111,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> MissionResultText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> NotificationText;
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> InventoryText;

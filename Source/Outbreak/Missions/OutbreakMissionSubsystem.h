@@ -7,20 +7,26 @@
 
 #include "OutbreakMissionSubsystem.generated.h"
 
+class AActor;
 class APawn;
 class UOutbreakMissionDefinition;
 class UOutbreakObjective;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakMissionStateChangedSignature, EOutbreakMissionState, NewState);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakObjectiveChangedSignature, int32, ObjectiveIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOutbreakObjectiveStateChangedSignature, int32, ObjectiveIndex, EOutbreakObjectiveState, NewState);
 
 /**
- * Runs the current mission (server only): instantiates its objectives, activates them in order,
- * evaluates the current one at the mission's update interval, and decides completion and failure.
+ * Runs the current mission (server only).
  *
- * Players are registered by the game mode when they spawn; the mission fails when all of them
- * are dead (if the definition says so). The status is published to AOutbreakGameState so every
- * client's HUD can show it.
+ * Flow: InitializeMission → (BeginBriefing → every registered player deploys) → StartMission →
+ * objectives activate as their dependencies are met and every active one is evaluated at the
+ * mission's update interval → Completed (all required objectives done) or Failed (a required
+ * objective failed, or the squad is down) → results are built and the mission is cleaned up.
+ *
+ * Players are registered by the game mode when they spawn and marked deployed when they leave the
+ * briefing. The status (and, at the end, the results) are published to AOutbreakGameState so every
+ * client can show them.
  */
 UCLASS()
 class OUTBREAK_API UOutbreakMissionSubsystem : public UWorldSubsystem
@@ -32,31 +38,70 @@ public:
 	virtual void Deinitialize() override;
 
 	/**
-	 * Prepares Definition: validates it and creates per-play copies of its objectives.
-	 * Returns false (and logs why) if the definition is invalid; the mission then does not start.
+	 * Prepares Definition: cleans up any previous mission, validates Definition and creates per-play
+	 * copies of its objectives. Returns false (and logs why) if it is invalid; the mission then does not start.
 	 */
 	bool InitializeMission(const UOutbreakMissionDefinition* Definition);
 
-	/** Activates the first objective and starts evaluation. Requires a successful InitializeMission. */
+	/** Enters the briefing (NotStarted → Briefing). The mission starts when every registered player has deployed. */
+	UFUNCTION(BlueprintCallable, Category = "Mission")
+	void BeginBriefing();
+
+	/** Activates the objectives that have no unmet dependencies and starts evaluation. From NotStarted or Briefing. */
 	UFUNCTION(BlueprintCallable, Category = "Mission")
 	void StartMission();
 
-	/** Evaluates the current objective now. Runs automatically on a timer while in progress. */
+	/** Evaluates the active objectives now without advancing mission time. */
 	UFUNCTION(BlueprintCallable, Category = "Mission")
 	void UpdateMission();
+
+	/** Advances mission time by DeltaSeconds, then evaluates. The update timer calls this with the update interval. */
+	void AdvanceMission(float DeltaSeconds);
 
 	UFUNCTION(BlueprintCallable, Category = "Mission")
 	void FailMission(const FText& Reason);
 
+	/** Replays the level. Only after the mission has ended (the summary screen's Retry). */
+	UFUNCTION(BlueprintCallable, Category = "Mission")
+	void RestartMission();
+
+	// --- Players and deployment ---
+
 	/** Tracks a player pawn for death-based failure and for objectives such as Reach Location. */
 	void RegisterPlayer(APawn* PlayerPawn);
+
+	/**
+	 * Moves PlayerPawn to the mission's starting location (DeploymentMarkerId), offset sideways per
+	 * deployed player. Returns false and leaves the pawn where it is when the mission has no marker
+	 * or the marker is missing (logged).
+	 */
+	bool MovePawnToDeployment(APawn* PlayerPawn) const;
+
+	/**
+	 * PlayerPawn has left the briefing with its squad. Registers it; during the briefing, starts the
+	 * mission once every registered player has deployed.
+	 */
+	void NotifyPlayerDeployed(APawn* PlayerPawn);
+
+	bool IsPlayerDeployed(const APawn* PlayerPawn) const;
+	bool AreAllPlayersDeployed() const;
 
 	/** Registered player pawns that are alive. */
 	TArray<APawn*> GetLivingPlayerPawns() const;
 
+	/** Every registered player and their squads' members (living or not), players first, without duplicates. */
+	TArray<AActor*> GetSquadSoldiers() const;
+
+	/** Extraction objectives record who left the area; the results report it. */
+	void RecordExtracted(const TArray<AActor*>& Soldiers);
+	bool WasExtracted(const AActor* Soldier) const;
+
+	// --- State ---
+
 	UFUNCTION(BlueprintPure, Category = "Mission")
 	EOutbreakMissionState GetMissionState() const { return MissionState; }
 
+	/** The first active required objective, else the first active optional one, else the last one that was. */
 	UFUNCTION(BlueprintPure, Category = "Mission")
 	int32 GetCurrentObjectiveIndex() const { return CurrentObjectiveIndex; }
 
@@ -64,27 +109,54 @@ public:
 	UOutbreakObjective* GetCurrentObjective() const;
 
 	UFUNCTION(BlueprintPure, Category = "Mission")
+	UOutbreakObjective* GetObjective(int32 Index) const;
+
+	UFUNCTION(BlueprintPure, Category = "Mission")
 	int32 GetObjectiveCount() const { return Objectives.Num(); }
+
+	/** Seconds of play since StartMission (advanced by the update timer). */
+	UFUNCTION(BlueprintPure, Category = "Mission")
+	float GetMissionTime() const { return MissionTime; }
 
 	const UOutbreakMissionDefinition* GetMissionDefinition() const { return Definition; }
 
 	/** The status published to clients. */
 	FOutbreakMissionStatus BuildStatus() const;
 
+	/** The current results; final once the mission has ended. */
+	FOutbreakMissionResults BuildResults() const;
+
+	/** Results captured when the mission ended (Outcome NotStarted before that). */
+	const FOutbreakMissionResults& GetMissionResults() const { return FinalResults; }
+
 	UPROPERTY(BlueprintAssignable, Category = "Mission")
 	FOutbreakMissionStateChangedSignature OnMissionStateChanged;
 
+	/** An objective became active (kept from Phase 6: fires with the activated objective's index). */
 	UPROPERTY(BlueprintAssignable, Category = "Mission")
 	FOutbreakObjectiveChangedSignature OnObjectiveChanged;
+
+	/** An objective became Active, Completed or Failed. */
+	UPROPERTY(BlueprintAssignable, Category = "Mission")
+	FOutbreakObjectiveStateChangedSignature OnObjectiveStateChanged;
 
 private:
 
 	void ActivateObjective(int32 Index);
+	void FinishObjective(int32 Index, EOutbreakObjectiveState EndState);
+	/** Activates every inactive objective whose prerequisites completed; marks blocked ones failed. */
+	void ActivateReadyObjectives();
+	void UpdateCurrentObjectiveIndex();
+	bool AreRequiredObjectivesComplete() const;
+	TArray<EOutbreakObjectiveState> GetObjectiveStates() const;
+
 	void CompleteMission();
 	void EndMission(EOutbreakMissionState EndState, const FText& Result);
+	/** Stops evaluation, deactivates active objectives and unbinds player events. Keeps the definition, states and results. */
+	void CleanupMission();
 	void SetMissionState(EOutbreakMissionState NewState);
 	void PublishStatus() const;
-	void RestartLevel();
+	void HandleUpdateTimer();
 
 	UFUNCTION()
 	void HandlePlayerHealthStateChanged(UOutbreakHealthComponent* HealthComponent, EOutbreakHealthState NewState, EOutbreakHealthState OldState);
@@ -99,11 +171,18 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UOutbreakObjective>> Objectives;
 
+	/** Resolved prerequisite indices per objective. */
+	TArray<TArray<int32>> ObjectivePrerequisites;
+
 	TArray<TWeakObjectPtr<APawn>> Players;
+	TArray<TWeakObjectPtr<APawn>> DeployedPlayers;
+	TArray<TWeakObjectPtr<AActor>> ExtractedSoldiers;
 
 	EOutbreakMissionState MissionState = EOutbreakMissionState::NotStarted;
 	int32 CurrentObjectiveIndex = INDEX_NONE;
+	float MissionTime = 0.0f;
 	FText ResultText;
+	FOutbreakMissionResults FinalResults;
 
 	FTimerHandle UpdateTimer;
 	FTimerHandle RestartTimer;

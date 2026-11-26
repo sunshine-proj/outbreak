@@ -1,12 +1,17 @@
 #include "Game/OutbreakGameState.h"
 
+#include "Missions/OutbreakMissionDefinition.h"
 #include "Net/UnrealNetwork.h"
+#include "Squad/OutbreakSquadConfiguration.h"
 
 void AOutbreakGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AOutbreakGameState, MissionStatus);
+	DOREPLIFETIME(AOutbreakGameState, MissionResults);
+	DOREPLIFETIME(AOutbreakGameState, MissionDefinition);
+	DOREPLIFETIME(AOutbreakGameState, SquadConfiguration);
 }
 
 void AOutbreakGameState::SetMissionStatus(const FOutbreakMissionStatus& NewStatus)
@@ -16,18 +21,28 @@ void AOutbreakGameState::SetMissionStatus(const FOutbreakMissionStatus& NewStatu
 		return;
 	}
 
-	const bool bChanged = NewStatus.State != MissionStatus.State
-		|| NewStatus.ObjectiveIndex != MissionStatus.ObjectiveIndex
-		|| !NewStatus.ObjectiveDescription.EqualTo(MissionStatus.ObjectiveDescription)
-		|| !NewStatus.ObjectiveProgress.EqualTo(MissionStatus.ObjectiveProgress)
-		|| !NewStatus.ResultText.EqualTo(MissionStatus.ResultText)
-		|| !NewStatus.MissionName.EqualTo(MissionStatus.MissionName)
-		|| NewStatus.ObjectiveCount != MissionStatus.ObjectiveCount;
-
+	const bool bChanged = !NewStatus.Identical(MissionStatus);
 	MissionStatus = NewStatus;
 	if (bChanged)
 	{
 		OnMissionStatusChanged.Broadcast(MissionStatus);
+	}
+}
+
+void AOutbreakGameState::SetMissionResults(const FOutbreakMissionResults& NewResults)
+{
+	if (HasAuthority())
+	{
+		MissionResults = NewResults;
+	}
+}
+
+void AOutbreakGameState::SetMissionSetup(UOutbreakMissionDefinition* InMissionDefinition, UOutbreakSquadConfiguration* InSquadConfiguration)
+{
+	if (HasAuthority())
+	{
+		MissionDefinition = InMissionDefinition;
+		SquadConfiguration = InSquadConfiguration;
 	}
 }
 

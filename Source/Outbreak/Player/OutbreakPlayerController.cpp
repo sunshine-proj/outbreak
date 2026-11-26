@@ -6,11 +6,16 @@
 #include "Inventory/OutbreakInventoryComponent.h"
 #include "Inventory/OutbreakInventoryText.h"
 #include "Engine/World.h"
+#include "Game/OutbreakGameMode.h"
 #include "Game/OutbreakGameState.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "Missions/OutbreakMissionText.h"
 #include "Outbreak.h"
 #include "Player/OutbreakSquadCommandComponent.h"
 #include "TimerManager.h"
+#include "UI/OutbreakBriefingWidget.h"
 #include "UI/OutbreakHUDWidget.h"
+#include "UI/OutbreakMissionSummaryWidget.h"
 #include "Weapons/OutbreakAmmoTypeDefinition.h"
 #include "Weapons/OutbreakWeaponComponent.h"
 #include "Weapons/OutbreakWeaponDefinition.h"
@@ -18,6 +23,8 @@
 AOutbreakPlayerController::AOutbreakPlayerController()
 {
 	HUDWidgetClass = UOutbreakHUDWidget::StaticClass();
+	BriefingWidgetClass = UOutbreakBriefingWidget::StaticClass();
+	MissionSummaryWidgetClass = UOutbreakMissionSummaryWidget::StaticClass();
 	SquadCommandComponent = CreateDefaultSubobject<UOutbreakSquadCommandComponent>(TEXT("SquadCommandComponent"));
 }
 
@@ -32,12 +39,17 @@ void AOutbreakPlayerController::BeginPlay()
 	if (IsLocalController())
 	{
 		GetWorldTimerManager().SetTimer(SquadPanelTimer, this, &ThisClass::RefreshSquadPanel, SquadPanelRefreshInterval, true);
+		BindToGameState();
 	}
 }
 
 void AOutbreakPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(SquadPanelTimer);
+	if (AOutbreakGameState* GameState = BoundGameState.Get())
+	{
+		GameState->OnMissionStatusChanged.RemoveDynamic(this, &ThisClass::HandleMissionStatusChanged);
+	}
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -61,10 +73,220 @@ void AOutbreakPlayerController::RefreshSquadPanel()
 	}
 
 	// The game state replicates the mission status; reading it here also covers late replication.
+	BindToGameState();
 	if (const AOutbreakGameState* GameState = GetWorld()->GetGameState<AOutbreakGameState>())
 	{
-		HUDWidget->SetMissionStatus(GameState->GetMissionStatus());
+		HUDWidget->SetMissionStatus(GameState->GetMissionStatus(), bInventoryPanelOpen);
 	}
+	RefreshNotifications();
+}
+
+// --- Mission flow --------------------------------------------------------------------------------
+
+void AOutbreakPlayerController::BindToGameState()
+{
+	if (!IsLocalController() || BoundGameState.IsValid())
+	{
+		return;
+	}
+	AOutbreakGameState* GameState = GetWorld()->GetGameState<AOutbreakGameState>();
+	if (!GameState)
+	{
+		// Not replicated yet on a client; the refresh timer tries again.
+		return;
+	}
+	BoundGameState = GameState;
+	GameState->OnMissionStatusChanged.AddUniqueDynamic(this, &ThisClass::HandleMissionStatusChanged);
+
+	// No notifications for what happened before this controller existed; just show the right screen.
+	LastMissionStatus = GameState->GetMissionStatus();
+	UpdateMissionScreens(LastMissionStatus);
+}
+
+void AOutbreakPlayerController::HandleMissionStatusChanged(const FOutbreakMissionStatus& Status)
+{
+	const double Now = GetWorld()->GetTimeSeconds();
+	for (const FText& Notification : OutbreakMissionText::BuildObjectiveNotifications(LastMissionStatus, Status))
+	{
+		Notifications.Emplace(Notification, Now + NotificationDuration);
+	}
+	while (Notifications.Num() > FMath::Max(1, MaxNotifications))
+	{
+		Notifications.RemoveAt(0);
+	}
+	LastMissionStatus = Status;
+
+	if (HUDWidget)
+	{
+		HUDWidget->SetMissionStatus(Status, bInventoryPanelOpen);
+	}
+	RefreshNotifications();
+	UpdateMissionScreens(Status);
+}
+
+void AOutbreakPlayerController::RefreshNotifications()
+{
+	const double Now = GetWorld()->GetTimeSeconds();
+	Notifications.RemoveAll([Now](const TPair<FText, double>& Entry) { return Entry.Value <= Now; });
+	if (HUDWidget)
+	{
+		TArray<FText> Lines;
+		for (const TPair<FText, double>& Entry : Notifications)
+		{
+			Lines.Add(Entry.Key);
+		}
+		HUDWidget->SetNotifications(FText::Join(FText::FromString(TEXT("\n")), Lines));
+	}
+}
+
+void AOutbreakPlayerController::UpdateMissionScreens(const FOutbreakMissionStatus& Status)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	if (Status.State == EOutbreakMissionState::Briefing && !bDeployRequested)
+	{
+		ShowBriefing();
+	}
+	else
+	{
+		HideBriefing();
+	}
+	if (Status.State == EOutbreakMissionState::Completed || Status.State == EOutbreakMissionState::Failed)
+	{
+		ShowMissionSummary();
+	}
+	ApplyInputMode();
+}
+
+void AOutbreakPlayerController::ShowBriefing()
+{
+	const AOutbreakGameState* GameState = BoundGameState.Get();
+	if (BriefingWidget || !BriefingWidgetClass || !GameState)
+	{
+		return;
+	}
+	BriefingWidget = CreateWidget<UOutbreakBriefingWidget>(this, BriefingWidgetClass);
+	if (!BriefingWidget)
+	{
+		return;
+	}
+	BriefingWidget->OnDeployRequested.AddUniqueDynamic(this, &ThisClass::HandleBriefingDeployRequested);
+	BriefingWidget->AddToViewport(10);
+	BriefingWidget->ShowMission(GameState->GetMissionDefinition(), GameState->GetSquadConfiguration());
+}
+
+void AOutbreakPlayerController::HideBriefing()
+{
+	if (BriefingWidget)
+	{
+		BriefingWidget->RemoveFromParent();
+		BriefingWidget = nullptr;
+	}
+}
+
+void AOutbreakPlayerController::ShowMissionSummary()
+{
+	const AOutbreakGameState* GameState = BoundGameState.Get();
+	if (MissionSummaryWidget || !MissionSummaryWidgetClass || !GameState)
+	{
+		return;
+	}
+	MissionSummaryWidget = CreateWidget<UOutbreakMissionSummaryWidget>(this, MissionSummaryWidgetClass);
+	if (!MissionSummaryWidget)
+	{
+		return;
+	}
+	MissionSummaryWidget->OnRetryRequested.AddUniqueDynamic(this, &ThisClass::HandleSummaryRetry);
+	MissionSummaryWidget->OnQuitRequested.AddUniqueDynamic(this, &ThisClass::HandleSummaryQuit);
+	MissionSummaryWidget->AddToViewport(20);
+	MissionSummaryWidget->ShowResults(GameState->GetMissionResults());
+}
+
+void AOutbreakPlayerController::ApplyInputMode()
+{
+	UUserWidget* Screen = MissionSummaryWidget.Get();
+	if (!Screen)
+	{
+		Screen = BriefingWidget.Get();
+	}
+	const bool bMenu = Screen != nullptr;
+	if (bMenu == bShowMouseCursor)
+	{
+		return;
+	}
+
+	if (bMenu)
+	{
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(Screen->TakeWidget());
+		SetInputMode(InputMode);
+	}
+	else
+	{
+		SetInputMode(FInputModeGameOnly());
+	}
+	bShowMouseCursor = bMenu;
+
+	// The screens cover the HUD; hiding it avoids two result texts on top of each other.
+	if (HUDWidget)
+	{
+		HUDWidget->SetVisibility(bMenu ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void AOutbreakPlayerController::RequestDeploy(const FOutbreakSquadSelection& Selection)
+{
+	if (bDeployRequested)
+	{
+		return;
+	}
+	bDeployRequested = true;
+	HideBriefing();
+	ApplyInputMode();
+	ServerRequestDeploy(Selection);
+}
+
+void AOutbreakPlayerController::ServerRequestDeploy_Implementation(const FOutbreakSquadSelection& Selection)
+{
+	if (AOutbreakGameMode* GameMode = GetWorld()->GetAuthGameMode<AOutbreakGameMode>())
+	{
+		GameMode->HandleDeployRequest(this, Selection);
+	}
+}
+
+void AOutbreakPlayerController::RequestRestartMission()
+{
+	ServerRequestRestartMission();
+}
+
+void AOutbreakPlayerController::ServerRequestRestartMission_Implementation()
+{
+	if (AOutbreakGameMode* GameMode = GetWorld()->GetAuthGameMode<AOutbreakGameMode>())
+	{
+		GameMode->HandleRestartRequest(this);
+	}
+}
+
+void AOutbreakPlayerController::QuitMission()
+{
+	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, /*bIgnorePlatformRestrictions=*/ false);
+}
+
+void AOutbreakPlayerController::HandleBriefingDeployRequested(const FOutbreakSquadSelection& Selection)
+{
+	RequestDeploy(Selection);
+}
+
+void AOutbreakPlayerController::HandleSummaryRetry()
+{
+	RequestRestartMission();
+}
+
+void AOutbreakPlayerController::HandleSummaryQuit()
+{
+	QuitMission();
 }
 
 void AOutbreakPlayerController::ToggleInventoryPanel()

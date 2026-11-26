@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Squad/OutbreakSquadCommandTypes.h"
+#include "Squad/OutbreakSquadSelection.h"
 #include "Squad/OutbreakSquadTypes.h"
 
 #include "OutbreakSquadComponent.generated.h"
@@ -64,6 +65,15 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Squad")
 	bool InitializeSquad(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn, int32 RequestedSizeOverride = 0);
+
+	/**
+	 * Builds the squad from a briefing selection (Phase 11): its size, its roster soldiers in slot
+	 * order and its loadouts (applied as SelectMemberLoadout would). An invalid selection is logged
+	 * and replaced by the default selection, so deployment always succeeds.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Squad")
+	bool InitializeSquadWithSelection(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn,
+		const FOutbreakSquadSelection& Selection);
 
 	// --- Equipment selection (Phase 10) ---
 
@@ -284,6 +294,10 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Formation)
 	EOutbreakFormation Formation = EOutbreakFormation::Wedge;
+
+	/** Shared by both InitializeSquad variants. Selection null = the configuration's composition and RequestedSizeOverride. */
+	bool InitializeSquadInternal(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn,
+		int32 RequestedSizeOverride, const FOutbreakSquadSelection* Selection);
 
 	EOutbreakSquadRegistrationResult RegisterMemberInternal(UOutbreakSquadMemberComponent* Member, bool bIsPlayer);
 	AOutbreakCharacter* SpawnTeammate(const FOutbreakSquadMemberConfig& MemberConfig, const APawn* PlayerPawn, int32 TeammateIndex);

@@ -4,6 +4,7 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
+#include "Missions/OutbreakMissionText.h"
 #include "Missions/OutbreakMissionTypes.h"
 
 #define LOCTEXT_NAMESPACE "OutbreakHUD"
@@ -40,6 +41,7 @@ void UOutbreakHUDWidget::NativeOnInitialized()
 	SetSquadMenu(FText::GetEmpty());
 	SetInventory(FText::GetEmpty());
 	SetMedicalStatus(FText::GetEmpty());
+	SetNotifications(FText::GetEmpty());
 }
 
 void UOutbreakHUDWidget::BuildDefaultLayout()
@@ -80,6 +82,7 @@ void UOutbreakHUDWidget::BuildDefaultLayout()
 	const FAnchors TopCentre(0.5f, 0.0f);
 	ObjectiveText = AddText(TEXT("ObjectiveText"), FText::GetEmpty(), TopCentre, FVector2D(0.5f, 0.0f), FVector2D(0.0f, 40.0f));
 	MissionResultText = AddText(TEXT("MissionResultText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 1.0f), FVector2D(0.0f, -60.0f));
+	NotificationText = AddText(TEXT("NotificationText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 1.0f), FVector2D(0.0f, -160.0f));
 
 	const FAnchors RightCentre(1.0f, 0.5f);
 	InventoryText = AddText(TEXT("InventoryText"), FText::GetEmpty(), RightCentre, FVector2D(1.0f, 0.5f), FVector2D(-40.0f, 0.0f));
@@ -176,24 +179,16 @@ void UOutbreakHUDWidget::SetSquadMenu(const FText& MenuText)
 	}
 }
 
-void UOutbreakHUDWidget::SetMissionStatus(const FOutbreakMissionStatus& Status)
+void UOutbreakHUDWidget::SetMissionStatus(const FOutbreakMissionStatus& Status, bool bShowAllObjectives)
 {
 	const bool bInProgress = Status.State == EOutbreakMissionState::InProgress;
 	const bool bEnded = Status.State == EOutbreakMissionState::Completed || Status.State == EOutbreakMissionState::Failed;
 
 	if (ObjectiveText)
 	{
-		FText Line = FText::GetEmpty();
-		if (bInProgress && !Status.ObjectiveDescription.IsEmpty())
-		{
-			Line = Status.ObjectiveProgress.IsEmpty()
-				? FText::Format(LOCTEXT("ObjectiveLine", "Objective {0}/{1}: {2}"),
-					Status.ObjectiveIndex + 1, Status.ObjectiveCount, Status.ObjectiveDescription)
-				: FText::Format(LOCTEXT("ObjectiveLineProgress", "Objective {0}/{1}: {2}  ({3})"),
-					Status.ObjectiveIndex + 1, Status.ObjectiveCount, Status.ObjectiveDescription, Status.ObjectiveProgress);
-		}
-		ObjectiveText->SetText(Line);
-		ObjectiveText->SetVisibility(Line.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		const FText Objectives = bInProgress ? OutbreakMissionText::BuildObjectiveList(Status, bShowAllObjectives) : FText::GetEmpty();
+		ObjectiveText->SetText(Objectives);
+		ObjectiveText->SetVisibility(Objectives.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
 
 	if (MissionResultText)
@@ -209,6 +204,15 @@ void UOutbreakHUDWidget::SetMissionStatus(const FOutbreakMissionStatus& Status)
 		}
 		MissionResultText->SetText(Result);
 		MissionResultText->SetVisibility(bEnded ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+void UOutbreakHUDWidget::SetNotifications(const FText& Notifications)
+{
+	if (NotificationText)
+	{
+		NotificationText->SetText(Notifications);
+		NotificationText->SetVisibility(Notifications.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
 }
 

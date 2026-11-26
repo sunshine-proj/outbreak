@@ -1,6 +1,7 @@
 #include "Missions/OutbreakMissionDefinition.h"
 
 #include "Missions/OutbreakObjective.h"
+#include "Missions/OutbreakObjectiveGraph.h"
 #include "Squad/OutbreakSquadConfiguration.h"
 
 #if WITH_EDITOR
@@ -17,23 +18,39 @@ bool UOutbreakMissionDefinition::Validate(TArray<FText>& OutErrors) const
 	{
 		OutErrors.Add(LOCTEXT("NoObjectives", "A mission needs at least one objective."));
 	}
+
+	bool bAllObjectivesSet = true;
+	TArray<FOutbreakObjectiveNode> Nodes;
 	for (int32 Index = 0; Index < Objectives.Num(); ++Index)
 	{
 		if (!Objectives[Index])
 		{
 			OutErrors.Add(FText::Format(LOCTEXT("NullObjective", "Objective {0} is empty."), Index));
+			bAllObjectivesSet = false;
+			continue;
 		}
-		else
-		{
-			Objectives[Index]->Validate(OutErrors);
-		}
+		Objectives[Index]->Validate(OutErrors);
+		Nodes.Add(FOutbreakObjectiveNode::FromObjective(*Objectives[Index]));
 	}
+
+	// Indices only line up when every entry is set; an empty entry is already an error.
+	if (bAllObjectivesSet && !Nodes.IsEmpty())
+	{
+		TArray<TArray<int32>> Prerequisites;
+		OutbreakObjectiveGraph::Resolve(Nodes, Prerequisites, OutErrors);
+	}
+
 	if (SquadConfiguration)
 	{
 		SquadConfiguration->Validate(OutErrors);
 	}
 
 	return OutErrors.Num() == InitialErrorCount;
+}
+
+FName UOutbreakMissionDefinition::GetResolvedMissionId() const
+{
+	return MissionId.IsNone() ? GetFName() : MissionId;
 }
 
 #if WITH_EDITOR
