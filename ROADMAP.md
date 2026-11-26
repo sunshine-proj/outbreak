@@ -541,21 +541,21 @@ Additional verification:
 
 ### 9.1 Combat Tactics
 
-- [ ] Implement cover selection.
-- [ ] Implement flanking behaviour.
-- [ ] Implement target switching.
-- [ ] Implement squad-aware combat.
-- [ ] Implement combat coordination between nearby enemies.
-- [ ] Implement combat disengagement.
-- [ ] Implement Retreat behaviour.
+- [-] Implement cover selection. — C++ written, not compiled (engine not installed). Enemy EQS cover (`Tactics.CoverQuery`) when under fire, reloading or preferring cover; reposition when sight is lost
+- [-] Implement flanking behaviour. — C++ written, not compiled (engine not installed). Flank point `FlankAngle` round the target from the pinning ally; made when round the side
+- [-] Implement target switching. — C++ written, not compiled (engine not installed). `TargetSwitchMargin` hysteresis; immediate for a recent attacker
+- [-] Implement squad-aware combat. — C++ written, not compiled (engine not installed). Fire spread across squad members, flank side away from the squad, outnumbered by visible squad
+- [-] Implement combat coordination between nearby enemies. — C++ written, not compiled (engine not installed). `UOutbreakEnemyCoordinationSubsystem`: shared sightings, pin and flank roles
+- [-] Implement combat disengagement. — C++ written, not compiled (engine not installed). `LeashDistance`: positions kept inside it; a target lost beyond it is given up
+- [-] Implement Retreat behaviour. — C++ written, not compiled (engine not installed). Retreating state: low health (once) or outnumbered
 
 ### 9.2 Enemy Archetypes
 
-- [ ] Implement fast melee enemy.
-- [ ] Implement heavy enemy.
-- [ ] Define enemy-specific perception parameters.
-- [ ] Define enemy-specific combat parameters.
-- [ ] Test different enemy combinations.
+- [-] Implement fast melee enemy. — C++ written, not compiled (engine not installed). Melee style, Melee fire behaviour, `bUnlimitedAmmo`; asset `DA_Enemy_Stalker` in the Phase 9 guide
+- [-] Implement heavy enemy. — C++ written, not compiled (engine not installed). Advance style; asset `DA_Enemy_Brute` in the Phase 9 guide
+- [-] Define enemy-specific perception parameters. — C++ written, not compiled (engine not installed). Existing definition fields (sight, hearing, sensitivity, detection rates); per-archetype values in the Phase 9 guide
+- [-] Define enemy-specific combat parameters. — C++ written, not compiled (engine not installed). `UOutbreakEnemyDefinition::Tactics` plus the combat range band
+- [-] Test different enemy combinations. — C++ written, not compiled (engine not installed). Archetype automation test written; combinations A–E in the Phase 9 guide await manual testing
 
 ### Phase 9 Acceptance Criteria
 
@@ -907,6 +907,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 6 verification (all `[-]` tasks in Phase 6) | Same as above. Editor work: greybox prototype level, navmesh, enemy placement and patrols, mission marker and mission asset. Steps: `Docs/Phase6-EditorSetup.md`. | 2026-11-26 |
 | Phase 7 verification (all `[-]` tasks in Phase 7) | Same as above. Editor assets: EQS cover query, tactical order and menu input actions, menu mapping context, cover test map. Steps: `Docs/Phase7-EditorSetup.md`. | 2026-11-26 |
 | Phase 8 verification (all `[-]` tasks in Phase 8) | Same as above. Editor work: stealth input action, lighting volumes, stealth test map; enemy Blackboard enum refresh. Steps: `Docs/Phase8-EditorSetup.md`. | 2026-11-26 |
+| Phase 9 verification (all `[-]` tasks in Phase 9) | Same as above. Editor assets: enemy cover EQS query, stalker and brute weapons, definitions and Blueprints, tactics test map; enemy Blackboard enum refresh. Steps: `Docs/Phase9-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -932,6 +933,7 @@ Record architectural and planning decisions here.
 | D-014 | 2026-11-26 | Formations are a replicated squad property (`EOutbreakFormation`, initial value per squad configuration, spacing per formation in project settings); slot offsets are a pure function of formation, slot and count. A slot off the navmesh falls back to the Column slot, so squads file through narrow passages. Cover comes from an editor-authored EQS query using C++ contexts for the threat and the cover anchor; it is used for Cover and Defend orders, at low health, and autonomously under fire (damaged within a configurable time). Retreat moves a configurable distance away from the known threat. The Phase 7 command interface is a HUD menu with its own input mapping context; a radial wheel can reuse the same entries later. | Engine EQS for cover (AGENTS.md §6); formations stay testable and size-independent; the menu avoids key conflicts without new UI assets. |
 | D-015 | 2026-11-26 | Stealth model. Gameplay noise (`FOutbreakNoiseEvent`) is separate from audio playback and delivered through engine AI hearing, so it does not depend on the audio backend (O-003 moves to Phase 13). Listeners attenuate noise by distance and by world-geometry obstacles. The gameplay light level is modelled from the level's lights (ambient, point/spot with shadow traces, directional) with designer volume overrides, not read back from rendering. Visibility multiplies light, exposure, movement, distance, field of view and stance, and drives per-target detection; suspicion drives Suspicious / Investigating; detection 1 = Combat (the roadmap's Alerted); losing a target starts Searching; entering Combat alerts nearby enemies. Character capsules block Visibility (the engine Pawn profile ignores it) until a weapon trace channel exists. | Data-driven, testable without rendering or audio; every factor in AGENTS.md §6.2 is represented; fixes shots passing through characters. |
 | D-016 | 2026-11-26 | Squad stealth is a replicated squad mode, not an order, so it combines with every order. In stealth, teammates crouch, soften footsteps, use the Stealth formation, hold fire, and freeze when an enemy is noticing them. Any shot from the squad, a teammate being fully detected or shot compromises the squad (weapons free) for a configurable time. | "Integrate squad commands with stealth" (8.4) needs stealth to apply to Move, Hold, Defend etc.; holding fire is what keeps teammates from exposing the squad. |
+| D-017 | 2026-11-26 | Enemy tactics are a per-archetype `FOutbreakEnemyTacticsSettings` on the enemy definition. In Combat, a pure decision picks one movement (Retreat > Charge > Flank > TakeCover > Engage); firing stays concurrent. Combat styles Ranged / Melee / Advance distinguish infantry, melee attackers and heavies. Coordination is a world subsystem of engagement reports (shared sightings, one pin plus flankers per target, target spreading), refreshed by each enemy and expiring otherwise. Retreating is a new enemy state appended to the enum. Disengagement is a leash around the home position. Melee attacks use the weapon system (a Melee fire behaviour, `bUnlimitedAmmo`) so the shared combat service drives them. | Phase 9 acceptance (behaviours differ, cover and flanking, configured without AI code); reuses the Phase 7 EQS contexts and the shared combat service; decision logic stays unit-testable without navmesh or perception. |
 
 ### Open
 

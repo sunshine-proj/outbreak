@@ -139,6 +139,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon", meta = (ClampMin = "1"))
 	int32 MagazineCapacity = 30;
 
+	/**
+	 * The magazine never empties (claws, natural attacks, Phase 9). The weapon still needs a
+	 * compatible ammunition type for its damage type, but no reserve.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	bool bUnlimitedAmmo = false;
+
 	/** 0 = instant reload. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon", meta = (ClampMin = "0.0", Units = "s"))
 	float ReloadDuration = 2.0f;

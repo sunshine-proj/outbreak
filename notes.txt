@@ -301,6 +301,56 @@ Nothing is committed. That's as far as Phase 8 can go without the engine. Phase 
 ================================
 
 
+Phase 9 is written, as far as it can go without Unreal Engine, but none of it has been compiled or run. The 7 new automation tests are written but not run. All 12 Phase 9 tasks are marked [-] in ROADMAP.md, and nothing is committed.
+
+What changed in how enemies fight
+
+Combat moves: in combat, each enemy now picks one of five moves:
+
+retreat;
+charge (melee enemies);
+flank;
+take cover (when under fire or reloading);
+fight from its normal range.
+It keeps shooting during all of them. The settings live in a new Tactics section on each enemy definition, in OutbreakEnemyTactics.h.
+
+Coordination: nearby enemies share where they last saw you, so one that loses sight keeps tracking you while an ally can see you. Against the same target, one holds the front while up to two others flank. Fire spreads across your squad instead of everyone shooting the player. This is in OutbreakEnemyCoordinationSubsystem.h.
+
+Squad-aware flanking: a flanker picks the side away from your other squad members.
+
+Target switching: an enemy changes target only when another is clearly better.
+
+Retreat: a new Retreating state, triggered once at low health or when outnumbered.
+
+Disengagement: an optional leash keeps an enemy near its home position. If you escape beyond it, the enemy goes home instead of searching.
+
+Melee attacks: a new Melee fire type (a short sweep), plus an unlimited-ammo flag on weapons. Melee enemies attack through the normal weapon and combat code.
+
+Two new archetypes: a fast melee enemy (Stalker) and a heavy (Brute). Both are data only; their assets are described in Docs/Phase9-EditorSetup.md.
+
+Changes to earlier code
+
+New enemy state: Retreating was added at the end of the enemy state list. In the editor, re-select the enum in the enemy Blackboard. The HUD now counts retreating enemies, and "in combat" for animation includes Retreating.
+Target choice rewritten: the code from Phases 5 and 8 has been rewritten. Re-run those enemy tests after the first build.
+Tests: the new tests are in OutbreakEnemyTacticsTests.cpp. They cover the decision rules, coordination roles, a hurt enemy retreating, and the three archetypes. Cover, flanking routes and coordinated fights need a navmesh and working enemy sight and hearing, which the bare test world doesn't have, so they can only be checked by hand. The guide has a checklist for five enemy combinations.
+
+Limitations:
+
+Under fire: only hits taken count; near misses don't.
+Cover choice: two enemies can pick the same cover spot.
+Retreat direction: straight back from the threat, or home if that point is off the navmesh.
+Melee reach: a melee enemy that can't reach you just waits.
+Docs:
+
+Added the Blocker row "Phase 9 verification" and decision D-017 to ROADMAP.md.
+Updated the README stage line and links.
+Updated the Phase 5 guide to point to the new Phase 9 guide.
+Phase 10 (inventory, equipment, medical) is next and no open decision blocks it. We now have nine phases of uncompiled code. Installing the engine and doing the first build before going further would limit how much needs fixing at once.
+
+
+
+================================
+
 
 
 

@@ -151,5 +151,5 @@ Play with your squad (Phase 3/4 setup) so the teammates and enemies fight.
 - **No refined alert states:** a single Alerted state stands in for Suspicious, Investigating and Searching. Suspicion levels, alert propagation between enemies and lighting-aware sight are Phase 8.
 - **Unseen-attacker cheat:** an enemy hit from out of sight learns the attacker's exact position. Phase 8 can blur that into a search area.
 - **No fellow-enemy noise:** enemies don't react to each other's gunfire, because hearing detects hostile noises only.
-- **No tactics:** there's no cover use, flanking or coordination. That's Phase 9.
+- **No tactics:** there's no cover use, flanking or coordination here. Phase 9 added them: see [Phase9-EditorSetup.md](Phase9-EditorSetup.md).
 - **Enemy squad component:** enemies inherit an unused squad member component from the shared character base.

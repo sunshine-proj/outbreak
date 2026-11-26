@@ -237,7 +237,10 @@ void UOutbreakWeaponComponent::AuthFireShot(const FVector& Origin, const FVector
 	}
 
 	// Commit the shot.
-	Slot->AmmoInMagazine -= FireMode->AmmoPerShot;
+	if (!Slot->Definition->bUnlimitedAmmo)
+	{
+		Slot->AmmoInMagazine -= FireMode->AmmoPerShot;
+	}
 
 	const float Elapsed = static_cast<float>(Now - LastAuthShotTime);
 	LastAuthShotTime = Now;

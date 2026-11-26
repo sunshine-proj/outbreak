@@ -86,3 +86,25 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Projectile")
 	float GravityScale = 0.0f;
 };
+
+/**
+ * A short sphere sweep along the aim direction for the fire mode's Range (claws, bites, blades).
+ * Damages the first thing it hits. Use a short Range (about 150-200 cm) and, usually, a weapon
+ * with bUnlimitedAmmo.
+ */
+UCLASS(DisplayName = "Melee")
+class OUTBREAK_API UOutbreakMeleeFireBehavior : public UOutbreakFireBehavior
+{
+	GENERATED_BODY()
+
+public:
+
+	virtual void ExecuteShot(const FOutbreakShotRequest& Request, TArray<FOutbreakShotImpact>& OutImpacts) const override;
+
+	/** Width of the swing. */
+	UPROPERTY(EditAnywhere, Category = "Melee", meta = (ClampMin = "1.0", Units = "cm"))
+	float SweepRadius = 35.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Melee")
+	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+};

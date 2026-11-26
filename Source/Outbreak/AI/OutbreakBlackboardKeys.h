@@ -22,4 +22,7 @@ namespace OutbreakBlackboardKeys
 
 	/** Enum (EOutbreakEnemyState). Enemy blackboard only. */
 	inline const FName EnemyState(TEXT("State"));
+
+	/** Enum (EOutbreakEnemyCombatMove). Enemy blackboard only, optional (Phase 9). */
+	inline const FName CombatMove(TEXT("CombatMove"));
 }

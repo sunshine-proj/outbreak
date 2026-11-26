@@ -44,7 +44,7 @@ public:
 	EOutbreakEnemyState GetEnemyState() const { return EnemyState; }
 
 	UFUNCTION(BlueprintPure, Category = "Enemy|Animation")
-	bool IsInCombat() const { return EnemyState == EOutbreakEnemyState::Combat; }
+	bool IsInCombat() const { return EnemyState == EOutbreakEnemyState::Combat || EnemyState == EOutbreakEnemyState::Retreating; }
 
 	UFUNCTION(BlueprintPure, Category = "Enemy|Animation")
 	bool IsDead() const;

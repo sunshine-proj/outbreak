@@ -6,6 +6,10 @@ namespace OutbreakEnemyBehavior
 {
 	EOutbreakEnemyState SelectState(const FOutbreakEnemyStateContext& Context)
 	{
+		if (Context.bRetreating)
+		{
+			return EOutbreakEnemyState::Retreating;
+		}
 		if (Context.bHasDetectedTarget && Context.TimeSinceTargetSeen <= Context.LoseTargetTime)
 		{
 			return EOutbreakEnemyState::Combat;
@@ -34,6 +38,7 @@ namespace OutbreakEnemyBehavior
 		case EOutbreakEnemyState::Investigating: return LOCTEXT("Investigating", "Investigating");
 		case EOutbreakEnemyState::Combat:        return LOCTEXT("Combat", "Combat");
 		case EOutbreakEnemyState::Searching:     return LOCTEXT("Searching", "Searching");
+		case EOutbreakEnemyState::Retreating:    return LOCTEXT("Retreating", "Retreating");
 		default:                                 return LOCTEXT("Idle", "Idle");
 		}
 	}

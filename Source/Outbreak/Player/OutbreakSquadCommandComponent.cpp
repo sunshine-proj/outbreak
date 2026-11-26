@@ -224,7 +224,7 @@ void UOutbreakSquadCommandComponent::ToggleStealthMode()
 
 FText UOutbreakSquadCommandComponent::BuildEnemyAwarenessText() const
 {
-	int32 Counts[static_cast<int32>(EOutbreakEnemyState::Searching) + 1] = {};
+	int32 Counts[static_cast<int32>(EOutbreakEnemyState::Retreating) + 1] = {};
 	for (TActorIterator<AOutbreakEnemyCharacter> It(GetWorld()); It; ++It)
 	{
 		if (!It->IsDead())
@@ -246,6 +246,7 @@ FText UOutbreakSquadCommandComponent::BuildEnemyAwarenessText() const
 	AddPart(EOutbreakEnemyState::Investigating, LOCTEXT("AwareInvestigating", "investigating"));
 	AddPart(EOutbreakEnemyState::Searching, LOCTEXT("AwareSearching", "searching"));
 	AddPart(EOutbreakEnemyState::Combat, LOCTEXT("AwareCombat", "in combat"));
+	AddPart(EOutbreakEnemyState::Retreating, LOCTEXT("AwareRetreating", "retreating"));
 
 	return Parts.IsEmpty()
 		? LOCTEXT("AwarenessNone", "Enemies: unaware")

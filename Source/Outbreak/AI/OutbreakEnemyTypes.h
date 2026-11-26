@@ -7,6 +7,7 @@
 /**
  * Enemy awareness states (Phase 8; Phase 5 had Idle / Patrol / Alerted / Combat).
  * "Alerted" in the roadmap is Combat: the enemy has detected a hostile and fights or hunts it.
+ * Retreating was added in Phase 9 (appended, so Blackboard enum values of the others are unchanged).
  */
 UENUM(BlueprintType)
 enum class EOutbreakEnemyState : uint8
@@ -22,12 +23,17 @@ enum class EOutbreakEnemyState : uint8
 	/** Has detected a hostile: fights it, or closes on where it was last seen. */
 	Combat,
 	/** Lost a detected hostile: searches around its last known position. */
-	Searching
+	Searching,
+	/** Falling back from a fight (low health, outnumbered); still fires at visible targets (Phase 9). */
+	Retreating
 };
 
 /** Inputs to the enemy state decision. Gathered by AOutbreakEnemyAIController. */
 struct FOutbreakEnemyStateContext
 {
+	/** A retreat is in progress (Phase 9); outranks everything else. */
+	bool bRetreating = false;
+
 	/** A hostile has been detected (detection reached 1) and is still being tracked. */
 	bool bHasDetectedTarget = false;
 
@@ -65,7 +71,7 @@ struct FOutbreakTargetScoreWeights
 namespace OutbreakEnemyBehavior
 {
 	/**
-	 * Combat while a detected target was seen within LoseTargetTime; then Searching while the search
+	 * Retreating while a retreat lasts; Combat while a detected target was seen within LoseTargetTime; then Searching while the search
 	 * lasts; then Investigating or Suspicious by suspicion; otherwise Patrol (with a route) or Idle.
 	 */
 	OUTBREAK_API EOutbreakEnemyState SelectState(const FOutbreakEnemyStateContext& Context);

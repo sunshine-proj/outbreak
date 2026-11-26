@@ -33,6 +33,7 @@ bool UOutbreakEnemyDefinition::Validate(TArray<FText>& OutErrors) const
 	{
 		OutErrors.Add(LOCTEXT("CombatRanges", "Combat ranges must satisfy Min <= Preferred <= Max."));
 	}
+	Tactics.Validate(OutErrors);
 	if (Weapon)
 	{
 		Weapon->Validate(OutErrors);
@@ -63,6 +64,11 @@ EDataValidationResult UOutbreakEnemyDefinition::IsDataValid(FDataValidationConte
 	if (!BehaviorTree)
 	{
 		Context.AddWarning(LOCTEXT("NoTree", "No BehaviorTree: the enemy will not act."));
+	}
+	if (Tactics.CombatStyle == EOutbreakEnemyCombatStyle::Melee && Weapon && Weapon->FireModes.Num() > 0
+		&& Weapon->FireModes[0].Range < MaxCombatRange)
+	{
+		Context.AddWarning(LOCTEXT("MeleeReach", "Melee style: the weapon's Range is shorter than MaxCombatRange, so attacks may swing at air."));
 	}
 
 	return CombineDataValidationResults(Result, EDataValidationResult::Valid);

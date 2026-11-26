@@ -1,6 +1,7 @@
 #include "AI/OutbreakEnemyAIController.h"
 
 #include "AI/OutbreakBlackboardKeys.h"
+#include "AI/OutbreakEnemyCoordinationSubsystem.h"
 #include "AI/OutbreakEnemyDefinition.h"
 #include "AI/OutbreakPatrolRoute.h"
 #include "BehaviorTree/BlackboardComponent.h"
@@ -12,6 +13,8 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "EnvironmentQuery/EnvQuery.h"
+#include "EnvironmentQuery/EnvQueryManager.h"
 #include "GameFramework/Character.h"
 #include "HAL/IConsoleManager.h"
 #include "Navigation/CrowdFollowingComponent.h"
@@ -131,6 +134,13 @@ void AOutbreakEnemyAIController::OnUnPossess()
 	}
 	GetPerceptionComponent()->OnTargetPerceptionUpdated.RemoveDynamic(this, &ThisClass::HandleTargetPerceptionUpdated);
 
+	if (UOutbreakEnemyCoordinationSubsystem* Coordination = GetCoordination())
+	{
+		Coordination->RemoveEngagement(this);
+	}
+	ResetTactics();
+	bRetreating = false;
+
 	Enemy = nullptr;
 	WeaponComponent = nullptr;
 	HealthComponent = nullptr;
@@ -242,6 +252,12 @@ void AOutbreakEnemyAIController::HandleHealthStateChanged(UOutbreakHealthCompone
 	Detection.Reset();
 	Suspicion = 0.0f;
 	bHasStimulus = false;
+	if (UOutbreakEnemyCoordinationSubsystem* Coordination = GetCoordination())
+	{
+		Coordination->RemoveEngagement(this);
+	}
+	ResetTactics();
+	bRetreating = false;
 	ClearFocus(EAIFocusPriority::Gameplay);
 	ClearFocus(EAIFocusPriority::Default);
 	StopMovement();
@@ -406,15 +422,20 @@ void AOutbreakEnemyAIController::UpdateSight(float DeltaSeconds)
 		bHasStimulus = true;
 	}
 
-	// Choose the best detected, visible target.
+	// Choose the target among detected, visible hostiles. Allies already fighting a target make it
+	// less attractive (fire spreads across the squad), and the current target is kept unless another
+	// is clearly better (Phase 9 target switching).
 	FOutbreakTargetScoreWeights Weights;
 	Weights.DistancePenaltyPerMeter = Definition->DistancePenaltyPerMeter;
 	Weights.RecentAttackerBonus = Definition->RecentAttackerBonus;
 	Weights.PlayerBonus = Definition->PlayerBonus;
 	const bool bAttackerIsRecent = GetTimeSeconds() - LastAttackTime <= Definition->AttackerMemory;
+	const FOutbreakEnemyTacticsSettings& Tactics = Definition->Tactics;
+	const UOutbreakEnemyCoordinationSubsystem* Coordination = Tactics.CoordinationRadius > 0.0f ? GetCoordination() : nullptr;
 
-	AActor* BestTarget = nullptr;
-	float BestScore = TNumericLimits<float>::Lowest();
+	TArray<AActor*> Candidates;
+	TArray<float> Scores;
+	int32 CurrentIndex = INDEX_NONE;
 	for (const TWeakObjectPtr<AActor>& Entry : VisibleHostiles)
 	{
 		AActor* Actor = Entry.Get();
@@ -424,21 +445,31 @@ void AOutbreakEnemyAIController::UpdateSight(float DeltaSeconds)
 			continue;
 		}
 		const APawn* ActorPawn = Cast<APawn>(Actor);
-		const float Score = OutbreakEnemyTargeting::ScoreTarget(
-			FVector::Dist(ControlledPawn->GetActorLocation(), Actor->GetActorLocation()),
-			bAttackerIsRecent && LastAttacker.Get() == Actor, ActorPawn && ActorPawn->IsPlayerControlled(), Weights);
-		if (Score > BestScore)
+		FOutbreakTargetCandidate Candidate;
+		Candidate.DistanceCm = FVector::Dist(ControlledPawn->GetActorLocation(), Actor->GetActorLocation());
+		Candidate.bIsRecentAttacker = bAttackerIsRecent && LastAttacker.Get() == Actor;
+		Candidate.bIsPlayer = ActorPawn && ActorPawn->IsPlayerControlled();
+		Candidate.OtherAttackers = Coordination
+			? Coordination->CountAlliesEngaging(Actor, ControlledPawn->GetActorLocation(), Tactics.CoordinationRadius, this)
+			: 0;
+
+		if (Actor == CurrentTarget.Get())
 		{
-			BestScore = Score;
-			BestTarget = Actor;
+			CurrentIndex = Candidates.Num();
 		}
+		Candidates.Add(Actor);
+		Scores.Add(OutbreakEnemyCoordination::ScoreCandidate(Candidate, Weights, Tactics.SharedTargetPenalty));
 	}
+
+	const int32 Chosen = OutbreakEnemyCoordination::SelectTarget(Scores, CurrentIndex, Tactics.TargetSwitchMargin);
+	AActor* BestTarget = Candidates.IsValidIndex(Chosen) ? Candidates[Chosen] : nullptr;
 
 	if (BestTarget)
 	{
 		CurrentTarget = BestTarget;
 		LastSeenTargetLocation = BestTarget->GetActorLocation();
 		LastSeenTargetTime = GetTimeSeconds();
+		LastOwnSightTime = LastSeenTargetTime;
 	}
 	else if (!IsAlive(CurrentTarget.Get()))
 	{
@@ -500,19 +531,22 @@ void AOutbreakEnemyAIController::UpdateBehavior()
 
 	const UOutbreakEnemyDefinition* Definition = GetDefinition();
 
-	// A detected target out of sight for too long is lost: search where it was last seen.
+	// Allies that still see the target keep it tracked (shared sightings).
+	RefreshFromSharedSightings(Now);
+
+	// A detected target out of sight for too long is lost: search where it was last seen, or
+	// disengage when that is beyond the leash.
 	if (CurrentTarget.IsValid() && Now - LastSeenTargetTime > Definition->LoseTargetTime)
 	{
-		CurrentTarget = nullptr;
-		SearchStartTime = Now;
-		SearchCenter = LastSeenTargetLocation;
-		bHasSearchPoint = false;
-		Suspicion = FMath::Max(Suspicion, Definition->InvestigateThreshold);
+		LoseTarget(Now);
 	}
+
+	UpdateRetreat(Now);
 
 	const AOutbreakPatrolRoute* Route = Enemy ? Enemy->GetPatrolRoute() : nullptr;
 
 	FOutbreakEnemyStateContext Context;
+	Context.bRetreating = bRetreating;
 	Context.bHasDetectedTarget = CurrentTarget.IsValid();
 	Context.TimeSinceTargetSeen = static_cast<float>(Now - LastSeenTargetTime);
 	Context.LoseTargetTime = Definition->LoseTargetTime;
@@ -537,6 +571,7 @@ void AOutbreakEnemyAIController::UpdateBehavior()
 	}
 
 	CurrentState = NewState;
+	UpdateEngagementReport(NewState);
 	MoveLocation = ComputeMoveLocation(bStateChanged);
 
 	// Look towards whatever made it suspicious (lowest focus priority; target focus wins).
@@ -551,7 +586,10 @@ void AOutbreakEnemyAIController::UpdateBehavior()
 
 	if (Enemy)
 	{
-		const bool bHurry = NewState == EOutbreakEnemyState::Combat
+		// The Advance style (heavies) walks into a fight; everyone runs when retreating.
+		const bool bFightsAtWalk = Definition->Tactics.CombatStyle == EOutbreakEnemyCombatStyle::Advance;
+		const bool bHurry = (NewState == EOutbreakEnemyState::Combat && !bFightsAtWalk)
+			|| NewState == EOutbreakEnemyState::Retreating
 			|| (NewState == EOutbreakEnemyState::Investigating && Suspicion >= Definition->UrgentThreshold);
 		if (bHurry && !Enemy->IsSprinting())
 		{
@@ -628,7 +666,6 @@ FVector AOutbreakEnemyAIController::UpdateSearch()
 
 FVector AOutbreakEnemyAIController::ComputeMoveLocation(bool bStateChanged)
 {
-	const UOutbreakEnemyDefinition* Definition = GetDefinition();
 	const FVector PawnLocation = GetPawn()->GetActorLocation();
 
 	switch (CurrentState)
@@ -647,13 +684,11 @@ FVector AOutbreakEnemyAIController::ComputeMoveLocation(bool bStateChanged)
 		return UpdateSearch();
 
 	case EOutbreakEnemyState::Combat:
-	{
-		const AActor* Target = CurrentTarget.Get();
-		const bool bVisible = IsActorVisible(Target);
-		const FVector TargetLocation = Target && bVisible ? Target->GetActorLocation() : LastSeenTargetLocation;
-		return OutbreakEnemyTactics::ComputeCombatPosition(PawnLocation, TargetLocation, bVisible,
-			Definition->MinCombatRange, Definition->PreferredCombatRange, Definition->MaxCombatRange);
-	}
+		return ComputeCombatMoveLocation(GetTimeSeconds());
+
+	case EOutbreakEnemyState::Retreating:
+		CombatMove = EOutbreakEnemyCombatMove::Retreat;
+		return RetreatLocation;
 
 	case EOutbreakEnemyState::Idle:
 	default:
@@ -676,6 +711,354 @@ float AOutbreakEnemyAIController::GetIdleReloadFraction() const
 	return GetDefinition()->IdleReloadFraction;
 }
 
+
+// --- Tactics (Phase 9) ---------------------------------------------------------------------------
+
+UOutbreakEnemyCoordinationSubsystem* AOutbreakEnemyAIController::GetCoordination() const
+{
+	const UWorld* World = GetWorld();
+	return World ? World->GetSubsystem<UOutbreakEnemyCoordinationSubsystem>() : nullptr;
+}
+
+bool AOutbreakEnemyAIController::ProjectToNavigation(FVector& InOutLocation) const
+{
+	UNavigationSystemV1* NavigationSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavigationSystem || !NavigationSystem->GetDefaultNavDataInstance(FNavigationSystem::DontCreate))
+	{
+		// No navigation data (tests, or a level without a navmesh): accept the point as is.
+		return true;
+	}
+
+	FNavLocation Projected;
+	if (NavigationSystem->ProjectPointToNavigation(InOutLocation, Projected, FVector(150.0f, 150.0f, 250.0f)))
+	{
+		InOutLocation = Projected.Location;
+		return true;
+	}
+	return false;
+}
+
+void AOutbreakEnemyAIController::ResetTactics()
+{
+	CombatMove = EOutbreakEnemyCombatMove::None;
+	bHasCover = false;
+	FlankOrder = INDEX_NONE;
+}
+
+void AOutbreakEnemyAIController::SetCoverLocation(const FVector& Location)
+{
+	CoverLocation = Location;
+	bHasCover = true;
+	LastCoverQueryTime = GetTimeSeconds();
+}
+
+void AOutbreakEnemyAIController::RefreshFromSharedSightings(double Now)
+{
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+	const UOutbreakEnemyCoordinationSubsystem* Coordination = GetCoordination();
+	const AActor* Target = CurrentTarget.Get();
+	const APawn* ControlledPawn = GetPawn();
+	if (!Coordination || !Target || !ControlledPawn || Definition->Tactics.CoordinationRadius <= 0.0f || IsActorVisible(Target))
+	{
+		return;
+	}
+
+	FVector SharedLocation;
+	double SharedTime = 0.0;
+	if (Coordination->GetLatestSighting(Target, ControlledPawn->GetActorLocation(), Definition->Tactics.CoordinationRadius,
+		this, SharedLocation, SharedTime) && SharedTime > LastSeenTargetTime)
+	{
+		LastSeenTargetLocation = SharedLocation;
+		LastSeenTargetTime = SharedTime;
+	}
+}
+
+void AOutbreakEnemyAIController::LoseTarget(double Now)
+{
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+	CurrentTarget = nullptr;
+	ResetTactics();
+
+	if (OutbreakEnemyTactics::IsWithinLeash(LastSeenTargetLocation, HomeLocation, Definition->Tactics.LeashDistance))
+	{
+		SearchStartTime = Now;
+		SearchCenter = LastSeenTargetLocation;
+		bHasSearchPoint = false;
+		Suspicion = FMath::Max(Suspicion, Definition->InvestigateThreshold);
+		return;
+	}
+
+	// Disengage: the target got away beyond the leash. Calm down and go home.
+	SearchStartTime = -1.0e9;
+	Suspicion = 0.0f;
+	bHasStimulus = false;
+}
+
+void AOutbreakEnemyAIController::UpdateRetreat(double Now)
+{
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+	const FOutbreakEnemyTacticsSettings& Tactics = Definition->Tactics;
+
+	if (bRetreating)
+	{
+		if (Now - RetreatStartTime >= Tactics.RetreatDuration)
+		{
+			bRetreating = false;
+		}
+		return;
+	}
+
+	// Only a fight is retreated from: a tracked target, or a recent attacker.
+	const bool bInFight = CurrentTarget.IsValid() || Now - LastAttackTime <= Tactics.UnderFireTime;
+	if (!bInFight)
+	{
+		return;
+	}
+
+	const float HealthFraction = HealthComponent && HealthComponent->GetMaxHealth() > 0.0f
+		? HealthComponent->GetHealth() / HealthComponent->GetMaxHealth()
+		: 1.0f;
+	if (OutbreakEnemyTactics::ShouldRetreatForHealth(HealthFraction, Tactics.RetreatHealthFraction, bRetreatedForHealth))
+	{
+		bRetreatedForHealth = StartRetreat(Now);
+		return;
+	}
+
+	const UOutbreakEnemyCoordinationSubsystem* Coordination = GetCoordination();
+	const int32 Allies = 1 + (Coordination && GetPawn() && Tactics.CoordinationRadius > 0.0f
+		? Coordination->CountAlliesInCombat(GetPawn()->GetActorLocation(), Tactics.CoordinationRadius, this)
+		: 0);
+	if (Now - LastNumbersRetreatTime >= Tactics.RetreatCooldown
+		&& OutbreakEnemyTactics::IsOutnumbered(VisibleHostiles.Num(), Allies, Tactics.OutnumberedRatio))
+	{
+		if (StartRetreat(Now))
+		{
+			LastNumbersRetreatTime = Now;
+		}
+	}
+}
+
+bool AOutbreakEnemyAIController::StartRetreat(double Now)
+{
+	const APawn* ControlledPawn = GetPawn();
+	FVector Threat;
+	if (!ControlledPawn || !GetCoverThreatLocation(Threat))
+	{
+		return false;
+	}
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+
+	bRetreating = true;
+	RetreatStartTime = Now;
+	ResetTactics();
+
+	RetreatLocation = OutbreakEnemyTactics::ClampToLeash(
+		OutbreakEnemyTactics::ComputeRetreatPosition(ControlledPawn->GetActorLocation(), Threat, Definition->Tactics.RetreatDistance),
+		HomeLocation, Definition->Tactics.LeashDistance);
+	if (!ProjectToNavigation(RetreatLocation))
+	{
+		// Nowhere to go straight back (a wall behind): fall back home instead.
+		RetreatLocation = HomeLocation;
+	}
+	return true;
+}
+
+void AOutbreakEnemyAIController::UpdateEngagementReport(EOutbreakEnemyState State)
+{
+	UOutbreakEnemyCoordinationSubsystem* Coordination = GetCoordination();
+	const APawn* ControlledPawn = GetPawn();
+	const bool bFighting = (State == EOutbreakEnemyState::Combat || State == EOutbreakEnemyState::Retreating)
+		&& CurrentTarget.IsValid();
+
+	if (!bFighting)
+	{
+		if (State != EOutbreakEnemyState::Retreating)
+		{
+			ResetTactics();
+		}
+		if (Coordination)
+		{
+			Coordination->RemoveEngagement(this);
+		}
+		return;
+	}
+
+	if (Coordination && ControlledPawn)
+	{
+		const FOutbreakEnemyTacticsSettings& Tactics = GetDefinition()->Tactics;
+		const bool bCanFlank = Tactics.bCanFlank && Tactics.CombatStyle != EOutbreakEnemyCombatStyle::Melee
+			&& State != EOutbreakEnemyState::Retreating;
+		AActor* Target = CurrentTarget.Get();
+		const bool bSeen = IsActorVisible(Target);
+		Coordination->ReportEngagement(this, Target, ControlledPawn->GetActorLocation(), bCanFlank, bSeen,
+			bSeen ? Target->GetActorLocation() : LastSeenTargetLocation);
+	}
+}
+
+bool AOutbreakEnemyAIController::UpdateFlank(const FVector& TargetLocation, bool& bOutReached)
+{
+	bOutReached = false;
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+	const FOutbreakEnemyTacticsSettings& Tactics = Definition->Tactics;
+	UOutbreakEnemyCoordinationSubsystem* Coordination = GetCoordination();
+	const APawn* ControlledPawn = GetPawn();
+	if (!Coordination || !ControlledPawn || Tactics.CoordinationRadius <= 0.0f || !Tactics.bCanFlank
+		|| Tactics.CombatStyle == EOutbreakEnemyCombatStyle::Melee)
+	{
+		FlankOrder = INDEX_NONE;
+		return false;
+	}
+
+	const FOutbreakFlankAssignment Assignment = Coordination->GetFlankAssignment(this, Tactics.CoordinationRadius,
+		Tactics.MaxFlankersPerTarget);
+	if (!Assignment.IsFlanking())
+	{
+		FlankOrder = INDEX_NONE;
+		return false;
+	}
+
+	if (Assignment.FlankOrder != FlankOrder)
+	{
+		// New role: pick the side away from the rest of the target's squad (squad-aware flanking).
+		TArray<FVector> OtherHostiles;
+		for (const TPair<TWeakObjectPtr<AActor>, float>& Entry : Detection)
+		{
+			const AActor* Known = Entry.Key.Get();
+			if (Known && Known != CurrentTarget.Get())
+			{
+				OtherHostiles.Add(Known->GetActorLocation());
+			}
+		}
+		const float Distance = Definition->PreferredCombatRange;
+		const FVector Left = OutbreakEnemyTactics::ComputeFlankPosition(TargetLocation, Assignment.PinLocation, Tactics.FlankAngle, 1, Distance);
+		const FVector Right = OutbreakEnemyTactics::ComputeFlankPosition(TargetLocation, Assignment.PinLocation, Tactics.FlankAngle, -1, Distance);
+		const int32 PreferredSide = OutbreakEnemyTactics::ChooseFlankSide(Left, Right, OtherHostiles);
+		FlankSide = Assignment.FlankOrder % 2 == 0 ? PreferredSide : -PreferredSide;
+		FlankOrder = Assignment.FlankOrder;
+	}
+
+	FVector Candidate = OutbreakEnemyTactics::ClampToLeash(
+		OutbreakEnemyTactics::ComputeFlankPosition(TargetLocation, Assignment.PinLocation, Tactics.FlankAngle, FlankSide,
+			Definition->PreferredCombatRange),
+		HomeLocation, Tactics.LeashDistance);
+	if (!ProjectToNavigation(Candidate))
+	{
+		// That side is off the navmesh: fight from the front instead (and re-pick a side next time).
+		FlankOrder = INDEX_NONE;
+		return false;
+	}
+	FlankLocation = Candidate;
+
+	// The flank is made once round the side; from there it fights normally.
+	bOutReached = OutbreakEnemyTactics::HasFlanked(TargetLocation, Assignment.PinLocation, ControlledPawn->GetActorLocation(), Tactics.FlankAngle);
+	return true;
+}
+
+void AOutbreakEnemyAIController::RequestCoverQueryIfNeeded(double Now)
+{
+	const FOutbreakEnemyTacticsSettings& Tactics = GetDefinition()->Tactics;
+	if (!Tactics.CoverQuery || Tactics.CombatStyle != EOutbreakEnemyCombatStyle::Ranged || bCoverQueryPending || !GetPawn()
+		|| Now - LastCoverQueryTime < Tactics.CoverQueryInterval)
+	{
+		return;
+	}
+
+	FEnvQueryRequest Request(Tactics.CoverQuery, GetPawn());
+	bCoverQueryPending = Request.Execute(EEnvQueryRunMode::SingleResult, this, &ThisClass::HandleCoverQueryResult) != INDEX_NONE;
+	LastCoverQueryTime = Now;
+}
+
+void AOutbreakEnemyAIController::HandleCoverQueryResult(TSharedPtr<FEnvQueryResult> Result)
+{
+	bCoverQueryPending = false;
+	if (CurrentState != EOutbreakEnemyState::Combat)
+	{
+		return;
+	}
+	bHasCover = Result.IsValid() && Result->IsSuccessful() && Result->Items.Num() > 0;
+	if (bHasCover)
+	{
+		CoverLocation = Result->GetItemAsLocation(0);
+	}
+}
+
+FVector AOutbreakEnemyAIController::ComputeCombatMoveLocation(double Now)
+{
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+	const FOutbreakEnemyTacticsSettings& Tactics = Definition->Tactics;
+	const FVector PawnLocation = GetPawn()->GetActorLocation();
+
+	const AActor* Target = CurrentTarget.Get();
+	const bool bVisible = IsActorVisible(Target);
+	const FVector TargetLocation = Target && bVisible ? Target->GetActorLocation() : LastSeenTargetLocation;
+
+	// Cover that no longer gives a view of the target is dropped, and a new one sought.
+	if (bHasCover && CombatMove == EOutbreakEnemyCombatMove::TakeCover
+		&& FVector::Dist2D(PawnLocation, CoverLocation) <= Definition->PatrolAcceptanceRadius
+		&& Now - LastOwnSightTime > Tactics.CoverRepositionTime)
+	{
+		bHasCover = false;
+		LastCoverQueryTime = -1.0e9;
+	}
+	RequestCoverQueryIfNeeded(Now);
+
+	FOutbreakEnemyCombatContext Context;
+	Context.Style = Tactics.CombatStyle;
+	Context.bTargetVisible = bVisible;
+	Context.bHasCover = bHasCover;
+	Context.bPreferCover = Tactics.bPreferCover;
+	Context.bUnderFire = Now - LastAttackTime <= Tactics.UnderFireTime;
+	Context.bReloading = WeaponComponent && WeaponComponent->IsReloading();
+	bool bFlankReached = false;
+	Context.bFlankRole = UpdateFlank(TargetLocation, bFlankReached);
+	Context.bFlankReached = bFlankReached;
+
+	CombatMove = OutbreakEnemyTactics::SelectCombatMove(Context);
+
+	FVector Destination;
+	switch (CombatMove)
+	{
+	case EOutbreakEnemyCombatMove::Flank:
+		Destination = FlankLocation;
+		break;
+	case EOutbreakEnemyCombatMove::TakeCover:
+		Destination = CoverLocation;
+		break;
+	case EOutbreakEnemyCombatMove::Charge:
+	case EOutbreakEnemyCombatMove::Engage:
+	default:
+		Destination = OutbreakEnemyTactics::ComputeEngagePosition(Tactics.CombatStyle, PawnLocation, TargetLocation, bVisible,
+			Definition->MinCombatRange, Definition->PreferredCombatRange, Definition->MaxCombatRange);
+		break;
+	}
+	return OutbreakEnemyTactics::ClampToLeash(Destination, HomeLocation, Tactics.LeashDistance);
+}
+
+bool AOutbreakEnemyAIController::GetCoverThreatLocation(FVector& OutLocation) const
+{
+	if (const AActor* Target = CurrentTarget.Get())
+	{
+		OutLocation = IsActorVisible(Target) ? Target->GetActorLocation() : LastSeenTargetLocation;
+		return true;
+	}
+	if (const AActor* Attacker = LastAttacker.Get())
+	{
+		OutLocation = Attacker->GetActorLocation();
+		return true;
+	}
+	return false;
+}
+
+bool AOutbreakEnemyAIController::GetCoverAnchorLocation(FVector& OutLocation) const
+{
+	if (FlankOrder != INDEX_NONE)
+	{
+		OutLocation = FlankLocation;
+		return true;
+	}
+	return false;
+}
+
 void AOutbreakEnemyAIController::WriteBlackboard() const
 {
 	UBlackboardComponent* BlackboardComponent = GetBlackboardComponent();
@@ -687,6 +1070,7 @@ void AOutbreakEnemyAIController::WriteBlackboard() const
 	BlackboardComponent->SetValueAsEnum(OutbreakBlackboardKeys::EnemyState, static_cast<uint8>(CurrentState));
 	BlackboardComponent->SetValueAsVector(OutbreakBlackboardKeys::MoveLocation, MoveLocation);
 	BlackboardComponent->SetValueAsObject(OutbreakBlackboardKeys::TargetActor, CurrentTarget.Get());
+	BlackboardComponent->SetValueAsEnum(OutbreakBlackboardKeys::CombatMove, static_cast<uint8>(CombatMove));
 }
 
 void AOutbreakEnemyAIController::DrawDebug() const
@@ -710,6 +1094,7 @@ void AOutbreakEnemyAIController::DrawDebug() const
 	case EOutbreakEnemyState::Investigating: StateColor = FColor::Orange; break;
 	case EOutbreakEnemyState::Combat:        StateColor = FColor::Red; break;
 	case EOutbreakEnemyState::Searching:     StateColor = FColor::Magenta; break;
+	case EOutbreakEnemyState::Retreating:    StateColor = FColor::Purple; break;
 	default: break;
 	}
 
@@ -719,8 +1104,10 @@ void AOutbreakEnemyAIController::DrawDebug() const
 	const float HalfAngle = FMath::DegreesToRadians(Definition->PeripheralVisionHalfAngle);
 	DrawDebugCone(World, EyesLocation, EyesRotation.Vector(), Definition->SightRadius, HalfAngle, HalfAngle, 16, StateColor, false, Duration);
 
-	const FString Label = FString::Printf(TEXT("%s  suspicion %d%%  %s"),
-		*OutbreakEnemyBehavior::GetStateDisplayName(CurrentState).ToString(), FMath::RoundToInt(Suspicion * 100.0f),
+	const FString MoveName = CombatMove == EOutbreakEnemyCombatMove::None ? FString()
+		: StaticEnum<EOutbreakEnemyCombatMove>()->GetNameStringByValue(static_cast<int64>(CombatMove));
+	const FString Label = FString::Printf(TEXT("%s %s  suspicion %d%%  %s"),
+		*OutbreakEnemyBehavior::GetStateDisplayName(CurrentState).ToString(), *MoveName, FMath::RoundToInt(Suspicion * 100.0f),
 		*GetNameSafe(CurrentTarget.Get()));
 	DrawDebugString(World, ControlledPawn->GetActorLocation() + FVector(0.0f, 0.0f, 120.0f), Label, nullptr, StateColor, Duration);
 	DrawDebugLine(World, ControlledPawn->GetActorLocation(), MoveLocation, FColor::White, false, Duration);
@@ -736,6 +1123,19 @@ void AOutbreakEnemyAIController::DrawDebug() const
 	if (bHasStimulus)
 	{
 		DrawDebugSphere(World, StimulusLocation, 50.0f, 8, FColor::Orange, false, Duration);
+	}
+	if (bHasCover && CurrentState == EOutbreakEnemyState::Combat)
+	{
+		DrawDebugBox(World, CoverLocation, FVector(30.0f), FColor::Blue, false, Duration);
+	}
+	if (FlankOrder != INDEX_NONE)
+	{
+		DrawDebugSphere(World, FlankLocation, 60.0f, 8, FColor::Yellow, false, Duration);
+	}
+	if (Definition->Tactics.LeashDistance > 0.0f)
+	{
+		DrawDebugCircle(World, HomeLocation, Definition->Tactics.LeashDistance, 32, FColor::Silver, false, Duration,
+			0, 0.0f, FVector(1.0f, 0.0f, 0.0f), FVector(0.0f, 1.0f, 0.0f), false);
 	}
 	if (CurrentState == EOutbreakEnemyState::Searching)
 	{

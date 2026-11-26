@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "AI/OutbreakAIAgent.h"
+#include "AI/OutbreakEnemyTactics.h"
 #include "AI/OutbreakEnemyTypes.h"
 #include "Combat/OutbreakHealthComponent.h"
 #include "Perception/AIPerceptionTypes.h"
@@ -12,9 +13,11 @@
 class AOutbreakEnemyCharacter;
 class UAISenseConfig_Hearing;
 class UAISenseConfig_Sight;
+class UOutbreakEnemyCoordinationSubsystem;
 class UOutbreakEnemyDefinition;
 class UOutbreakWeaponComponent;
 class UDamageType;
+struct FEnvQueryResult;
 
 /**
  * AI controller for enemies (server only).
@@ -27,7 +30,13 @@ class UDamageType;
  * - States: Idle / Patrol / Suspicious / Investigating / Combat / Searching
  *   (OutbreakEnemyBehavior::SelectState). Losing a detected target starts a search around its last
  *   known position. Detecting one alerts other enemies nearby.
- * - Positioning: combat range band (OutbreakEnemyTactics); search points on the navmesh.
+ * - Tactics (Phase 9, OutbreakEnemyTactics, data in UOutbreakEnemyDefinition::Tactics): in combat,
+ *   the movement is Engage (range band / advance), Charge (melee), TakeCover (EQS), Flank (role from
+ *   UOutbreakEnemyCoordinationSubsystem) or Retreat. Nearby enemies share sightings, split pin and
+ *   flank roles and spread their targets across the squad. Targets switch only for a clearly better
+ *   one. Low health or being outnumbered starts a retreat; a leash keeps fights near home and a
+ *   target lost beyond it is given up (disengagement).
+ * - Search points on the navmesh after losing a target.
  * - Combat: the shared UBTService_OutbreakCombat through IOutbreakAIAgent.
  *
  * Debug drawing: `outbreak.AI.DebugEnemies 1`.
@@ -50,6 +59,10 @@ public:
 	virtual float GetAimTolerance() const override;
 	virtual float GetIdleReloadFraction() const override;
 	virtual UOutbreakWeaponComponent* GetAgentWeaponComponent() const override { return WeaponComponent; }
+	/** The target (or where it was last seen), else a recent attacker. */
+	virtual bool GetCoverThreatLocation(FVector& OutLocation) const override;
+	/** The flank position while flanking (cover near it); otherwise the enemy itself (false). */
+	virtual bool GetCoverAnchorLocation(FVector& OutLocation) const override;
 	//~ End IOutbreakAIAgent interface
 
 	/** Adds SuspicionAmount (0..1) and makes Location the place to investigate. */
@@ -77,6 +90,21 @@ public:
 	FVector GetStimulusLocation() const { return StimulusLocation; }
 	int32 GetPatrolIndex() const { return PatrolIndex; }
 
+	// Phase 9 tactics (read by tests, debugging and Blueprints via the character).
+	EOutbreakEnemyCombatMove GetCombatMove() const { return CombatMove; }
+	bool IsRetreating() const { return bRetreating; }
+	FVector GetRetreatLocation() const { return RetreatLocation; }
+	bool HasCover() const { return bHasCover; }
+	FVector GetCoverLocation() const { return CoverLocation; }
+	/** INDEX_NONE unless flanking. */
+	int32 GetFlankOrder() const { return FlankOrder; }
+	FVector GetFlankLocation() const { return FlankLocation; }
+	FVector GetHomeLocation() const { return HomeLocation; }
+	FVector GetLastSeenTargetLocation() const { return LastSeenTargetLocation; }
+
+	/** Sets the cover position as if the cover query had returned it (tests, scripted cover). */
+	void SetCoverLocation(const FVector& Location);
+
 protected:
 
 	virtual void OnPossess(APawn* InPawn) override;
@@ -97,6 +125,21 @@ private:
 	FVector UpdatePatrol();
 	FVector UpdateSearch();
 	FVector ComputeMoveLocation(bool bStateChanged);
+
+	// Phase 9 tactics.
+	UOutbreakEnemyCoordinationSubsystem* GetCoordination() const;
+	void RefreshFromSharedSightings(double Now);
+	void LoseTarget(double Now);
+	void UpdateRetreat(double Now);
+	bool StartRetreat(double Now);
+	void UpdateEngagementReport(EOutbreakEnemyState State);
+	FVector ComputeCombatMoveLocation(double Now);
+	/** Updates the flank role and position. True while this enemy has a reachable flank role. */
+	bool UpdateFlank(const FVector& TargetLocation, bool& bOutReached);
+	void RequestCoverQueryIfNeeded(double Now);
+	void HandleCoverQueryResult(TSharedPtr<FEnvQueryResult> Result);
+	void ResetTactics();
+	bool ProjectToNavigation(FVector& InOutLocation) const;
 	void WriteBlackboard() const;
 	void DrawDebug() const;
 	double GetTimeSeconds() const;
@@ -128,8 +171,29 @@ private:
 	FVector LastSeenTargetLocation = FVector::ZeroVector;
 	double LastSeenTargetTime = -1.0e9;
 
+	/** When this enemy itself last saw its target (shared sightings do not count). */
+	double LastOwnSightTime = -1.0e9;
+
 	TWeakObjectPtr<AActor> LastAttacker;
 	double LastAttackTime = -1.0e9;
+
+	// Tactics (Phase 9).
+	EOutbreakEnemyCombatMove CombatMove = EOutbreakEnemyCombatMove::None;
+
+	FVector CoverLocation = FVector::ZeroVector;
+	bool bHasCover = false;
+	bool bCoverQueryPending = false;
+	double LastCoverQueryTime = -1.0e9;
+
+	int32 FlankOrder = INDEX_NONE;
+	int32 FlankSide = 1;
+	FVector FlankLocation = FVector::ZeroVector;
+
+	bool bRetreating = false;
+	bool bRetreatedForHealth = false;
+	double RetreatStartTime = -1.0e9;
+	double LastNumbersRetreatTime = -1.0e9;
+	FVector RetreatLocation = FVector::ZeroVector;
 
 	// Suspicion and stimuli.
 	float Suspicion = 0.0f;

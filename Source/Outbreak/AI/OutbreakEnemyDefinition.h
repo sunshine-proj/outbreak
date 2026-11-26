@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Characters/OutbreakMovementSettings.h"
 #include "Combat/OutbreakHealthComponent.h"
+#include "AI/OutbreakEnemyTactics.h"
 #include "Engine/DataAsset.h"
 #include "Stealth/OutbreakVisibility.h"
 
@@ -12,8 +13,9 @@ class UBehaviorTree;
 class UOutbreakWeaponDefinition;
 
 /**
- * An enemy archetype (alien infantry, ...): health, movement, weapon, perception, behaviour,
- * combat and targeting. Enemies are tuned here, not in AI code (Phase 5 acceptance).
+ * An enemy archetype (alien infantry, fast melee attacker, heavy, ...): health, movement, weapon,
+ * perception, detection, behaviour, combat range, tactics and targeting. Enemies are tuned here, not
+ * in AI code (Phase 5 and Phase 9 acceptance).
  * Assigned on AOutbreakEnemyCharacter (Blueprint defaults or per placed instance).
  */
 UCLASS(BlueprintType, Const)
@@ -175,6 +177,12 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float IdleReloadFraction = 0.3f;
+
+	// --- Tactics (Phase 9) ---
+
+	/** Combat style, cover, flanking, coordination, target switching, retreat and leash. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Tactics")
+	FOutbreakEnemyTacticsSettings Tactics;
 
 	// --- Targeting ---
 
