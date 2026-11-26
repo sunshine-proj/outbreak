@@ -411,27 +411,27 @@ Additional verification:
 
 ### 6.1 Minimal Mission Architecture
 
-- [ ] Define mission Data Asset.
-- [ ] Create `UOutbreakMissionSubsystem`.
-- [ ] Define mission state.
-- [ ] Implement mission initialization.
-- [ ] Implement mission start.
-- [ ] Implement mission completion.
-- [ ] Implement mission failure.
+- [-] Define mission Data Asset. — C++ written, not compiled (engine not installed). `UOutbreakMissionDefinition`
+- [-] Create `UOutbreakMissionSubsystem`. — C++ written, not compiled (engine not installed). World subsystem, server-authoritative
+- [-] Define mission state. — C++ written, not compiled (engine not installed). `EOutbreakMissionState`; replicated status via `AOutbreakGameState`
+- [-] Implement mission initialization. — C++ written, not compiled (engine not installed). Validation and per-play objective copies
+- [-] Implement mission start. — C++ written, not compiled (engine not installed)
+- [-] Implement mission completion. — C++ written, not compiled (engine not installed)
+- [-] Implement mission failure. — C++ written, not compiled (engine not installed). All players dead (configurable), or an objective fails
 
 ### 6.2 Initial Objectives
 
-- [ ] Create objective interface.
-- [ ] Implement Reach Location objective.
-- [ ] Implement Eliminate Target objective.
-- [ ] Display current objective on the HUD.
+- [-] Create objective interface. — C++ written, not compiled (engine not installed). `UOutbreakObjective` (Activate / Evaluate / Deactivate)
+- [-] Implement Reach Location objective. — C++ written, not compiled (engine not installed). `AOutbreakMissionMarker` by ID
+- [-] Implement Eliminate Target objective. — C++ written, not compiled (engine not installed). Targets by actor tag
+- [-] Display current objective on the HUD. — C++ written, not compiled (engine not installed)
 
 ### 6.3 Prototype Level
 
-- [ ] Create small greybox prototype level.
-- [ ] Configure navigation.
-- [ ] Place basic enemies and patrol routes.
-- [ ] Test squad movement.
+- [-] Create small greybox prototype level. — editor work pending (see `Docs/Phase6-EditorSetup.md`)
+- [-] Configure navigation. — editor work pending (see `Docs/Phase6-EditorSetup.md`)
+- [-] Place basic enemies and patrol routes. — editor work pending (see `Docs/Phase6-EditorSetup.md`)
+- [-] Test squad movement. — manual test pending (see `Docs/Phase6-EditorSetup.md`)
 
 ### Phase 6 Acceptance Criteria
 
@@ -876,7 +876,7 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–5 C++ were written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–6 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
 **Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through the `Docs/Phase*-EditorSetup.md` guides in order.
 
@@ -904,6 +904,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 3 verification (all `[-]` tasks in Phase 3) | Same as above. Editor assets: teammate Blueprint, role and squad configuration data assets, squad test map. Steps: `Docs/Phase3-EditorSetup.md`. | 2026-11-26 |
 | Phase 4 verification (all `[-]` tasks in Phase 4) | Same as above. Editor assets: Blackboard, Behavior Tree, teammate AI config, squad input actions, navmesh test map. Steps: `Docs/Phase4-EditorSetup.md`. | 2026-11-26 |
 | Phase 5 verification (all `[-]` tasks in Phase 5) | Same as above. Editor assets: enemy Blackboard and Behavior Tree, alien infantry weapon, definition and Blueprint, perception test map. Steps: `Docs/Phase5-EditorSetup.md`. | 2026-11-26 |
+| Phase 6 verification (all `[-]` tasks in Phase 6) | Same as above. Editor work: greybox prototype level, navmesh, enemy placement and patrols, mission marker and mission asset. Steps: `Docs/Phase6-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -925,6 +926,7 @@ Record architectural and planning decisions here.
 | D-010 | 2026-11-26 | Behavior Trees for teammate and enemy AI (closes O-002). Decisions live in C++ (controller and priority rules) and are written to the blackboard; the Behavior Tree executes them with a Move To under two C++ services (behaviour update, combat). | Developer decision. Stable API across UE 5.x while the engine version is open (O-004); decision logic stays unit-testable without assets; EQS integration for Phase 7. |
 | D-011 | 2026-11-26 | Default behaviour priorities follow AGENTS.md §6.1 (survival > explicit order > threat > formation > default), configurable per AI config. Orders govern movement; firing at visible hostiles is concurrent with every behaviour. Move becomes Hold on arrival; Regroup completes near the player; Attack completes on target death; a downed member's order fails. Commands never target the player member. | Explicit orders must take precedence (AGENTS.md §6.1) without leaving teammates defenceless under a Hold or Move order. |
 | D-012 | 2026-11-26 | Enemies are defined by `UOutbreakEnemyDefinition` data assets on `AOutbreakEnemyCharacter` (which shares the soldier base). Phase 5 states are Idle, Patrol, Alerted and Combat; a single Alerted state covers noise, unseen damage and lost targets until Phase 8 adds detection levels. Teammate and enemy controllers implement `IOutbreakAIAgent`, so the Behavior Tree update and combat services are shared. Weapon fire reports AI hearing events as the minimal noise hook. | Enemy parameters change without touching AI code (Phase 5 acceptance); avoids duplicating combat logic; keeps Phase 8 free to design the full detection model. |
+| D-013 | 2026-11-26 | Missions are `UOutbreakMissionDefinition` assets with an ordered list of instanced `UOutbreakObjective`s, duplicated per play. `UOutbreakMissionSubsystem` (world subsystem, server) evaluates the current objective at a configurable interval and publishes status through a replicated `AOutbreakGameState`. Objectives refer to level actors by marker ID or actor tag. The mission fails when every registered player is dead (configurable) or an objective fails; the prototype restarts the level after a delay. The mission's squad configuration overrides the game mode's. | Smallest mission framework that meets Phase 6 and extends to Phase 11 (dependencies, more objective types, summary screen) without rework; co-op-safe per D-006. |
 
 ### Open
 

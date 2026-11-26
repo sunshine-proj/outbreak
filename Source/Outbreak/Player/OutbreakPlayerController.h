@@ -40,7 +40,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Squad")
 	TObjectPtr<UOutbreakSquadCommandComponent> SquadCommandComponent;
 
-	/** Seconds between squad panel refreshes (distances change continuously; no per-frame update). */
+	/** Seconds between squad panel and objective refreshes (distances change continuously; no per-frame update). */
 	UPROPERTY(EditDefaultsOnly, Category = "HUD", meta = (ClampMin = "0.05", Units = "s"))
 	float SquadPanelRefreshInterval = 0.25f;
 

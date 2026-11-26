@@ -3,6 +3,8 @@
 #include "GameFramework/Pawn.h"
 #include "Combat/OutbreakHealthComponent.h"
 #include "Interaction/OutbreakInteractionComponent.h"
+#include "Engine/World.h"
+#include "Game/OutbreakGameState.h"
 #include "Outbreak.h"
 #include "Player/OutbreakSquadCommandComponent.h"
 #include "TimerManager.h"
@@ -39,9 +41,18 @@ void AOutbreakPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason
 
 void AOutbreakPlayerController::RefreshSquadPanel()
 {
-	if (HUDWidget && SquadCommandComponent)
+	if (!HUDWidget)
+	{
+		return;
+	}
+	if (SquadCommandComponent)
 	{
 		HUDWidget->SetSquadStatus(SquadCommandComponent->BuildSquadStatusText());
+	}
+	// The game state replicates the mission status; reading it here also covers late replication.
+	if (const AOutbreakGameState* GameState = GetWorld()->GetGameState<AOutbreakGameState>())
+	{
+		HUDWidget->SetMissionStatus(GameState->GetMissionStatus());
 	}
 }
 

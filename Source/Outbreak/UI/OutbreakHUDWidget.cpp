@@ -4,6 +4,7 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
+#include "Missions/OutbreakMissionTypes.h"
 
 #define LOCTEXT_NAMESPACE "OutbreakHUD"
 
@@ -35,6 +36,7 @@ void UOutbreakHUDWidget::NativeOnInitialized()
 		AmmoText->SetText(AmmoPlaceholderText);
 	}
 	SetInteractionPrompt(FText::GetEmpty());
+	SetMissionStatus(FOutbreakMissionStatus());
 }
 
 void UOutbreakHUDWidget::BuildDefaultLayout()
@@ -68,6 +70,10 @@ void UOutbreakHUDWidget::BuildDefaultLayout()
 
 	const FAnchors TopLeft(0.0f, 0.0f);
 	SquadStatusText = AddText(TEXT("SquadStatusText"), FText::GetEmpty(), TopLeft, FVector2D(0.0f, 0.0f), FVector2D(40.0f, 40.0f));
+
+	const FAnchors TopCentre(0.5f, 0.0f);
+	ObjectiveText = AddText(TEXT("ObjectiveText"), FText::GetEmpty(), TopCentre, FVector2D(0.5f, 0.0f), FVector2D(0.0f, 40.0f));
+	MissionResultText = AddText(TEXT("MissionResultText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 1.0f), FVector2D(0.0f, -60.0f));
 }
 
 void UOutbreakHUDWidget::SetInteractionPrompt(const FText& Prompt)
@@ -130,6 +136,42 @@ void UOutbreakHUDWidget::SetSquadStatus(const FText& SquadStatus)
 	{
 		SquadStatusText->SetText(SquadStatus);
 		SquadStatusText->SetVisibility(SquadStatus.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UOutbreakHUDWidget::SetMissionStatus(const FOutbreakMissionStatus& Status)
+{
+	const bool bInProgress = Status.State == EOutbreakMissionState::InProgress;
+	const bool bEnded = Status.State == EOutbreakMissionState::Completed || Status.State == EOutbreakMissionState::Failed;
+
+	if (ObjectiveText)
+	{
+		FText Line = FText::GetEmpty();
+		if (bInProgress && !Status.ObjectiveDescription.IsEmpty())
+		{
+			Line = Status.ObjectiveProgress.IsEmpty()
+				? FText::Format(LOCTEXT("ObjectiveLine", "Objective {0}/{1}: {2}"),
+					Status.ObjectiveIndex + 1, Status.ObjectiveCount, Status.ObjectiveDescription)
+				: FText::Format(LOCTEXT("ObjectiveLineProgress", "Objective {0}/{1}: {2}  ({3})"),
+					Status.ObjectiveIndex + 1, Status.ObjectiveCount, Status.ObjectiveDescription, Status.ObjectiveProgress);
+		}
+		ObjectiveText->SetText(Line);
+		ObjectiveText->SetVisibility(Line.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+
+	if (MissionResultText)
+	{
+		FText Result = FText::GetEmpty();
+		if (Status.State == EOutbreakMissionState::Completed)
+		{
+			Result = FText::Format(LOCTEXT("MissionComplete", "MISSION COMPLETE\n{0}"), Status.MissionName);
+		}
+		else if (Status.State == EOutbreakMissionState::Failed)
+		{
+			Result = FText::Format(LOCTEXT("MissionFailed", "MISSION FAILED\n{0}"), Status.ResultText);
+		}
+		MissionResultText->SetText(Result);
+		MissionResultText->SetVisibility(bEnded ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 

@@ -7,6 +7,7 @@
 
 class UTextBlock;
 class UWidget;
+struct FOutbreakMissionStatus;
 
 /**
  * Main in-game HUD: crosshair, health, ammunition, current weapon and interaction prompt.
@@ -49,6 +50,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void SetSquadStatus(const FText& SquadStatus);
 
+	/** Current objective line and, when the mission has ended, the result. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetMissionStatus(const FOutbreakMissionStatus& Status);
+
 	/** Matches UOutbreakInteractionComponent::OnFocusChanged so it can be bound directly. */
 	UFUNCTION()
 	void HandleInteractionFocusChanged(AActor* FocusedActor, const FText& InteractionPrompt);
@@ -78,6 +83,12 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> SquadStatusText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> ObjectiveText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> MissionResultText;
 
 	/** Shown until real health values are pushed. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HUD")

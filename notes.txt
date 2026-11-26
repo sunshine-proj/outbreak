@@ -200,6 +200,38 @@ Nothing is committed. Phase 6 (prototype mission) is next and finishes the first
 ================================
 
 
+Phase 6 is written the same way as Phases 1–5: nothing has been compiled, run or tested in Unreal. That finishes the code for all P0 phases. Every Phase 6 task is marked [-]: the code items as "not compiled", and the level items in 6.3 as "editor work pending". Design choices are logged as D-013.
+
+What's implemented
+
+Area	Files
+Mission data	OutbreakMissionDefinition.h: name, briefing, the mission's squad configuration (which wins over the game mode's), an ordered list of objectives, fail-on-death setting, restart delay and update interval, with validation.
+Objectives	OutbreakObjective.h is the base: Activate, Evaluate, Deactivate, plus description and progress text. Fresh copies are made each play, so the asset is never changed at runtime.
+Reach Location	OutbreakReachLocationObjective.h: done when a living player reaches an OutbreakMissionMarker with the matching ID; shows the distance. A missing marker fails the mission loudly instead of leaving it stuck.
+Eliminate Target	OutbreakEliminateTargetObjective.h: done when every actor with the given tag is dead or destroyed; shows "2 / 5".
+Mission subsystem	OutbreakMissionSubsystem.h: runs on the server. It checks the current objective every 0.25 s, advances through the list, completes or fails the mission, and restarts the level after the delay. The mission fails when every player is dead, so one player down in co-op isn't a failure.
+Client display	OutbreakGameState.h copies the mission status to every client. The HUD shows the current objective at the top centre and MISSION COMPLETE or MISSION FAILED with the reason in the middle.
+Game mode	Sets up the mission when the game starts, starts it when play begins, and registers each player when they spawn.
+Tests	4 tests in OutbreakMissionTests.cpp.
+Docs: Docs/Phase6-EditorSetup.md covers:
+
+Level: building the greybox prototype level (deployment yard, approach, walled compound with a gate and a narrow side passage, exit), plus navmesh.
+Enemies: placement and patrols.
+Mission: the marker and the mission asset.
+Acceptance checks: completing the mission with squads of 2, 4 and 6, player death failing it, squad movement through the narrow passage, and the 2-player client case.
+Risks and gaps
+
+Compiling: this is about 7,000 lines across six phases that have never been compiled. The first build will very likely need a round of fixes, and the whole automated test suite should be run after it.
+Editor work: the editor half is now large. The six setup guides list every asset and the level, and they're meant to be worked through in order.
+Simple flow: there's no briefing or results screen, the level just restarts, and objectives run strictly one after another (all Phase 11).
+Respawning targets: combat test targets used as mission targets must have Respawn Delay 0, or the objective never completes.
+notes.txt still contains my old message about installing the engine, which is out of date now that Phases 1–6 are written. You may want to clear it.
+
+Nothing is committed. All P0 work is now written. Once the engine is installed, getting Phase 0 done (build, tests, editor setup) matters more than starting Phase 7: everything written so far is unverified, and later phases would stack more unverified code on top of it.
+
+
+
+================================
 
 
 
