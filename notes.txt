@@ -234,7 +234,71 @@ Nothing is committed. All P0 work is now written. Once the engine is installed, 
 ================================
 
 
+Phase 7 is written the same way as Phases 1–6: nothing has been compiled, run or tested in Unreal. Every Phase 7 task is marked [-] in ROADMAP.md. No open decision blocked it, and the design choices are logged as D-014.
 
+What's implemented
+
+Area	Files
+Formations (7.3)	OutbreakSquadPositioning.h: Column, Wedge, Line, Defensive and Loose, each giving a separate spot per teammate for any squad size. The formation is a squad setting shared with all players: it starts from the squad configuration, has per-formation spacing in project settings, and can be switched by key or from the menu.
+Narrow passages	A teammate whose formation spot lands off the navmesh drops to its Column spot, so squads file through corridors instead of jamming.
+Cover search (7.1)	EnvQueryContext_OutbreakThreat.h and EnvQueryContext_OutbreakCoverAnchor.h give the EQS cover query its two reference points: the threat (or its last known position, also learned from being shot) and the place to search around. The controller runs the query at a set interval.
+When teammates use cover	When under fire (damaged recently), when badly hurt, when defending, or when ordered to. Explicit orders still come first.
+New orders (7.2)	Defend spreads teammates around the point under the crosshair and uses cover nearby when attacked. Cover finds cover near the teammate and fires from it. Retreat moves a set distance away from the threat and ends on arrival.
+Command menu (7.4)	A HUD list of all 8 orders and 5 formations. While it's open, its own input mapping context takes over the mouse wheel and left button, so they don't switch or fire weapons.
+Tests	One test file updated and 5 new tests in OutbreakTacticalSquadTests.cpp, including Defend, Cover and Retreat for every squad size from 2 to 6.
+Changes to earlier phases
+
+Follow positions: they now come from the squad's formation. Three Phase 4 follow-spacing settings were removed from the teammate AI config, and the Phase 4 follow-slot test was replaced by a formation test.
+Docs: Docs/Phase7-EditorSetup.md covers:
+
+EQS query: building the cover query step by step (generator, tests and contexts).
+Input: 8 new input actions and the menu mapping context.
+Test map: a cover test map.
+Checklist: formations, the corridor fallback, cover, Defend and Retreat, and the menu, each with squads of 2, 4 and 6.
+Risks and gaps
+
+Compiling: this is now 7 phases of code that has never been compiled. Phase 7 also changed core Phase 4 positioning, so re-run all earlier tests after the first build.
+Not covered by automated tests: the test world has no navmesh and runs no EQS, so the cover search and the corridor fallback can only be checked by hand.
+Single threat: cover is judged against one threat position, so multiple enemies and flanking aren't considered (Phase 9).
+Defend and Retreat: defenders spread in a ring whatever the attack direction, and the retreat path isn't checked for danger.
+Menu: it's a list, not a radial wheel.
+Nothing is committed. Phase 8 (stealth and advanced perception) needs open decision O-003 settled first: Unreal Audio or FMOD, which the roadmap lists as needed for noise events.
+
+
+
+================================
+
+
+All of Phase 8 is written in C++, and as with every earlier phase nothing has been compiled, run or tested in Unreal. Every Phase 8 task is marked [-] in ROADMAP.md. Phase 7 was never committed, so both phases are uncommitted in the working tree together.
+
+Two decisions you should look at
+
+Audio backend (O-003): gameplay noise is now separate from audio playback; it's delivered through Unreal's AI hearing, so it works the same with Unreal Audio or FMOD. I left O-003 open and moved its "needed by" to Phase 13 (audio). The reasoning is logged as D-015. If you'd rather settle it now, it's a one-line change.
+A bug in earlier phases: Unreal's default Pawn collision profile ignores the Visibility channel. Hitscan shots, the crosshair used for squad orders, and sight checks all trace on Visibility, so shots would have passed through soldiers and enemies, and Attack orders couldn't have targeted enemies. Character capsules now block Visibility. That's a stand-in; the proper fix is the Phase 0 collision-channels task, and I noted it there.
+What's implemented
+
+Area	What it does
+Noise (8.1)	OutbreakNoiseTypes.h defines a noise event with type ranges in project settings. Every character's noise emitter makes footsteps by stance: still is silent, then crouching, walking, sprinting. Weapons and explosions report noise too. Noise fades with distance and loses half its loudness through each wall; people don't muffle it. outbreak.Noise.Debug 1 shows each noise's range.
+Visibility and lighting (8.2)	OutbreakVisibility.h combines light, exposure (head, chest and legs line of sight), movement, distance, field of view and crouching, and anyone within 3 m is seen even in the dark. OutbreakLightingSubsystem.h estimates the light level from the level's lights, with lighting volumes as designer overrides.
+Detection and states (8.3)	Enemies build a 0–1 detection level per target and an overall suspicion. States are now Idle, Patrol, Suspicious, Investigating, Combat and Searching. The roadmap's "Alerted" state is Combat: when one enemy enters it, enemies nearby are alerted, and a target that stays hidden is searched for around its last known position.
+Squad stealth (8.4)	A squad mode toggled by key or menu, so it works with every order. Teammates crouch, step quietly, use a tight Stealth formation, hold fire, and freeze when an enemy starts noticing them. Any shot from the squad, or a teammate being detected or shot, blows the squad's cover for 15 s. The HUD shows the stealth state and how many enemies are aware.
+Tests	7 new tests in OutbreakStealthTests.cpp; the Phase 5 state and Phase 7 menu tests were updated.
+What's left for when the engine is installed: Docs/Phase8-EditorSetup.md covers:
+
+Setup: one new input action, refreshing the enemy Blackboard (its state enum changed), and settings to check.
+Test map: a lit yard, a dark alley and a building.
+Checklist: the Phase 8 acceptance items, including finishing the prototype mission both stealthily and loudly.
+Risks and gaps
+
+Compiling: eight phases of code have now never been compiled, and Phase 8 reworked the Phase 5 enemy controller and changed collision for every character. Re-run all automated tests after the first build.
+Approximate lighting: the light level is an estimate from the level's lights, so glowing materials and bounced light don't count; lighting volumes are the workaround.
+Simple noise: noise only travels in straight lines through walls, not around corners or through open doors.
+Not covered by automated tests: the wall-counting test only reports its result, because physics queries may not work in the bare test world. Real seeing and hearing can only be checked in the editor.
+Nothing is committed. That's as far as Phase 8 can go without the engine. Phase 9 (enemy tactics and archetypes) has no open-decision blocker, but every further phase adds more unverified code on top of the existing eight.
+
+
+
+================================
 
 
 

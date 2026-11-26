@@ -7,6 +7,7 @@
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 #include "Outbreak.h"
+#include "TimerManager.h"
 #include "Squad/OutbreakSquadConfiguration.h"
 #include "Squad/OutbreakSquadMemberComponent.h"
 #include "Squad/OutbreakSquadRoleDefinition.h"
@@ -48,6 +49,9 @@ void UOutbreakSquadComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	DOREPLIFETIME(UOutbreakSquadComponent, Members);
 	DOREPLIFETIME(UOutbreakSquadComponent, PlayerMember);
 	DOREPLIFETIME(UOutbreakSquadComponent, SizeLimits);
+	DOREPLIFETIME(UOutbreakSquadComponent, Formation);
+	DOREPLIFETIME(UOutbreakSquadComponent, bStealthMode);
+	DOREPLIFETIME(UOutbreakSquadComponent, bCompromised);
 }
 
 bool UOutbreakSquadComponent::HasOwnerAuthority() const
@@ -104,6 +108,10 @@ bool UOutbreakSquadComponent::InitializeSquad(const UOutbreakSquadConfiguration*
 	if (bValid)
 	{
 		SizeLimits = ResolvedLimits;
+	}
+	if (Configuration)
+	{
+		AuthSetFormation(Configuration->InitialFormation);
 	}
 
 	RegisterPlayerMember(PlayerMemberComponent);
@@ -288,11 +296,107 @@ bool UOutbreakSquadComponent::SetSizeLimits(const FOutbreakSquadSizeLimits& NewL
 void UOutbreakSquadComponent::BindMember(UOutbreakSquadMemberComponent* Member)
 {
 	Member->OnStatusChanged.AddUniqueDynamic(this, &ThisClass::HandleMemberStatusChanged);
+	if (UOutbreakWeaponComponent* MemberWeapons = Member->GetWeaponComponent())
+	{
+		MemberWeapons->OnShotFired.AddUniqueDynamic(this, &ThisClass::HandleMemberShotFired);
+	}
 }
 
 void UOutbreakSquadComponent::UnbindMember(UOutbreakSquadMemberComponent* Member)
 {
 	Member->OnStatusChanged.RemoveDynamic(this, &ThisClass::HandleMemberStatusChanged);
+	if (UOutbreakWeaponComponent* MemberWeapons = Member->GetWeaponComponent())
+	{
+		MemberWeapons->OnShotFired.RemoveDynamic(this, &ThisClass::HandleMemberShotFired);
+	}
+}
+
+void UOutbreakSquadComponent::HandleMemberShotFired(UOutbreakWeaponComponent* WeaponComponent)
+{
+	// A shot from anyone in the squad gives it away.
+	if (bStealthMode)
+	{
+		MarkCompromised();
+	}
+}
+
+void UOutbreakSquadComponent::SetStealthMode(bool bEnabled)
+{
+	if (HasOwnerAuthority())
+	{
+		AuthSetStealthMode(bEnabled);
+	}
+	else
+	{
+		ServerSetStealthMode(bEnabled);
+	}
+}
+
+void UOutbreakSquadComponent::ServerSetStealthMode_Implementation(bool bEnabled)
+{
+	AuthSetStealthMode(bEnabled);
+}
+
+void UOutbreakSquadComponent::AuthSetStealthMode(bool bEnabled)
+{
+	if (bStealthMode == bEnabled)
+	{
+		return;
+	}
+
+	bStealthMode = bEnabled;
+	if (bEnabled)
+	{
+		FormationBeforeStealth = Formation;
+		AuthSetFormation(EOutbreakFormation::Stealth);
+	}
+	else
+	{
+		AuthSetFormation(FormationBeforeStealth);
+	}
+	ClearCompromised();
+
+	UE_LOG(LogOutbreak, Log, TEXT("%s: stealth mode %s."), *GetNameSafe(GetOwner()), bEnabled ? TEXT("on") : TEXT("off"));
+	OnStealthChanged.Broadcast(this);
+}
+
+void UOutbreakSquadComponent::MarkCompromised()
+{
+	if (!HasOwnerAuthority() || !bStealthMode)
+	{
+		return;
+	}
+
+	if (!bCompromised)
+	{
+		bCompromised = true;
+		UE_LOG(LogOutbreak, Log, TEXT("%s: squad compromised."), *GetNameSafe(GetOwner()));
+		OnStealthChanged.Broadcast(this);
+	}
+
+	const float Duration = GetDefault<UOutbreakSquadSettings>()->CompromiseDuration;
+	if (UWorld* World = GetWorld(); World && Duration > 0.0f)
+	{
+		World->GetTimerManager().SetTimer(CompromiseTimer, this, &ThisClass::ClearCompromised, Duration, false);
+	}
+}
+
+void UOutbreakSquadComponent::ClearCompromised()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(CompromiseTimer);
+	}
+	if (bCompromised)
+	{
+		bCompromised = false;
+		OnStealthChanged.Broadcast(this);
+	}
+}
+
+void UOutbreakSquadComponent::OnRep_Stealth()
+{
+	OnStealthChanged.Broadcast(this);
 }
 
 void UOutbreakSquadComponent::HandleMemberStatusChanged(UOutbreakSquadMemberComponent* Member,
@@ -456,8 +560,8 @@ TArray<FOutbreakCommandResult> UOutbreakSquadComponent::AuthIssueCommand(const F
 		if (Result.WasAccepted())
 		{
 			FOutbreakSquadCommand MemberCommand = Command;
-			// "Hold" without a position means "hold where you are".
-			if (MemberCommand.Type == EOutbreakSquadCommandType::Hold && !MemberCommand.bHasTargetLocation)
+			// Hold / Defend / Cover without a position mean "here, where you stand".
+			if (MemberCommand.UsesPosition() && !MemberCommand.bHasTargetLocation)
 			{
 				MemberCommand.TargetLocation = Member->GetMemberLocation();
 				MemberCommand.bHasTargetLocation = true;
@@ -490,6 +594,46 @@ int32 UOutbreakSquadComponent::AuthCancelCommand(const FOutbreakCommandRecipient
 		}
 	}
 	return Cancelled;
+}
+
+void UOutbreakSquadComponent::SetFormation(EOutbreakFormation NewFormation)
+{
+	if (HasOwnerAuthority())
+	{
+		AuthSetFormation(NewFormation);
+	}
+	else
+	{
+		ServerSetFormation(NewFormation);
+	}
+}
+
+void UOutbreakSquadComponent::CycleFormation()
+{
+	// The Stealth formation belongs to stealth mode; the cycle covers the others.
+	const int32 Count = static_cast<int32>(EOutbreakFormation::Loose) + 1;
+	const int32 Current = FMath::Min(static_cast<int32>(Formation), Count - 1);
+	SetFormation(static_cast<EOutbreakFormation>((Current + 1) % Count));
+}
+
+void UOutbreakSquadComponent::ServerSetFormation_Implementation(EOutbreakFormation NewFormation)
+{
+	AuthSetFormation(NewFormation);
+}
+
+void UOutbreakSquadComponent::AuthSetFormation(EOutbreakFormation NewFormation)
+{
+	if (Formation != NewFormation)
+	{
+		Formation = NewFormation;
+		UE_LOG(LogOutbreak, Log, TEXT("%s: formation %s."), *GetNameSafe(GetOwner()), *UEnum::GetValueAsString(NewFormation));
+		OnFormationChanged.Broadcast(this, Formation);
+	}
+}
+
+void UOutbreakSquadComponent::OnRep_Formation()
+{
+	OnFormationChanged.Broadcast(this, Formation);
 }
 
 TArray<UOutbreakSquadMemberComponent*> UOutbreakSquadComponent::GetTeammates() const

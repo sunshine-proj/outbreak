@@ -11,13 +11,10 @@ class UOutbreakWeaponComponent;
 class UOutbreakWeaponDefinition;
 struct FOutbreakFireModeDefinition;
 
-namespace OutbreakNoiseTags
-{
-	/** AI hearing tag for gunshots. */
-	inline const FName WeaponFire(TEXT("WeaponFire"));
-}
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakWeaponStateChangedSignature, UOutbreakWeaponComponent*, WeaponComponent);
+
+/** Authority only: a shot was fired (after validation). */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakWeaponFiredSignature, UOutbreakWeaponComponent*, WeaponComponent);
 
 /**
  * Carries weapons and ammunition reserves, and fires, reloads and switches weapons.
@@ -143,6 +140,10 @@ public:
 	/** Fires on every machine when weapons, ammunition, fire mode, reload or aim state change. */
 	UPROPERTY(BlueprintAssignable, Category = "Weapons")
 	FOutbreakWeaponStateChangedSignature OnWeaponStateChanged;
+
+	/** Fires on the authority after each accepted shot (squad stealth listens to it). */
+	UPROPERTY(BlueprintAssignable, Category = "Weapons")
+	FOutbreakWeaponFiredSignature OnShotFired;
 
 protected:
 

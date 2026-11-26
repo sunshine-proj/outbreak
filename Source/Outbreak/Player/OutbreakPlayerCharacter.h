@@ -93,6 +93,18 @@ private:
 	void HandleSquadSelectAll();
 	void HandleSquadSelectMember(const FInputActionValue& Value);
 	void HandleSquadToggleMember(const FInputActionValue& Value);
+	void HandleSquadDefend();
+	void HandleSquadCover();
+	void HandleSquadRetreat();
+	void HandleSquadCycleFormation();
+	void HandleSquadStealth();
+	void HandleSquadMenu();
+	void HandleSquadMenuNext();
+	void HandleSquadMenuPrevious();
+	void HandleSquadMenuConfirm();
+
+	/** Adds or removes the squad menu mapping context to match the menu state. */
+	void UpdateSquadMenuInput();
 
 	/** The squad command component of the controlling player controller, if any. */
 	class UOutbreakSquadCommandComponent* GetSquadCommands() const;

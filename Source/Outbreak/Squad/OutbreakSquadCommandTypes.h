@@ -7,7 +7,7 @@
 class AActor;
 class UOutbreakSquadMemberComponent;
 
-/** Basic squad commands (D-003). Defend, Cover and Retreat are Phase 7; Stealth is Phase 8. */
+/** Squad commands (D-003): basic set from Phase 4, Defend/Cover/Retreat from Phase 7. Stealth is Phase 8. */
 UENUM(BlueprintType)
 enum class EOutbreakSquadCommandType : uint8
 {
@@ -22,7 +22,13 @@ enum class EOutbreakSquadCommandType : uint8
 	/** Return to the player; completes on arrival. */
 	Regroup,
 	/** Engage TargetActor; completes when it is dead or gone. */
-	Attack
+	Attack,
+	/** Protect TargetLocation: stay around it, take cover nearby when under fire. Lasts until replaced. */
+	Defend,
+	/** Find cover near TargetLocation from the known threat and fire from it. Lasts until replaced. */
+	Cover,
+	/** Move away from the known threat by the configured distance; completes on arrival. */
+	Retreat
 };
 
 UENUM(BlueprintType)
@@ -90,6 +96,12 @@ struct OUTBREAK_API FOutbreakSquadCommand
 	static FOutbreakSquadCommand MakeAttack(AActor* Target);
 
 	bool RequiresLocation() const { return Type == EOutbreakSquadCommandType::Move; }
+
+	/** Hold, Defend and Cover act around a position; without one, the member's own position is used. */
+	bool UsesPosition() const
+	{
+		return Type == EOutbreakSquadCommandType::Hold || Type == EOutbreakSquadCommandType::Defend || Type == EOutbreakSquadCommandType::Cover;
+	}
 	bool RequiresTarget() const { return Type == EOutbreakSquadCommandType::Attack; }
 };
 

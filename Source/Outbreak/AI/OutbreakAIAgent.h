@@ -43,4 +43,13 @@ public:
 	virtual float GetIdleReloadFraction() const = 0;
 
 	virtual UOutbreakWeaponComponent* GetAgentWeaponComponent() const = 0;
+
+	/** False while the agent must hold fire (squad stealth). Aiming and reloading continue. */
+	virtual bool IsFireAllowed() const { return true; }
+
+	/** Where the threat to take cover from is (EQS context "Outbreak: Threat"). False if none is known. */
+	virtual bool GetCoverThreatLocation(FVector& OutLocation) const { return false; }
+
+	/** Where cover should be searched around (EQS context "Outbreak: Cover Anchor"). False = the agent itself. */
+	virtual bool GetCoverAnchorLocation(FVector& OutLocation) const { return false; }
 };

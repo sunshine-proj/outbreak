@@ -6,24 +6,34 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BrainComponent.h"
 #include "Characters/OutbreakEnemyCharacter.h"
+#include "CollisionQueryParams.h"
 #include "Combat/OutbreakTeam.h"
+#include "Components/CapsuleComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
+#include "GameFramework/Character.h"
 #include "HAL/IConsoleManager.h"
 #include "Navigation/CrowdFollowingComponent.h"
+#include "NavigationSystem.h"
 #include "Outbreak.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Hearing.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISense_Hearing.h"
 #include "Perception/AISense_Sight.h"
+#include "Stealth/OutbreakDetection.h"
+#include "Stealth/OutbreakLightingSubsystem.h"
+#include "Stealth/OutbreakNoiseTypes.h"
+#include "Stealth/OutbreakStealthSettings.h"
+#include "Stealth/OutbreakVisibility.h"
 #include "Weapons/OutbreakWeaponComponent.h"
 
 namespace
 {
 	TAutoConsoleVariable<int32> CVarDebugEnemies(
 		TEXT("outbreak.AI.DebugEnemies"), 0,
-		TEXT("1 = draw enemy sight range, hearing range, state, target and destination at each decision update."),
+		TEXT("1 = draw enemy sight range, hearing range, state, suspicion, target and destination at each decision update."),
 		ECVF_Cheat);
 }
 
@@ -60,6 +70,16 @@ double AOutbreakEnemyAIController::GetTimeSeconds() const
 {
 	const UWorld* World = GetWorld();
 	return World ? World->GetTimeSeconds() : 0.0;
+}
+
+bool AOutbreakEnemyAIController::IsAlive(const AActor* Actor)
+{
+	if (!IsValid(Actor))
+	{
+		return false;
+	}
+	const UOutbreakHealthComponent* Health = Actor->FindComponentByClass<UOutbreakHealthComponent>();
+	return !Health || Health->IsAlive();
 }
 
 void AOutbreakEnemyAIController::OnPossess(APawn* InPawn)
@@ -136,20 +156,53 @@ void AOutbreakEnemyAIController::ApplyPerceptionConfig()
 
 // --- Stimuli -------------------------------------------------------------------------------------
 
-void AOutbreakEnemyAIController::ReportAlert(const FVector& Location)
+void AOutbreakEnemyAIController::ReportStimulus(const FVector& Location, float SuspicionAmount)
 {
-	bHasAlert = true;
-	AlertLocation = Location;
-	AlertTime = GetTimeSeconds();
+	if (SuspicionAmount <= 0.0f)
+	{
+		return;
+	}
+	Suspicion = FMath::Clamp(Suspicion + SuspicionAmount, 0.0f, 1.0f);
+	StimulusLocation = Location;
+	bHasStimulus = true;
+}
+
+void AOutbreakEnemyAIController::ReceivePropagatedAlert(const FVector& Location)
+{
+	if (CurrentState != EOutbreakEnemyState::Combat && IsAlive(GetPawn()))
+	{
+		ReportStimulus(Location, 1.0f);
+	}
 }
 
 void AOutbreakEnemyAIController::HandleTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
-	// Sight is polled at each decision update; hearing is an event that raises an alert.
-	if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>() && Stimulus.WasSuccessfullySensed())
+	// Sight is evaluated at each decision update; hearing arrives here as events.
+	const APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn || Stimulus.Type != UAISense::GetSenseID<UAISense_Hearing>() || !Stimulus.WasSuccessfullySensed())
 	{
-		ReportAlert(Stimulus.StimulusLocation);
+		return;
 	}
+
+	// Propagation: distance falloff and obstacles between the noise and this enemy's ears.
+	FVector EarLocation;
+	FRotator EarRotation;
+	ControlledPawn->GetActorEyesViewPoint(EarLocation, EarRotation);
+
+	FOutbreakNoiseEvent Noise;
+	Noise.Type = OutbreakNoise::GetNoiseTypeFromTag(Stimulus.Tag);
+	Noise.Loudness = Stimulus.Strength;
+
+	const UOutbreakStealthSettings* Settings = GetDefault<UOutbreakStealthSettings>();
+	const int32 Occluders = OutbreakNoise::CountOccluders(GetWorld(), Stimulus.StimulusLocation, EarLocation,
+		Settings->MaxOccluders, { ControlledPawn, Actor });
+	const float Perceived = OutbreakNoise::ComputePerceivedLoudness(Noise.Loudness,
+		FVector::Dist(Stimulus.StimulusLocation, EarLocation), OutbreakNoise::GetEffectiveRange(Noise),
+		Occluders, Settings->OcclusionAttenuation);
+
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+	ReportStimulus(Stimulus.StimulusLocation,
+		OutbreakDetection::NoiseSuspicion(Perceived, Definition->NoiseSuspicionGain, Definition->HearingSensitivity));
 }
 
 void AOutbreakEnemyAIController::HandleTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
@@ -164,9 +217,14 @@ void AOutbreakEnemyAIController::HandleTakeAnyDamage(AActor* DamagedActor, float
 	LastAttacker = Attacker;
 	LastAttackTime = GetTimeSeconds();
 
-	// Hit by someone it cannot see: turn and look where the attack came from.
-	if (!IsActorVisible(Attacker))
+	if (IsActorVisible(Attacker))
 	{
+		// Shot by someone in plain view: detected at once.
+		Detection.FindOrAdd(Attacker) = 1.0f;
+	}
+	else
+	{
+		// Shot from out of sight: fully alarmed, heading for where the attack came from.
 		ReportAlert(Attacker->GetActorLocation());
 	}
 }
@@ -181,8 +239,11 @@ void AOutbreakEnemyAIController::HandleHealthStateChanged(UOutbreakHealthCompone
 
 	CurrentTarget = nullptr;
 	VisibleHostiles.Reset();
-	bHasAlert = false;
+	Detection.Reset();
+	Suspicion = 0.0f;
+	bHasStimulus = false;
 	ClearFocus(EAIFocusPriority::Gameplay);
+	ClearFocus(EAIFocusPriority::Default);
 	StopMovement();
 	if (BrainComponent)
 	{
@@ -190,7 +251,7 @@ void AOutbreakEnemyAIController::HandleHealthStateChanged(UOutbreakHealthCompone
 	}
 }
 
-// --- Perception and targeting --------------------------------------------------------------------
+// --- Sight and detection -------------------------------------------------------------------------
 
 bool AOutbreakEnemyAIController::IsActorVisible(const AActor* Actor) const
 {
@@ -198,70 +259,219 @@ bool AOutbreakEnemyAIController::IsActorVisible(const AActor* Actor) const
 		[Actor](const TWeakObjectPtr<AActor>& Entry) { return Entry.Get() == Actor; });
 }
 
-void AOutbreakEnemyAIController::UpdateTargets()
+float AOutbreakEnemyAIController::GetDetectionOf(const AActor* Target) const
 {
-	const TWeakObjectPtr<AActor> PreviousTarget = CurrentTarget;
-	VisibleHostiles.Reset();
-	CurrentTarget = nullptr;
-
-	const APawn* ControlledPawn = GetPawn();
-	if (!ControlledPawn)
+	if (!Target)
 	{
-		return;
+		return 0.0f;
 	}
+	if (CurrentTarget.Get() == Target)
+	{
+		return 1.0f;
+	}
+	for (const TPair<TWeakObjectPtr<AActor>, float>& Entry : Detection)
+	{
+		if (Entry.Key.Get() == Target)
+		{
+			return Entry.Value;
+		}
+	}
+	return 0.0f;
+}
+
+float AOutbreakEnemyAIController::GetHighestDetectionOf(const UWorld* World, const AActor* Target)
+{
+	float Highest = 0.0f;
+	if (!World || !Target)
+	{
+		return Highest;
+	}
+	for (TActorIterator<AOutbreakEnemyAIController> It(World); It; ++It)
+	{
+		if (IsAlive(It->GetPawn()))
+		{
+			Highest = FMath::Max(Highest, It->GetDetectionOf(Target));
+		}
+	}
+	return Highest;
+}
+
+float AOutbreakEnemyAIController::ComputeTargetVisibility(const AActor* Target) const
+{
+	const APawn* ControlledPawn = GetPawn();
+	const UWorld* World = GetWorld();
+	if (!ControlledPawn || !Target || !World)
+	{
+		return 0.0f;
+	}
+
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+	FVector EyeLocation;
+	FRotator EyeRotation;
+	ControlledPawn->GetActorEyesViewPoint(EyeLocation, EyeRotation);
+
+	const FVector TargetLocation = Target->GetActorLocation();
+	const FVector ToTarget = TargetLocation - EyeLocation;
+
+	// Obstruction: how many of head, chest and legs are in line of sight.
+	const ACharacter* TargetCharacter = Cast<ACharacter>(Target);
+	const float HalfHeight = TargetCharacter ? TargetCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 0.0f;
+	const FVector SamplePoints[] = {
+		TargetLocation + FVector(0.0f, 0.0f, HalfHeight * 0.8f),
+		TargetLocation,
+		TargetLocation - FVector(0.0f, 0.0f, HalfHeight * 0.6f)
+	};
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(OutbreakEnemyVisibility), false, ControlledPawn);
+	Params.AddIgnoredActor(Target);
+	int32 Exposed = 0;
+	for (const FVector& Point : SamplePoints)
+	{
+		FHitResult Hit;
+		Exposed += World->LineTraceSingleByChannel(Hit, EyeLocation, Point, ECC_Visibility, Params) ? 0 : 1;
+	}
+
+	UOutbreakLightingSubsystem* Lighting = World->GetSubsystem<UOutbreakLightingSubsystem>();
+
+	FOutbreakVisibilityInputs Inputs;
+	Inputs.LightLevel = Lighting ? Lighting->GetLightLevelAt(TargetLocation, Target) : 1.0f;
+	Inputs.ExposedFraction = Exposed / 3.0f;
+	Inputs.Speed = Target->GetVelocity().Size2D();
+	Inputs.bCrouched = TargetCharacter && TargetCharacter->bIsCrouched;
+	Inputs.Distance = ToTarget.Size();
+	Inputs.SightRadius = Definition->SightRadius;
+	Inputs.AngleFromView = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(
+		FVector::DotProduct(EyeRotation.Vector(), ToTarget.GetSafeNormal()), -1.0f, 1.0f)));
+	Inputs.PeripheralHalfAngle = Definition->PeripheralVisionHalfAngle;
+
+	return OutbreakVisibility::ComputeVisibility(Inputs, Definition->VisibilityWeights);
+}
+
+void AOutbreakEnemyAIController::UpdateSight(float DeltaSeconds)
+{
+	VisibleHostiles.Reset();
+	const APawn* ControlledPawn = GetPawn();
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
 
 	TArray<AActor*> PerceivedActors;
 	GetPerceptionComponent()->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), PerceivedActors);
 
-	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+	// Seen targets gain detection by their visibility.
+	TSet<const AActor*> Seen;
+	for (AActor* Actor : PerceivedActors)
+	{
+		if (!IsAlive(Actor) || !OutbreakTeam::IsHostile(ControlledPawn, Actor))
+		{
+			continue;
+		}
+		VisibleHostiles.Add(Actor);
+		Seen.Add(Actor);
+
+		float& Level = Detection.FindOrAdd(Actor);
+		Level = OutbreakDetection::UpdateDetection(Level, true, ComputeTargetVisibility(Actor),
+			Definition->SightDetectionRate, Definition->DetectionDecayRate, DeltaSeconds);
+	}
+
+	// Unseen targets fade; dead or destroyed ones are forgotten.
+	float HighestDetection = 0.0f;
+	const AActor* MostNoticed = nullptr;
+	for (auto It = Detection.CreateIterator(); It; ++It)
+	{
+		const AActor* Actor = It.Key().Get();
+		if (!IsAlive(Actor))
+		{
+			It.RemoveCurrent();
+			continue;
+		}
+		if (!Seen.Contains(Actor))
+		{
+			It.Value() = OutbreakDetection::UpdateDetection(It.Value(), false, 0.0f,
+				Definition->SightDetectionRate, Definition->DetectionDecayRate, DeltaSeconds);
+			if (It.Value() <= 0.0f)
+			{
+				It.RemoveCurrent();
+				continue;
+			}
+		}
+		else if (It.Value() > HighestDetection)
+		{
+			HighestDetection = It.Value();
+			MostNoticed = Actor;
+		}
+	}
+
+	// A glimpse of someone makes their position the thing to look at.
+	if (MostNoticed && HighestDetection >= Definition->SuspiciousThreshold)
+	{
+		StimulusLocation = MostNoticed->GetActorLocation();
+		bHasStimulus = true;
+	}
+
+	// Choose the best detected, visible target.
 	FOutbreakTargetScoreWeights Weights;
 	Weights.DistancePenaltyPerMeter = Definition->DistancePenaltyPerMeter;
 	Weights.RecentAttackerBonus = Definition->RecentAttackerBonus;
 	Weights.PlayerBonus = Definition->PlayerBonus;
-
 	const bool bAttackerIsRecent = GetTimeSeconds() - LastAttackTime <= Definition->AttackerMemory;
+
+	AActor* BestTarget = nullptr;
 	float BestScore = TNumericLimits<float>::Lowest();
-
-	for (AActor* Actor : PerceivedActors)
+	for (const TWeakObjectPtr<AActor>& Entry : VisibleHostiles)
 	{
-		if (!IsValid(Actor) || !OutbreakTeam::IsHostile(ControlledPawn, Actor))
+		AActor* Actor = Entry.Get();
+		const float* Level = Detection.Find(Actor);
+		if (!Actor || !Level || *Level < 1.0f)
 		{
 			continue;
 		}
-		const UOutbreakHealthComponent* ActorHealth = Actor->FindComponentByClass<UOutbreakHealthComponent>();
-		if (ActorHealth && !ActorHealth->IsAlive())
-		{
-			continue;
-		}
-
-		VisibleHostiles.Add(Actor);
-
 		const APawn* ActorPawn = Cast<APawn>(Actor);
 		const float Score = OutbreakEnemyTargeting::ScoreTarget(
 			FVector::Dist(ControlledPawn->GetActorLocation(), Actor->GetActorLocation()),
-			bAttackerIsRecent && LastAttacker.Get() == Actor,
-			ActorPawn && ActorPawn->IsPlayerControlled(),
-			Weights);
+			bAttackerIsRecent && LastAttacker.Get() == Actor, ActorPawn && ActorPawn->IsPlayerControlled(), Weights);
 		if (Score > BestScore)
 		{
 			BestScore = Score;
-			CurrentTarget = Actor;
+			BestTarget = Actor;
 		}
 	}
 
+	if (BestTarget)
+	{
+		CurrentTarget = BestTarget;
+		LastSeenTargetLocation = BestTarget->GetActorLocation();
+		LastSeenTargetTime = GetTimeSeconds();
+	}
+	else if (!IsAlive(CurrentTarget.Get()))
+	{
+		// The tracked target died or was destroyed: no search for it.
+		CurrentTarget = nullptr;
+	}
+
+	Suspicion = OutbreakDetection::UpdateSuspicion(Suspicion, Definition->SuspicionDecayRate, DeltaSeconds, HighestDetection);
 	if (CurrentTarget.IsValid())
 	{
-		LastSeenTargetLocation = CurrentTarget->GetActorLocation();
+		Suspicion = 1.0f;
+	}
+	if (Suspicion < Definition->SuspiciousThreshold)
+	{
+		bHasStimulus = false;
+	}
+}
+
+void AOutbreakEnemyAIController::PropagateAlert(const FVector& Location)
+{
+	const float Radius = GetDefinition()->AlertPropagationRadius;
+	const APawn* ControlledPawn = GetPawn();
+	if (Radius <= 0.0f || !ControlledPawn)
+	{
 		return;
 	}
 
-	// Lost sight of a living target: go to where it was last seen.
-	if (const AActor* Lost = PreviousTarget.Get())
+	for (TActorIterator<AOutbreakEnemyAIController> It(GetWorld()); It; ++It)
 	{
-		const UOutbreakHealthComponent* LostHealth = Lost->FindComponentByClass<UOutbreakHealthComponent>();
-		if (!LostHealth || LostHealth->IsAlive())
+		const APawn* OtherPawn = It->GetPawn();
+		if (*It != this && OtherPawn && FVector::Dist(OtherPawn->GetActorLocation(), ControlledPawn->GetActorLocation()) <= Radius)
 		{
-			ReportAlert(LastSeenTargetLocation);
+			It->ReceivePropagatedAlert(Location);
 		}
 	}
 }
@@ -282,36 +492,67 @@ void AOutbreakEnemyAIController::UpdateBehavior()
 		return;
 	}
 
-	UpdateTargets();
+	const double Now = GetTimeSeconds();
+	const float DeltaSeconds = LastUpdateTime < 0.0 ? 0.0f : static_cast<float>(FMath::Clamp(Now - LastUpdateTime, 0.0, 1.0));
+	LastUpdateTime = Now;
+
+	UpdateSight(DeltaSeconds);
 
 	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+
+	// A detected target out of sight for too long is lost: search where it was last seen.
+	if (CurrentTarget.IsValid() && Now - LastSeenTargetTime > Definition->LoseTargetTime)
+	{
+		CurrentTarget = nullptr;
+		SearchStartTime = Now;
+		SearchCenter = LastSeenTargetLocation;
+		bHasSearchPoint = false;
+		Suspicion = FMath::Max(Suspicion, Definition->InvestigateThreshold);
+	}
+
 	const AOutbreakPatrolRoute* Route = Enemy ? Enemy->GetPatrolRoute() : nullptr;
 
 	FOutbreakEnemyStateContext Context;
-	Context.bHasVisibleTarget = CurrentTarget.IsValid();
-	Context.bHasAlert = bHasAlert;
-	Context.AlertElapsed = static_cast<float>(GetTimeSeconds() - AlertTime);
-	Context.AlertDuration = Definition->AlertDuration;
+	Context.bHasDetectedTarget = CurrentTarget.IsValid();
+	Context.TimeSinceTargetSeen = static_cast<float>(Now - LastSeenTargetTime);
+	Context.LoseTargetTime = Definition->LoseTargetTime;
+	Context.bSearching = Now - SearchStartTime < Definition->SearchDuration;
+	Context.Suspicion = Suspicion;
+	Context.SuspiciousThreshold = Definition->SuspiciousThreshold;
+	Context.InvestigateThreshold = Definition->InvestigateThreshold;
+	Context.bHasStimulusLocation = bHasStimulus;
 	Context.bHasPatrolRoute = Route && Route->GetNumPoints() > 0;
 
 	const EOutbreakEnemyState NewState = OutbreakEnemyBehavior::SelectState(Context);
+	const bool bStateChanged = NewState != CurrentState;
 
-	// A target in sight supersedes the alert; an expired alert is dropped.
-	if (NewState == EOutbreakEnemyState::Combat || (bHasAlert && Context.AlertElapsed >= Context.AlertDuration))
+	if (bStateChanged && NewState == EOutbreakEnemyState::Combat)
 	{
-		bHasAlert = false;
+		SearchStartTime = -1.0e9;
+		PropagateAlert(LastSeenTargetLocation);
 	}
-	if (NewState != CurrentState && NewState == EOutbreakEnemyState::Patrol)
+	if (bStateChanged && NewState == EOutbreakEnemyState::Patrol)
 	{
 		PatrolArrivalTime = -1.0;
 	}
+
 	CurrentState = NewState;
-	MoveLocation = ComputeMoveLocation();
+	MoveLocation = ComputeMoveLocation(bStateChanged);
+
+	// Look towards whatever made it suspicious (lowest focus priority; target focus wins).
+	if ((NewState == EOutbreakEnemyState::Suspicious || NewState == EOutbreakEnemyState::Investigating) && bHasStimulus)
+	{
+		SetFocalPoint(StimulusLocation, EAIFocusPriority::Default);
+	}
+	else
+	{
+		ClearFocus(EAIFocusPriority::Default);
+	}
 
 	if (Enemy)
 	{
-		// Alert and combat at sprint speed; idle and patrol at walk speed.
-		const bool bHurry = NewState == EOutbreakEnemyState::Combat || NewState == EOutbreakEnemyState::Alerted;
+		const bool bHurry = NewState == EOutbreakEnemyState::Combat
+			|| (NewState == EOutbreakEnemyState::Investigating && Suspicion >= Definition->UrgentThreshold);
 		if (bHurry && !Enemy->IsSprinting())
 		{
 			Enemy->StartSprinting();
@@ -356,7 +597,36 @@ FVector AOutbreakEnemyAIController::UpdatePatrol()
 	return Point;
 }
 
-FVector AOutbreakEnemyAIController::ComputeMoveLocation()
+FVector AOutbreakEnemyAIController::UpdateSearch()
+{
+	const UOutbreakEnemyDefinition* Definition = GetDefinition();
+	const double Now = GetTimeSeconds();
+
+	const bool bArrived = bHasSearchPoint
+		&& FVector::Dist2D(GetPawn()->GetActorLocation(), SearchPoint) <= Definition->PatrolAcceptanceRadius;
+	if (bArrived && SearchPointArrivalTime < 0.0)
+	{
+		SearchPointArrivalTime = Now;
+	}
+
+	if (!bHasSearchPoint || (bArrived && Now - SearchPointArrivalTime >= Definition->SearchPointWait))
+	{
+		SearchPoint = SearchCenter;
+		if (UNavigationSystemV1* NavigationSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
+		{
+			FNavLocation RandomPoint;
+			if (NavigationSystem->GetRandomReachablePointInRadius(SearchCenter, Definition->SearchRadius, RandomPoint))
+			{
+				SearchPoint = RandomPoint.Location;
+			}
+		}
+		bHasSearchPoint = true;
+		SearchPointArrivalTime = -1.0;
+	}
+	return SearchPoint;
+}
+
+FVector AOutbreakEnemyAIController::ComputeMoveLocation(bool bStateChanged)
 {
 	const UOutbreakEnemyDefinition* Definition = GetDefinition();
 	const FVector PawnLocation = GetPawn()->GetActorLocation();
@@ -366,16 +636,24 @@ FVector AOutbreakEnemyAIController::ComputeMoveLocation()
 	case EOutbreakEnemyState::Patrol:
 		return UpdatePatrol();
 
-	case EOutbreakEnemyState::Alerted:
-		return AlertLocation;
+	case EOutbreakEnemyState::Suspicious:
+		// Stop where it noticed something and look.
+		return bStateChanged ? PawnLocation : MoveLocation;
+
+	case EOutbreakEnemyState::Investigating:
+		return StimulusLocation;
+
+	case EOutbreakEnemyState::Searching:
+		return UpdateSearch();
 
 	case EOutbreakEnemyState::Combat:
-		if (const AActor* Target = CurrentTarget.Get())
-		{
-			return OutbreakEnemyTactics::ComputeCombatPosition(PawnLocation, Target->GetActorLocation(), IsActorVisible(Target),
-				Definition->MinCombatRange, Definition->PreferredCombatRange, Definition->MaxCombatRange);
-		}
-		return PawnLocation;
+	{
+		const AActor* Target = CurrentTarget.Get();
+		const bool bVisible = IsActorVisible(Target);
+		const FVector TargetLocation = Target && bVisible ? Target->GetActorLocation() : LastSeenTargetLocation;
+		return OutbreakEnemyTactics::ComputeCombatPosition(PawnLocation, TargetLocation, bVisible,
+			Definition->MinCombatRange, Definition->PreferredCombatRange, Definition->MaxCombatRange);
+	}
 
 	case EOutbreakEnemyState::Idle:
 	default:
@@ -427,9 +705,11 @@ void AOutbreakEnemyAIController::DrawDebug() const
 	FColor StateColor = FColor::Green;
 	switch (CurrentState)
 	{
-	case EOutbreakEnemyState::Patrol:  StateColor = FColor::Cyan; break;
-	case EOutbreakEnemyState::Alerted: StateColor = FColor::Orange; break;
-	case EOutbreakEnemyState::Combat:  StateColor = FColor::Red; break;
+	case EOutbreakEnemyState::Patrol:        StateColor = FColor::Cyan; break;
+	case EOutbreakEnemyState::Suspicious:    StateColor = FColor::Yellow; break;
+	case EOutbreakEnemyState::Investigating: StateColor = FColor::Orange; break;
+	case EOutbreakEnemyState::Combat:        StateColor = FColor::Red; break;
+	case EOutbreakEnemyState::Searching:     StateColor = FColor::Magenta; break;
 	default: break;
 	}
 
@@ -439,20 +719,28 @@ void AOutbreakEnemyAIController::DrawDebug() const
 	const float HalfAngle = FMath::DegreesToRadians(Definition->PeripheralVisionHalfAngle);
 	DrawDebugCone(World, EyesLocation, EyesRotation.Vector(), Definition->SightRadius, HalfAngle, HalfAngle, 16, StateColor, false, Duration);
 
-	if (Definition->HearingRange > 0.0f)
-	{
-		DrawDebugCircle(World, ControlledPawn->GetActorLocation(), Definition->HearingRange, 32, FColor::Blue, false, Duration,
-			0, 0.0f, FVector(1.0f, 0.0f, 0.0f), FVector(0.0f, 1.0f, 0.0f), false);
-	}
-
-	const FString Label = FString::Printf(TEXT("%s  %s"),
-		*OutbreakEnemyBehavior::GetStateDisplayName(CurrentState).ToString(), *GetNameSafe(CurrentTarget.Get()));
+	const FString Label = FString::Printf(TEXT("%s  suspicion %d%%  %s"),
+		*OutbreakEnemyBehavior::GetStateDisplayName(CurrentState).ToString(), FMath::RoundToInt(Suspicion * 100.0f),
+		*GetNameSafe(CurrentTarget.Get()));
 	DrawDebugString(World, ControlledPawn->GetActorLocation() + FVector(0.0f, 0.0f, 120.0f), Label, nullptr, StateColor, Duration);
 	DrawDebugLine(World, ControlledPawn->GetActorLocation(), MoveLocation, FColor::White, false, Duration);
 
-	if (bHasAlert)
+	for (const TPair<TWeakObjectPtr<AActor>, float>& Entry : Detection)
 	{
-		DrawDebugSphere(World, AlertLocation, 50.0f, 8, FColor::Orange, false, Duration);
+		if (const AActor* Actor = Entry.Key.Get())
+		{
+			DrawDebugString(World, Actor->GetActorLocation() + FVector(0.0f, 0.0f, 100.0f),
+				FString::Printf(TEXT("seen %d%%"), FMath::RoundToInt(Entry.Value * 100.0f)), nullptr, StateColor, Duration);
+		}
+	}
+	if (bHasStimulus)
+	{
+		DrawDebugSphere(World, StimulusLocation, 50.0f, 8, FColor::Orange, false, Duration);
+	}
+	if (CurrentState == EOutbreakEnemyState::Searching)
+	{
+		DrawDebugCircle(World, SearchCenter, Definition->SearchRadius, 24, FColor::Magenta, false, Duration,
+			0, 0.0f, FVector(1.0f, 0.0f, 0.0f), FVector(0.0f, 1.0f, 0.0f), false);
 	}
 #endif
 }

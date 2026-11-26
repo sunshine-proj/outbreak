@@ -5,7 +5,7 @@
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 #include "Outbreak.h"
-#include "Perception/AISense_Hearing.h"
+#include "Stealth/OutbreakNoiseTypes.h"
 #include "TimerManager.h"
 #include "Weapons/OutbreakAmmoTypeDefinition.h"
 #include "Weapons/OutbreakFireBehavior.h"
@@ -269,13 +269,16 @@ void UOutbreakWeaponComponent::AuthFireShot(const FVector& Origin, const FVector
 
 	MulticastPlayShotEffects(Slot->Definition, Slot->LoadedAmmoType, Origin, AimDirection, Impacts);
 
-	// Weapon fire noise for AI hearing (minimal hook; Phase 8 adds the full noise system).
-	if (Slot->Definition->FireNoiseLoudness > 0.0f)
-	{
-		UAISense_Hearing::ReportNoiseEvent(World, Origin, Slot->Definition->FireNoiseLoudness, GetOwner(),
-			Slot->Definition->FireNoiseMaxRange, OutbreakNoiseTags::WeaponFire);
-	}
+	// Gameplay noise for AI hearing (Phase 8 noise system).
+	FOutbreakNoiseEvent Noise;
+	Noise.Type = EOutbreakNoiseType::Weapon;
+	Noise.Location = Origin;
+	Noise.Loudness = Slot->Definition->FireNoiseLoudness;
+	Noise.RangeOverride = Slot->Definition->FireNoiseRange;
+	Noise.Instigator = GetOwner();
+	OutbreakNoise::ReportNoise(World, Noise);
 
+	OnShotFired.Broadcast(this);
 	BroadcastStateChanged();
 }
 

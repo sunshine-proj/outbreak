@@ -5,8 +5,8 @@
 #include "OutbreakEnemyTypes.generated.h"
 
 /**
- * Basic enemy states (Phase 5). Phase 8 refines Alerted into Suspicious, Investigating and
- * Searching with suspicion levels.
+ * Enemy awareness states (Phase 8; Phase 5 had Idle / Patrol / Alerted / Combat).
+ * "Alerted" in the roadmap is Combat: the enemy has detected a hostile and fights or hunts it.
  */
 UENUM(BlueprintType)
 enum class EOutbreakEnemyState : uint8
@@ -15,25 +15,36 @@ enum class EOutbreakEnemyState : uint8
 	Idle,
 	/** Walks its patrol route. */
 	Patrol,
-	/** Heard a shot, was hit by an unseen attacker, or lost its target: goes to look. */
-	Alerted,
-	/** Sees a hostile: positions and fights. */
-	Combat
+	/** Something is off (a glimpse, a faint noise): stops and looks towards it. */
+	Suspicious,
+	/** Goes to the stimulus (noise, sighting, being shot, an alert from another enemy). */
+	Investigating,
+	/** Has detected a hostile: fights it, or closes on where it was last seen. */
+	Combat,
+	/** Lost a detected hostile: searches around its last known position. */
+	Searching
 };
 
 /** Inputs to the enemy state decision. Gathered by AOutbreakEnemyAIController. */
 struct FOutbreakEnemyStateContext
 {
-	bool bHasVisibleTarget = false;
+	/** A hostile has been detected (detection reached 1) and is still being tracked. */
+	bool bHasDetectedTarget = false;
 
-	/** An alert location exists (noise, damage or last-seen target). */
-	bool bHasAlert = false;
+	float TimeSinceTargetSeen = 0.0f;
 
-	/** Seconds since the latest alert stimulus. */
-	float AlertElapsed = 0.0f;
+	/** Seconds out of sight before a detected target counts as lost. */
+	float LoseTargetTime = 3.0f;
 
-	/** How long an alert lasts without new stimuli. */
-	float AlertDuration = 12.0f;
+	/** A search is in progress (started after losing a target and not yet timed out). */
+	bool bSearching = false;
+
+	float Suspicion = 0.0f;
+	float SuspiciousThreshold = 0.2f;
+	float InvestigateThreshold = 0.5f;
+
+	/** A location to investigate is known. */
+	bool bHasStimulusLocation = false;
 
 	bool bHasPatrolRoute = false;
 };
@@ -53,7 +64,10 @@ struct FOutbreakTargetScoreWeights
 
 namespace OutbreakEnemyBehavior
 {
-	/** Combat if a hostile is visible; Alerted while an alert is fresh; otherwise Patrol (with a route) or Idle. */
+	/**
+	 * Combat while a detected target was seen within LoseTargetTime; then Searching while the search
+	 * lasts; then Investigating or Suspicious by suspicion; otherwise Patrol (with a route) or Idle.
+	 */
 	OUTBREAK_API EOutbreakEnemyState SelectState(const FOutbreakEnemyStateContext& Context);
 
 	OUTBREAK_API FText GetStateDisplayName(EOutbreakEnemyState State);

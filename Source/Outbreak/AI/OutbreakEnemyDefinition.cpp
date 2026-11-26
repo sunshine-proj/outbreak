@@ -21,6 +21,14 @@ bool UOutbreakEnemyDefinition::Validate(TArray<FText>& OutErrors) const
 	{
 		OutErrors.Add(LOCTEXT("LoseSight", "LoseSightRadius must be at least SightRadius."));
 	}
+	if (!(SuspiciousThreshold <= InvestigateThreshold && InvestigateThreshold <= UrgentThreshold))
+	{
+		OutErrors.Add(LOCTEXT("Thresholds", "Detection thresholds must satisfy Suspicious <= Investigate <= Urgent."));
+	}
+	if (VisibilityWeights.DarkLightLevel >= VisibilityWeights.BrightLightLevel)
+	{
+		OutErrors.Add(LOCTEXT("LightLevels", "VisibilityWeights: DarkLightLevel must be below BrightLightLevel."));
+	}
 	if (!(MinCombatRange <= PreferredCombatRange && PreferredCombatRange <= MaxCombatRange))
 	{
 		OutErrors.Add(LOCTEXT("CombatRanges", "Combat ranges must satisfy Min <= Preferred <= Max."));

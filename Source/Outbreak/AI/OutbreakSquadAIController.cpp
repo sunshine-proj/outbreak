@@ -1,11 +1,17 @@
 #include "AI/OutbreakSquadAIController.h"
 
 #include "AI/OutbreakBlackboardKeys.h"
+#include "AI/OutbreakEnemyAIController.h"
+#include "Characters/OutbreakCharacter.h"
+#include "Stealth/OutbreakNoiseEmitterComponent.h"
 #include "AI/OutbreakSquadPositioning.h"
 #include "AI/OutbreakTeammateAIConfig.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Combat/OutbreakHealthComponent.h"
 #include "Combat/OutbreakTeam.h"
+#include "EnvironmentQuery/EnvQuery.h"
+#include "EnvironmentQuery/EnvQueryManager.h"
+#include "NavigationSystem.h"
 #include "Navigation/CrowdFollowingComponent.h"
 #include "Outbreak.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -14,6 +20,7 @@
 #include "Squad/OutbreakSquadComponent.h"
 #include "Squad/OutbreakSquadMemberComponent.h"
 #include "Squad/OutbreakSquadRoleDefinition.h"
+#include "Squad/OutbreakSquadSettings.h"
 #include "Squad/OutbreakTeammateCharacter.h"
 #include "Weapons/OutbreakWeaponComponent.h"
 
@@ -64,6 +71,7 @@ void AOutbreakSquadAIController::OnPossess(APawn* InPawn)
 	{
 		SquadMember->OnCommandChanged.AddUniqueDynamic(this, &ThisClass::HandleCommandChanged);
 	}
+	InPawn->OnTakeAnyDamage.AddUniqueDynamic(this, &ThisClass::HandleTakeAnyDamage);
 
 	MoveLocation = InPawn->GetActorLocation();
 
@@ -83,6 +91,10 @@ void AOutbreakSquadAIController::OnUnPossess()
 	if (SquadMember)
 	{
 		SquadMember->OnCommandChanged.RemoveDynamic(this, &ThisClass::HandleCommandChanged);
+	}
+	if (APawn* OldPawn = GetPawn())
+	{
+		OldPawn->OnTakeAnyDamage.RemoveDynamic(this, &ThisClass::HandleTakeAnyDamage);
 	}
 	SquadMember = nullptr;
 	WeaponComponent = nullptr;
@@ -143,6 +155,154 @@ void AOutbreakSquadAIController::UpdateThreat()
 			BestDistanceSquared = DistanceSquared;
 			CurrentThreat = Actor;
 		}
+	}
+
+	if (const AActor* Threat = CurrentThreat.Get())
+	{
+		LastThreatLocation = Threat->GetActorLocation();
+		LastThreatTime = GetTimeSeconds();
+	}
+}
+
+double AOutbreakSquadAIController::GetTimeSeconds() const
+{
+	const UWorld* World = GetWorld();
+	return World ? World->GetTimeSeconds() : 0.0;
+}
+
+bool AOutbreakSquadAIController::HasRememberedThreat() const
+{
+	return GetTimeSeconds() - LastThreatTime <= GetAIConfig()->ThreatMemory;
+}
+
+bool AOutbreakSquadAIController::IsUnderFire() const
+{
+	return GetTimeSeconds() - LastDamageTime <= GetAIConfig()->UnderFireMemory;
+}
+
+void AOutbreakSquadAIController::HandleTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
+	AController* InstigatedBy, AActor* DamageCauser)
+{
+	LastDamageTime = GetTimeSeconds();
+
+	// An unseen shooter still tells us roughly where the danger is.
+	const AActor* Attacker = InstigatedBy && InstigatedBy->GetPawn() ? InstigatedBy->GetPawn() : DamageCauser;
+	if (Attacker && !CurrentThreat.IsValid() && OutbreakTeam::IsHostile(GetPawn(), Attacker))
+	{
+		LastThreatLocation = Attacker->GetActorLocation();
+		LastThreatTime = LastDamageTime;
+	}
+}
+
+bool AOutbreakSquadAIController::GetCoverThreatLocation(FVector& OutLocation) const
+{
+	if (const AActor* Threat = CurrentThreat.Get())
+	{
+		OutLocation = Threat->GetActorLocation();
+		return true;
+	}
+	if (HasRememberedThreat())
+	{
+		OutLocation = LastThreatLocation;
+		return true;
+	}
+	return false;
+}
+
+bool AOutbreakSquadAIController::IsFireAllowed() const
+{
+	const UOutbreakSquadComponent* Squad = GetSquad();
+	if (!Squad || Squad->AreWeaponsFree() || IsUnderFire())
+	{
+		return true;
+	}
+	return SquadMember && SquadMember->GetActiveCommandType() == EOutbreakSquadCommandType::Attack;
+}
+
+void AOutbreakSquadAIController::UpdateStealth(bool& bOutShouldHide)
+{
+	bOutShouldHide = false;
+	AOutbreakCharacter* Soldier = Cast<AOutbreakCharacter>(GetPawn());
+	UOutbreakSquadComponent* Squad = GetSquad();
+	if (!Soldier)
+	{
+		return;
+	}
+
+	const UOutbreakTeammateAIConfig* Config = GetAIConfig();
+	const bool bStealth = Squad && Squad->IsStealthMode();
+	NoticedLevel = AOutbreakEnemyAIController::GetHighestDetectionOf(GetWorld(), Soldier);
+
+	// Detected outright, or shot at: the squad's cover is blown.
+	if (bStealth && (NoticedLevel >= 1.0f || IsUnderFire()))
+	{
+		Squad->MarkCompromised();
+	}
+	const bool bQuiet = bStealth && !Squad->IsCompromised();
+
+	// Quieter movement: crouch and soften footsteps while quiet.
+	if (bQuiet && !Soldier->IsCrouchedOrCrouchRequested())
+	{
+		Soldier->BeginCrouch();
+		bCrouchedForStealth = true;
+	}
+	else if (!bQuiet && bCrouchedForStealth)
+	{
+		Soldier->EndCrouch();
+		bCrouchedForStealth = false;
+	}
+	if (UOutbreakNoiseEmitterComponent* Noise = Soldier->GetNoiseEmitterComponent())
+	{
+		Noise->SetLoudnessMultiplier(bQuiet ? Config->StealthNoiseMultiplier : 1.0f);
+	}
+
+	bOutShouldHide = bQuiet && NoticedLevel >= Config->StealthHideThreshold;
+}
+
+bool AOutbreakSquadAIController::GetCoverAnchorLocation(FVector& OutLocation) const
+{
+	const EOutbreakSquadCommandType Command = SquadMember ? SquadMember->GetActiveCommandType() : EOutbreakSquadCommandType::None;
+	if (Command == EOutbreakSquadCommandType::Defend || Command == EOutbreakSquadCommandType::Cover)
+	{
+		OutLocation = SquadMember->GetCurrentCommand().TargetLocation;
+		return true;
+	}
+	return false;
+}
+
+// --- Cover queries -------------------------------------------------------------------------------
+
+void AOutbreakSquadAIController::RequestCoverQueryIfNeeded(bool bNeedCover)
+{
+	const UOutbreakTeammateAIConfig* Config = GetAIConfig();
+	if (!bNeedCover || !HasRememberedThreat())
+	{
+		// Cover is relative to a threat; without one, old results are meaningless.
+		if (!HasRememberedThreat())
+		{
+			bHasCover = false;
+		}
+		return;
+	}
+
+	const double Now = GetTimeSeconds();
+	if (!Config->CoverQuery || bCoverQueryPending || Now - LastCoverQueryTime < Config->CoverQueryInterval || !GetPawn())
+	{
+		return;
+	}
+
+	FEnvQueryRequest Request(Config->CoverQuery, GetPawn());
+	bCoverQueryPending = Request.Execute(EEnvQueryRunMode::SingleResult, this, &ThisClass::HandleCoverQueryResult) != INDEX_NONE;
+	LastCoverQueryTime = Now;
+}
+
+void AOutbreakSquadAIController::HandleCoverQueryResult(TSharedPtr<FEnvQueryResult> Result)
+{
+	bCoverQueryPending = false;
+	bHasCover = Result.IsValid() && Result->IsSuccessful() && Result->Items.Num() > 0;
+	if (bHasCover)
+	{
+		CoverLocation = Result->GetItemAsLocation(0);
 	}
 }
 
@@ -226,6 +386,13 @@ void AOutbreakSquadAIController::UpdateOrderProgress()
 		}
 		break;
 
+	case EOutbreakSquadCommandType::Retreat:
+		if (bHasRetreatLocation && FVector::Dist2D(PawnLocation, RetreatLocation) <= Config->MoveArrivalRadius)
+		{
+			SquadMember->CompleteCommand();
+		}
+		break;
+
 	case EOutbreakSquadCommandType::Attack:
 	{
 		const AActor* Target = Command.TargetActor;
@@ -238,7 +405,7 @@ void AOutbreakSquadAIController::UpdateOrderProgress()
 	}
 
 	default:
-		// Follow and Hold last until replaced or cancelled.
+		// Follow, Hold, Defend and Cover last until replaced or cancelled.
 		break;
 	}
 }
@@ -283,12 +450,24 @@ void AOutbreakSquadAIController::UpdateBehavior()
 	Context.bHasThreat = CurrentThreat.IsValid();
 	Context.bLowHealth = HealthComponent && HealthComponent->GetHealth() < HealthComponent->GetMaxHealth() * Config->SurvivalHealthFraction;
 	Context.bHasPlayer = PlayerPawn != nullptr;
+	Context.bUnderFire = IsUnderFire();
+
+	// Cover is wanted when shot at, when hurt, or when ordered to defend or take cover.
+	const bool bNeedCover = Context.bUnderFire || Context.bLowHealth
+		|| Context.ActiveCommand == EOutbreakSquadCommandType::Cover
+		|| Context.ActiveCommand == EOutbreakSquadCommandType::Defend;
+	RequestCoverQueryIfNeeded(bNeedCover);
+	Context.bHasCover = bHasCover;
 	Context.DistanceToFollowLocation = PlayerPawn ? FVector::Dist2D(ControlledPawn->GetActorLocation(), ComputeFollowLocation()) : 0.0f;
 	Context.bCurrentlyFollowing = CurrentDecision.Behavior == EOutbreakTeammateBehavior::FollowPlayer;
 	Context.FollowStartDistance = Config->FollowStartDistance;
 	Context.FollowStopDistance = Config->FollowStopDistance;
 
-	const FOutbreakBehaviorDecision NewDecision = OutbreakTeammateBehavior::SelectBehavior(Context, Config->GetEffectivePriorityOrder());
+	bool bShouldHide = false;
+	UpdateStealth(bShouldHide);
+
+	FOutbreakBehaviorDecision NewDecision = OutbreakTeammateBehavior::SelectBehavior(Context, Config->GetEffectivePriorityOrder());
+	NewDecision.Behavior = OutbreakTeammateBehavior::ApplyStealthOverride(NewDecision.Behavior, bShouldHide);
 	const bool bBehaviorChanged = NewDecision.Behavior != CurrentDecision.Behavior;
 	CurrentDecision = NewDecision;
 	MoveLocation = ComputeMoveLocation(NewDecision.Behavior, bBehaviorChanged);
@@ -302,6 +481,44 @@ void AOutbreakSquadAIController::UpdateBehavior()
 
 // --- Positioning ---------------------------------------------------------------------------------
 
+void AOutbreakSquadAIController::GetSlot(int32& OutSlotIndex, int32& OutSlotCount) const
+{
+	OutSlotIndex = 0;
+	OutSlotCount = 1;
+	const UOutbreakSquadComponent* Squad = GetSquad();
+	if (!Squad)
+	{
+		return;
+	}
+
+	// Slots are shared among living teammates so the formation closes up when someone falls.
+	TArray<UOutbreakSquadMemberComponent*> LivingTeammates = Squad->GetTeammates();
+	LivingTeammates.RemoveAll([](const UOutbreakSquadMemberComponent* Member)
+	{
+		return Member->GetStatus() == EOutbreakSquadMemberStatus::Dead;
+	});
+	OutSlotIndex = FMath::Max(0, LivingTeammates.IndexOfByKey(SquadMember.Get()));
+	OutSlotCount = FMath::Max(1, LivingTeammates.Num());
+}
+
+bool AOutbreakSquadAIController::ProjectToNavigation(FVector& InOutLocation) const
+{
+	UNavigationSystemV1* NavigationSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!NavigationSystem || !NavigationSystem->GetDefaultNavDataInstance(FNavigationSystem::DontCreate))
+	{
+		// No navigation data (tests, or a level without a navmesh): accept the point as is.
+		return true;
+	}
+
+	FNavLocation Projected;
+	if (NavigationSystem->ProjectPointToNavigation(InOutLocation, Projected, FVector(100.0f, 100.0f, 250.0f)))
+	{
+		InOutLocation = Projected.Location;
+		return true;
+	}
+	return false;
+}
+
 FVector AOutbreakSquadAIController::ComputeFollowLocation() const
 {
 	const APawn* ControlledPawn = GetPawn();
@@ -312,20 +529,83 @@ FVector AOutbreakSquadAIController::ComputeFollowLocation() const
 		return ControlledPawn ? ControlledPawn->GetActorLocation() : FVector::ZeroVector;
 	}
 
-	// Slots are shared among living teammates so the formation closes up when someone falls.
-	TArray<UOutbreakSquadMemberComponent*> LivingTeammates = Squad->GetTeammates();
-	LivingTeammates.RemoveAll([](const UOutbreakSquadMemberComponent* Member)
-	{
-		return Member->GetStatus() == EOutbreakSquadMemberStatus::Dead;
-	});
+	int32 SlotIndex = 0;
+	int32 SlotCount = 1;
+	GetSlot(SlotIndex, SlotCount);
 
-	const int32 SlotIndex = FMath::Max(0, LivingTeammates.IndexOfByKey(SquadMember.Get()));
-	const UOutbreakTeammateAIConfig* Config = GetAIConfig();
-	return OutbreakSquadPositioning::ComputeFollowLocation(PlayerPawn->GetActorLocation(), PlayerPawn->GetActorRotation(),
-		SlotIndex, FMath::Max(1, LivingTeammates.Num()), Config->FollowDistance, Config->FollowSpacing, Config->FollowRowWidth);
+	const UOutbreakSquadSettings* Settings = GetDefault<UOutbreakSquadSettings>();
+	const EOutbreakFormation Formation = Squad->GetFormation();
+	FVector Slot = OutbreakSquadPositioning::ComputeFormationLocation(PlayerPawn->GetActorLocation(), PlayerPawn->GetActorRotation(),
+		Formation, SlotIndex, SlotCount, Settings->GetFormationSpacing(Formation));
+	if (ProjectToNavigation(Slot))
+	{
+		return Slot;
+	}
+
+	// The slot is off the navmesh (a wall, a narrow passage): fall back to single file behind the player.
+	FVector ColumnSlot = OutbreakSquadPositioning::ComputeFormationLocation(PlayerPawn->GetActorLocation(), PlayerPawn->GetActorRotation(),
+		EOutbreakFormation::Column, SlotIndex, SlotCount, Settings->GetFormationSpacing(EOutbreakFormation::Column));
+	return ProjectToNavigation(ColumnSlot) ? ColumnSlot : PlayerPawn->GetActorLocation();
 }
 
-FVector AOutbreakSquadAIController::ComputeMoveLocation(EOutbreakTeammateBehavior Behavior, bool bBehaviorChanged) const
+FVector AOutbreakSquadAIController::ComputeDefendLocation() const
+{
+	const FVector DefendPoint = SquadMember ? SquadMember->GetCurrentCommand().TargetLocation : GetPawn()->GetActorLocation();
+	const UOutbreakTeammateAIConfig* Config = GetAIConfig();
+
+	// Under fire, use cover if it is close enough to keep defending the point.
+	if (IsUnderFire() && bHasCover && FVector::Dist(CoverLocation, DefendPoint) <= Config->DefendRadius)
+	{
+		return CoverLocation;
+	}
+
+	// Otherwise spread around the point, facing out, so defenders don't stack on one spot.
+	int32 SlotIndex = 0;
+	int32 SlotCount = 1;
+	GetSlot(SlotIndex, SlotCount);
+	FVector Slot = DefendPoint + OutbreakSquadPositioning::ComputeFormationOffset(EOutbreakFormation::Defensive, SlotIndex, SlotCount,
+		FMath::Min(Config->DefendSpacing, Config->DefendRadius));
+	return ProjectToNavigation(Slot) ? Slot : DefendPoint;
+}
+
+FVector AOutbreakSquadAIController::ComputeRetreatLocation() const
+{
+	const APawn* ControlledPawn = GetPawn();
+	const FVector Self = ControlledPawn->GetActorLocation();
+
+	// Away from the threat if one is known; otherwise back, away from where the player faces.
+	FVector Away;
+	FVector ThreatLocation;
+	if (GetCoverThreatLocation(ThreatLocation))
+	{
+		Away = (Self - ThreatLocation).GetSafeNormal2D();
+	}
+	else if (const APawn* PlayerPawn = GetPlayerPawn())
+	{
+		Away = -PlayerPawn->GetActorForwardVector().GetSafeNormal2D();
+	}
+	else
+	{
+		Away = -ControlledPawn->GetActorForwardVector().GetSafeNormal2D();
+	}
+	if (Away.IsNearlyZero())
+	{
+		Away = -ControlledPawn->GetActorForwardVector().GetSafeNormal2D();
+	}
+
+	const float Distance = GetAIConfig()->RetreatDistance;
+	for (const float Fraction : { 1.0f, 0.6f, 0.3f })
+	{
+		FVector Candidate = Self + Away * Distance * Fraction;
+		if (ProjectToNavigation(Candidate))
+		{
+			return Candidate;
+		}
+	}
+	return Self;
+}
+
+FVector AOutbreakSquadAIController::ComputeMoveLocation(EOutbreakTeammateBehavior Behavior, bool bBehaviorChanged)
 {
 	const APawn* ControlledPawn = GetPawn();
 	const FVector PawnLocation = ControlledPawn->GetActorLocation();
@@ -333,16 +613,44 @@ FVector AOutbreakSquadAIController::ComputeMoveLocation(EOutbreakTeammateBehavio
 	// is not asked to re-path to a slightly different spot every update.
 	const FVector StopLocation = bBehaviorChanged ? PawnLocation : MoveLocation;
 
+	if (Behavior != EOutbreakTeammateBehavior::Retreat)
+	{
+		bHasRetreatLocation = false;
+	}
+
 	switch (Behavior)
 	{
 	case EOutbreakTeammateBehavior::FollowPlayer:
 	case EOutbreakTeammateBehavior::Regroup:
-	case EOutbreakTeammateBehavior::SeekSafety:
 		return ComputeFollowLocation();
+
+	case EOutbreakTeammateBehavior::SeekSafety:
+		return bHasCover ? CoverLocation : ComputeFollowLocation();
 
 	case EOutbreakTeammateBehavior::HoldPosition:
 	case EOutbreakTeammateBehavior::MoveToLocation:
 		return SquadMember ? SquadMember->GetCurrentCommand().TargetLocation : PawnLocation;
+
+	case EOutbreakTeammateBehavior::DefendPosition:
+		return ComputeDefendLocation();
+
+	case EOutbreakTeammateBehavior::TakeCover:
+		if (bHasCover)
+		{
+			return CoverLocation;
+		}
+		// No cover found (yet): hold the ordered position, or stay put.
+		return SquadMember && SquadMember->GetActiveCommandType() == EOutbreakSquadCommandType::Cover
+			? SquadMember->GetCurrentCommand().TargetLocation
+			: StopLocation;
+
+	case EOutbreakTeammateBehavior::Retreat:
+		if (bBehaviorChanged || !bHasRetreatLocation)
+		{
+			RetreatLocation = ComputeRetreatLocation();
+			bHasRetreatLocation = true;
+		}
+		return RetreatLocation;
 
 	case EOutbreakTeammateBehavior::AttackTarget:
 	{
@@ -362,6 +670,10 @@ FVector AOutbreakSquadAIController::ComputeMoveLocation(EOutbreakTeammateBehavio
 		const FVector FromTarget = (PawnLocation - TargetLocation).GetSafeNormal2D();
 		return TargetLocation + FromTarget * FMath::Min(Range * 0.75f, Distance);
 	}
+
+	case EOutbreakTeammateBehavior::Hiding:
+		// Freeze exactly where it was noticed.
+		return bBehaviorChanged ? PawnLocation : MoveLocation;
 
 	case EOutbreakTeammateBehavior::EngageThreat:
 	case EOutbreakTeammateBehavior::Idle:

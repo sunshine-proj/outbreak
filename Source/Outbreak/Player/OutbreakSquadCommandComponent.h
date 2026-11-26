@@ -4,11 +4,23 @@
 #include "Components/ActorComponent.h"
 #include "Engine/EngineTypes.h"
 #include "Squad/OutbreakSquadCommandTypes.h"
+#include "Squad/OutbreakSquadTypes.h"
 
 #include "OutbreakSquadCommandComponent.generated.h"
 
 class UOutbreakSquadComponent;
 class UOutbreakSquadMemberComponent;
+
+/** One entry of the squad command menu: an order, a formation, or the stealth toggle. */
+struct FOutbreakSquadMenuEntry
+{
+	bool bIsFormation = false;
+	bool bIsStealthToggle = false;
+	EOutbreakSquadCommandType Command = EOutbreakSquadCommandType::None;
+	EOutbreakFormation Formation = EOutbreakFormation::Wedge;
+
+	FText GetLabel() const;
+};
 
 /**
  * The local player's squad command interface (on AOutbreakPlayerController).
@@ -51,6 +63,49 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Squad|Commands")
 	void CancelCommands();
 
+	/** Switches the squad to its next formation. */
+	UFUNCTION(BlueprintCallable, Category = "Squad|Commands")
+	void CycleFormation();
+
+	UFUNCTION(BlueprintCallable, Category = "Squad|Commands")
+	void SetFormation(EOutbreakFormation Formation);
+
+	/** Turns squad stealth mode on or off. */
+	UFUNCTION(BlueprintCallable, Category = "Squad|Commands")
+	void ToggleStealthMode();
+
+	/** One line on how aware enemies are, e.g. "Enemies: 1 suspicious, 2 in combat", or "Enemies: unaware". */
+	FText BuildEnemyAwarenessText() const;
+
+	// --- Command menu (Phase 7.4) ---
+
+	UFUNCTION(BlueprintCallable, Category = "Squad|Menu")
+	void ToggleMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "Squad|Menu")
+	void CloseMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "Squad|Menu")
+	void MenuNext();
+
+	UFUNCTION(BlueprintCallable, Category = "Squad|Menu")
+	void MenuPrevious();
+
+	/** Carries out the highlighted entry and closes the menu. Returns false if nothing was done. */
+	UFUNCTION(BlueprintCallable, Category = "Squad|Menu")
+	bool MenuConfirm();
+
+	UFUNCTION(BlueprintPure, Category = "Squad|Menu")
+	bool IsMenuOpen() const { return bMenuOpen; }
+
+	int32 GetMenuIndex() const { return MenuIndex; }
+
+	/** Every order (except None), the stealth toggle, then every cycle formation. */
+	static TArray<FOutbreakSquadMenuEntry> GetMenuEntries();
+
+	/** Menu text for the HUD, or empty when closed. */
+	FText BuildMenuText() const;
+
 	const FOutbreakSquadSelection& GetSelection() const { return Selection; }
 
 	UFUNCTION(BlueprintPure, Category = "Squad|Commands")
@@ -81,4 +136,6 @@ private:
 
 	FOutbreakSquadSelection Selection;
 	FText LastFeedback;
+	bool bMenuOpen = false;
+	int32 MenuIndex = 0;
 };

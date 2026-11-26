@@ -16,8 +16,16 @@ enum class EOutbreakTeammateBehavior : uint8
 	Regroup,
 	AttackTarget,
 	EngageThreat,
-	/** Low health under threat: fall back to the player. */
-	SeekSafety
+	/** Low health under threat: fall back to cover, or to the player. */
+	SeekSafety,
+	/** Defend order: stay around the defended position. */
+	DefendPosition,
+	/** In cover from the threat (Cover order, or autonomously when under fire). */
+	TakeCover,
+	/** Retreat order: moving away from the threat. */
+	Retreat,
+	/** Squad stealth: an enemy is noticing this teammate, so it freezes in place. */
+	Hiding
 };
 
 /**
@@ -31,7 +39,7 @@ enum class EOutbreakBehaviorLayer : uint8
 	EmergencySurvival,
 	/** An active player order. */
 	ExplicitOrder,
-	/** A visible hostile. */
+	/** A visible hostile: take cover if under fire and cover is known, otherwise engage. */
 	ThreatResponse,
 	/** Too far from the follow position. */
 	FormationMaintenance,
@@ -47,6 +55,12 @@ struct FOutbreakBehaviorContext
 
 	bool bHasThreat = false;
 	bool bLowHealth = false;
+
+	/** Took damage recently. */
+	bool bUnderFire = false;
+
+	/** A cover position from the current threat is known. */
+	bool bHasCover = false;
 	bool bHasPlayer = false;
 
 	/** Distance from the member to its follow position near the player. */
@@ -85,4 +99,11 @@ namespace OutbreakTeammateBehavior
 		const TArray<EOutbreakBehaviorLayer>& PriorityOrder);
 
 	OUTBREAK_API FText GetBehaviorDisplayName(EOutbreakTeammateBehavior Behavior);
+
+	/**
+	 * Squad stealth: when an enemy is noticing the teammate (bShouldHide), movement behaviours
+	 * (following, moving, regrouping, retreating, idling) become Hiding so it doesn't give the squad
+	 * away. Survival, holding, defending, cover and attack orders are kept.
+	 */
+	OUTBREAK_API EOutbreakTeammateBehavior ApplyStealthOverride(EOutbreakTeammateBehavior Behavior, bool bShouldHide);
 }

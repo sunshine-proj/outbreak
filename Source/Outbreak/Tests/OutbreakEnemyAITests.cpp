@@ -63,25 +63,40 @@ using namespace OutbreakEnemyAITests;
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FOutbreakEnemyStateRulesTest, "Outbreak.Enemy.Behavior.StateSelection",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
+/** Phase 8 awareness states: Idle / Patrol < Suspicious < Investigating < Combat, then Searching after losing a target. */
 bool FOutbreakEnemyStateRulesTest::RunTest(const FString& Parameters)
 {
 	FOutbreakEnemyStateContext Context;
+	Context.SuspiciousThreshold = 0.2f;
+	Context.InvestigateThreshold = 0.5f;
+	Context.LoseTargetTime = 3.0f;
 	TestTrue(TEXT("No route, nothing sensed: idle"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Idle);
 
 	Context.bHasPatrolRoute = true;
 	TestTrue(TEXT("With a route: patrol"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Patrol);
 
-	Context.bHasAlert = true;
-	Context.AlertElapsed = 1.0f;
-	Context.AlertDuration = 10.0f;
-	TestTrue(TEXT("Fresh alert beats patrol"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Alerted);
+	Context.Suspicion = 0.3f;
+	Context.bHasStimulusLocation = true;
+	TestTrue(TEXT("Mild suspicion: stop and look"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Suspicious);
 
-	Context.bHasVisibleTarget = true;
-	TestTrue(TEXT("Visible hostile beats everything"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Combat);
+	Context.Suspicion = 0.6f;
+	TestTrue(TEXT("Strong suspicion: investigate"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Investigating);
 
-	Context.bHasVisibleTarget = false;
-	Context.AlertElapsed = 11.0f;
-	TestTrue(TEXT("Expired alert: back to patrol"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Patrol);
+	Context.bHasStimulusLocation = false;
+	TestTrue(TEXT("Nowhere to go: only suspicious"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Suspicious);
+
+	Context.bHasDetectedTarget = true;
+	Context.TimeSinceTargetSeen = 1.0f;
+	TestTrue(TEXT("Detected target: combat"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Combat);
+
+	Context.TimeSinceTargetSeen = 5.0f;
+	Context.bSearching = true;
+	TestTrue(TEXT("Lost for too long: search"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Searching);
+
+	Context.bHasDetectedTarget = false;
+	Context.bSearching = false;
+	Context.Suspicion = 0.0f;
+	TestTrue(TEXT("Search over, calm again: patrol"), OutbreakEnemyBehavior::SelectState(Context) == EOutbreakEnemyState::Patrol);
 	return true;
 }
 
@@ -239,7 +254,7 @@ bool FOutbreakEnemyConfigurationTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FOutbreakEnemyControllerTest, "Outbreak.Enemy.Controller.PatrolAlertAndDeath",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
-/** Patrol advances along the route, an alert (noise, damage, lost target) takes over, death stops the enemy. */
+/** Patrol advances along the route, a strong stimulus (noise, unseen damage) makes it investigate, death stops the enemy. */
 bool FOutbreakEnemyControllerTest::RunTest(const FString& Parameters)
 {
 	FOutbreakTestWorld TestWorld;
@@ -271,13 +286,13 @@ bool FOutbreakEnemyControllerTest::RunTest(const FString& Parameters)
 	Controller->UpdateBehavior();
 	TestEqual(TEXT("Loops back to point 0"), Controller->GetPatrolIndex(), 0);
 
-	// A heard shot (or a hit from an unseen attacker) raises an alert.
+	// A loud nearby noise (or a hit from an unseen attacker) makes it investigate at once.
 	const FVector Noise(500.0f, 800.0f, 0.0f);
 	Controller->ReportAlert(Noise);
 	Controller->UpdateBehavior();
-	TestTrue(TEXT("Alerted"), Controller->GetCurrentState() == EOutbreakEnemyState::Alerted);
+	TestTrue(TEXT("Investigating"), Controller->GetCurrentState() == EOutbreakEnemyState::Investigating);
 	TestTrue(TEXT("Goes to the noise"), Controller->GetMoveLocation().Equals(Noise, 1.0));
-	TestTrue(TEXT("Hurries when alerted"), Enemy->IsSprinting());
+	TestTrue(TEXT("Hurries when fully alarmed"), Enemy->IsSprinting());
 
 	// Damage from a hostile it cannot see also raises an alert towards the attacker.
 	AOutbreakPlayerCharacter* Player = TestWorld.Spawn<AOutbreakPlayerCharacter>(FVector(-2000.0f, 0.0f, 0.0f));
@@ -285,7 +300,7 @@ bool FOutbreakEnemyControllerTest::RunTest(const FString& Parameters)
 	{
 		FDamageEvent DamageEvent;
 		Enemy->TakeDamage(10.0f, DamageEvent, nullptr, Player);
-		TestTrue(TEXT("Alert moved towards the attacker"), Controller->GetAlertLocation().Equals(Player->GetActorLocation(), 1.0));
+		TestTrue(TEXT("Stimulus moved towards the attacker"), Controller->GetStimulusLocation().Equals(Player->GetActorLocation(), 1.0));
 		TestEqual(TEXT("Damage applied"), Enemy->GetHealthComponent()->GetHealth(), 140.0f);
 	}
 

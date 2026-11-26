@@ -36,7 +36,20 @@ public:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
 	TSoftClassPtr<AOutbreakTeammateCharacter> DefaultTeammateClass;
 
-	/** Distance between teammates when the squad is first spawned (formations come in Phase 7). */
+	/** Distance between teammates when the squad is first spawned. */
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Spawning", meta = (ClampMin = "50.0", Units = "cm"))
 	float InitialSpawnSpacing = 150.0f;
+
+	/** Slot spacing per formation. Formations without an entry use DefaultFormationSpacing. */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Formations")
+	TArray<FOutbreakFormationSpacing> FormationSpacings;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Formations", meta = (ClampMin = "50.0", Units = "cm"))
+	float DefaultFormationSpacing = 200.0f;
+
+	float GetFormationSpacing(EOutbreakFormation Formation) const;
+
+	/** In stealth mode, seconds without new compromising events before the squad goes quiet again. */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Stealth", meta = (ClampMin = "0.0", Units = "s"))
+	float CompromiseDuration = 15.0f;
 };

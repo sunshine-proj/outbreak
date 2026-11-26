@@ -6,13 +6,21 @@ namespace OutbreakEnemyBehavior
 {
 	EOutbreakEnemyState SelectState(const FOutbreakEnemyStateContext& Context)
 	{
-		if (Context.bHasVisibleTarget)
+		if (Context.bHasDetectedTarget && Context.TimeSinceTargetSeen <= Context.LoseTargetTime)
 		{
 			return EOutbreakEnemyState::Combat;
 		}
-		if (Context.bHasAlert && Context.AlertElapsed < Context.AlertDuration)
+		if (Context.bSearching)
 		{
-			return EOutbreakEnemyState::Alerted;
+			return EOutbreakEnemyState::Searching;
+		}
+		if (Context.bHasStimulusLocation && Context.Suspicion >= Context.InvestigateThreshold)
+		{
+			return EOutbreakEnemyState::Investigating;
+		}
+		if (Context.Suspicion >= Context.SuspiciousThreshold)
+		{
+			return EOutbreakEnemyState::Suspicious;
 		}
 		return Context.bHasPatrolRoute ? EOutbreakEnemyState::Patrol : EOutbreakEnemyState::Idle;
 	}
@@ -21,10 +29,12 @@ namespace OutbreakEnemyBehavior
 	{
 		switch (State)
 		{
-		case EOutbreakEnemyState::Patrol:  return LOCTEXT("Patrol", "Patrol");
-		case EOutbreakEnemyState::Alerted: return LOCTEXT("Alerted", "Alerted");
-		case EOutbreakEnemyState::Combat:  return LOCTEXT("Combat", "Combat");
-		default:                           return LOCTEXT("Idle", "Idle");
+		case EOutbreakEnemyState::Patrol:        return LOCTEXT("Patrol", "Patrol");
+		case EOutbreakEnemyState::Suspicious:    return LOCTEXT("Suspicious", "Suspicious");
+		case EOutbreakEnemyState::Investigating: return LOCTEXT("Investigating", "Investigating");
+		case EOutbreakEnemyState::Combat:        return LOCTEXT("Combat", "Combat");
+		case EOutbreakEnemyState::Searching:     return LOCTEXT("Searching", "Searching");
+		default:                                 return LOCTEXT("Idle", "Idle");
 		}
 	}
 }

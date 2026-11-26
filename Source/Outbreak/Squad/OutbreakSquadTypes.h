@@ -26,6 +26,37 @@ struct OUTBREAK_API FOutbreakSquadSizeLimits
 	bool Contains(int32 SquadSize) const { return SquadSize >= MinSquadSize && SquadSize <= MaxSquadSize; }
 };
 
+/** Squad formations (Phase 7). Teammates take slots relative to the player. */
+UENUM(BlueprintType)
+enum class EOutbreakFormation : uint8
+{
+	/** Single file behind the player. Also the fallback for slots off the navmesh (narrow passages). */
+	Column,
+	/** A V opening behind the player. */
+	Wedge,
+	/** Abreast of the player. */
+	Line,
+	/** A ring around the player, facing out. */
+	Defensive,
+	/** A wide, irregular wedge: harder to hit with one burst or explosion. */
+	Loose,
+	/** A tight, staggered file used by squad stealth mode (not part of the formation cycle). */
+	Stealth
+};
+
+/** Slot spacing for one formation. */
+USTRUCT(BlueprintType)
+struct OUTBREAK_API FOutbreakFormationSpacing
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Formation")
+	EOutbreakFormation Formation = EOutbreakFormation::Wedge;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Formation", meta = (ClampMin = "50.0", Units = "cm"))
+	float Spacing = 200.0f;
+};
+
 /** A squad member's condition, derived from its health. */
 UENUM(BlueprintType)
 enum class EOutbreakSquadMemberStatus : uint8

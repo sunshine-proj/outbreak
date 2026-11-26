@@ -120,6 +120,9 @@ namespace OutbreakSquadCommands
 		case EOutbreakSquadCommandType::Move:    return LOCTEXT("Move", "Move");
 		case EOutbreakSquadCommandType::Regroup: return LOCTEXT("Regroup", "Regroup");
 		case EOutbreakSquadCommandType::Attack:  return LOCTEXT("Attack", "Attack");
+		case EOutbreakSquadCommandType::Defend:  return LOCTEXT("Defend", "Defend");
+		case EOutbreakSquadCommandType::Cover:   return LOCTEXT("Cover", "Cover");
+		case EOutbreakSquadCommandType::Retreat: return LOCTEXT("Retreat", "Retreat");
 		default:                                 return LOCTEXT("None", "Autonomous");
 		}
 	}

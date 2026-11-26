@@ -135,32 +135,60 @@ bool FOutbreakFollowHysteresisTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FOutbreakFollowPositionsTest, "Outbreak.AI.Positioning.FollowSlots",
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FOutbreakFollowPositionsTest, "Outbreak.AI.Positioning.FormationSlots",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
-/** Follow slots are behind the player, distinct, and work for any number of teammates. */
+/** Every formation gives distinct slots for any number of teammates, with its characteristic shape. */
 bool FOutbreakFollowPositionsTest::RunTest(const FString& Parameters)
 {
-	for (int32 Count = 1; Count <= 9; ++Count)
+	const float Spacing = 200.0f;
+	const EOutbreakFormation Formations[] = {
+		EOutbreakFormation::Column, EOutbreakFormation::Wedge, EOutbreakFormation::Line,
+		EOutbreakFormation::Defensive, EOutbreakFormation::Loose };
+
+	for (const EOutbreakFormation Formation : Formations)
 	{
-		TArray<FVector> Offsets;
-		for (int32 Index = 0; Index < Count; ++Index)
+		for (int32 Count = 1; Count <= 9; ++Count)
 		{
-			const FVector Offset = OutbreakSquadPositioning::ComputeFollowOffset(Index, Count, 300.0f, 150.0f, 3);
-			TestTrue(FString::Printf(TEXT("%d teammates: slot %d behind the player"), Count, Index), Offset.X <= -300.0f);
-			for (const FVector& Other : Offsets)
+			TArray<FVector> Offsets;
+			for (int32 Index = 0; Index < Count; ++Index)
 			{
-				TestTrue(FString::Printf(TEXT("%d teammates: slot %d distinct"), Count, Index), FVector::Dist(Offset, Other) >= 149.0f);
+				const FVector Offset = OutbreakSquadPositioning::ComputeFormationOffset(Formation, Index, Count, Spacing);
+				TestTrue(FString::Printf(TEXT("Formation %d, %d slots: slot %d clear of the leader"), static_cast<int32>(Formation), Count, Index),
+					Offset.Size2D() >= Spacing * 0.2f);
+				for (const FVector& Other : Offsets)
+				{
+					TestTrue(FString::Printf(TEXT("Formation %d, %d slots: slot %d distinct"), static_cast<int32>(Formation), Count, Index),
+						FVector::Dist2D(Offset, Other) >= Spacing * 0.5f);
+				}
+				Offsets.Add(Offset);
 			}
-			Offsets.Add(Offset);
 		}
 	}
 
-	const FVector Single = OutbreakSquadPositioning::ComputeFollowOffset(0, 1, 300.0f, 150.0f, 3);
-	TestEqual(TEXT("A single teammate is centred"), static_cast<double>(Single.Y), 0.0, 0.01);
+	for (int32 Index = 0; Index < 5; ++Index)
+	{
+		const FVector Column = OutbreakSquadPositioning::ComputeFormationOffset(EOutbreakFormation::Column, Index, 5, Spacing);
+		TestTrue(TEXT("Column: single file behind"), Column.X < 0.0f && FMath::IsNearlyZero(Column.Y));
 
-	// The slot rotates with the player's yaw: facing +Y, "behind" is -Y.
-	const FVector World = OutbreakSquadPositioning::ComputeFollowLocation(FVector::ZeroVector, FRotator(0.0f, 90.0f, 0.0f), 0, 1, 300.0f, 150.0f, 3);
+		const FVector Wedge = OutbreakSquadPositioning::ComputeFormationOffset(EOutbreakFormation::Wedge, Index, 5, Spacing);
+		TestTrue(TEXT("Wedge: behind and to the side"), Wedge.X < 0.0f && !FMath::IsNearlyZero(Wedge.Y));
+
+		const FVector Line = OutbreakSquadPositioning::ComputeFormationOffset(EOutbreakFormation::Line, Index, 5, Spacing);
+		TestTrue(TEXT("Line: abreast"), FMath::Abs(Line.X) < Spacing * 0.5f);
+	}
+
+	const float Radius0 = OutbreakSquadPositioning::ComputeFormationOffset(EOutbreakFormation::Defensive, 0, 6, Spacing).Size2D();
+	const float Radius3 = OutbreakSquadPositioning::ComputeFormationOffset(EOutbreakFormation::Defensive, 3, 6, Spacing).Size2D();
+	TestEqual(TEXT("Defensive: a ring"), Radius0, Radius3, 0.1f);
+
+	TestTrue(TEXT("Loose is deterministic"),
+		OutbreakSquadPositioning::ComputeFormationOffset(EOutbreakFormation::Loose, 3, 5, Spacing).Equals(
+			OutbreakSquadPositioning::ComputeFormationOffset(EOutbreakFormation::Loose, 3, 5, Spacing)));
+
+	// Slots rotate with the player's yaw: facing +Y, the column is behind on -Y.
+	const FVector World = OutbreakSquadPositioning::ComputeFormationLocation(FVector::ZeroVector, FRotator(0.0f, 90.0f, 0.0f),
+		EOutbreakFormation::Column, 0, 1, 300.0f);
 	TestEqual(TEXT("Rotated slot X"), static_cast<double>(World.X), 0.0, 0.1);
 	TestEqual(TEXT("Rotated slot Y"), static_cast<double>(World.Y), -300.0, 0.1);
 	return true;

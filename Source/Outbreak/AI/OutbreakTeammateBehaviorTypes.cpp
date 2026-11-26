@@ -62,6 +62,15 @@ namespace OutbreakTeammateBehavior
 			case EOutbreakSquadCommandType::Attack:
 				OutBehavior = EOutbreakTeammateBehavior::AttackTarget;
 				return true;
+			case EOutbreakSquadCommandType::Defend:
+				OutBehavior = EOutbreakTeammateBehavior::DefendPosition;
+				return true;
+			case EOutbreakSquadCommandType::Cover:
+				OutBehavior = EOutbreakTeammateBehavior::TakeCover;
+				return true;
+			case EOutbreakSquadCommandType::Retreat:
+				OutBehavior = EOutbreakTeammateBehavior::Retreat;
+				return true;
 			default:
 				return false;
 			}
@@ -69,7 +78,9 @@ namespace OutbreakTeammateBehavior
 		case EOutbreakBehaviorLayer::ThreatResponse:
 			if (Context.bHasThreat)
 			{
-				OutBehavior = EOutbreakTeammateBehavior::EngageThreat;
+				OutBehavior = Context.bUnderFire && Context.bHasCover
+					? EOutbreakTeammateBehavior::TakeCover
+					: EOutbreakTeammateBehavior::EngageThreat;
 				return true;
 			}
 			return false;
@@ -110,6 +121,25 @@ namespace OutbreakTeammateBehavior
 		return Decision;
 	}
 
+	EOutbreakTeammateBehavior ApplyStealthOverride(EOutbreakTeammateBehavior Behavior, bool bShouldHide)
+	{
+		if (!bShouldHide)
+		{
+			return Behavior;
+		}
+		switch (Behavior)
+		{
+		case EOutbreakTeammateBehavior::Idle:
+		case EOutbreakTeammateBehavior::FollowPlayer:
+		case EOutbreakTeammateBehavior::MoveToLocation:
+		case EOutbreakTeammateBehavior::Regroup:
+		case EOutbreakTeammateBehavior::Retreat:
+			return EOutbreakTeammateBehavior::Hiding;
+		default:
+			return Behavior;
+		}
+	}
+
 	FText GetBehaviorDisplayName(EOutbreakTeammateBehavior Behavior)
 	{
 		switch (Behavior)
@@ -121,6 +151,10 @@ namespace OutbreakTeammateBehavior
 		case EOutbreakTeammateBehavior::AttackTarget:   return LOCTEXT("Attacking", "Attacking");
 		case EOutbreakTeammateBehavior::EngageThreat:   return LOCTEXT("Engaging", "Engaging");
 		case EOutbreakTeammateBehavior::SeekSafety:     return LOCTEXT("FallingBack", "Falling back");
+		case EOutbreakTeammateBehavior::DefendPosition: return LOCTEXT("Defending", "Defending");
+		case EOutbreakTeammateBehavior::TakeCover:      return LOCTEXT("InCover", "In cover");
+		case EOutbreakTeammateBehavior::Retreat:        return LOCTEXT("Retreating", "Retreating");
+		case EOutbreakTeammateBehavior::Hiding:         return LOCTEXT("Hiding", "Hiding");
 		default:                                        return LOCTEXT("Idle", "Idle");
 		}
 	}

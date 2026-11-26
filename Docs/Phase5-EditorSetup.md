@@ -25,7 +25,7 @@ Combat         the shared "Outbreak: Combat" service (aim, fire, reload)
 
 If `BT_Teammate` was already built, re-add the renamed services there.
 
-**Weapon-fire noise.** Each shot reports an AI hearing event (`FireNoiseLoudness` and `FireNoiseMaxRange` on the weapon definition). This is the minimal Phase 5 hook; the full noise system replaces it in Phase 8.
+**Weapon-fire noise.** Each shot reports an AI hearing event (`FireNoiseLoudness` on the weapon definition). This was the minimal Phase 5 hook. Phase 8 replaced it with the full noise system and changed the enemy states (Alerted became Suspicious / Investigating / Searching): see [Phase8-EditorSetup.md](Phase8-EditorSetup.md).
 
 ## 1. Build and run the automation tests
 

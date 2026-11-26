@@ -4,6 +4,7 @@
 #include "Characters/OutbreakMovementSettings.h"
 #include "Combat/OutbreakHealthComponent.h"
 #include "Engine/DataAsset.h"
+#include "Stealth/OutbreakVisibility.h"
 
 #include "OutbreakEnemyDefinition.generated.h"
 
@@ -73,9 +74,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Perception", meta = (ClampMin = "0.0", Units = "s"))
 	float SightMaxAge = 5.0f;
 
-	/** Hearing range for a noise of loudness 1. 0 = deaf. */
+	/**
+	 * Engine hearing range for a noise of loudness 1 (an upper bound; each noise also has its own
+	 * audible range from Project Settings → Outbreak Stealth). 0 = deaf.
+	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Perception", meta = (ClampMin = "0.0", Units = "cm"))
-	float HearingRange = 3000.0f;
+	float HearingRange = 6000.0f;
+
+	/** Scales how alarming heard noises are (enemy-specific hearing sensitivity). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Perception", meta = (ClampMin = "0.0"))
+	float HearingSensitivity = 1.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Perception", meta = (ClampMin = "0.0", Units = "s"))
 	float HearingMaxAge = 3.0f;
@@ -86,15 +94,68 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior")
 	TObjectPtr<UBehaviorTree> BehaviorTree;
 
-	/** Seconds an alert lasts without a new stimulus. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (ClampMin = "0.0", Units = "s"))
-	float AlertDuration = 12.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (ClampMin = "0.0", Units = "s"))
 	float PatrolWaitTime = 2.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (ClampMin = "10.0", Units = "cm"))
 	float PatrolAcceptanceRadius = 100.0f;
+
+	// --- Detection (Phase 8) ---
+
+	/** How visibility (light, exposure, movement, distance, field of view, stance) is weighed. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection")
+	FOutbreakVisibilityWeights VisibilityWeights;
+
+	/** Detection gained per second while seeing a fully visible target. 1 = detected after one second. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection", meta = (ClampMin = "0.0"))
+	float SightDetectionRate = 1.5f;
+
+	/** Detection lost per second while a target is not seen. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection", meta = (ClampMin = "0.0"))
+	float DetectionDecayRate = 0.3f;
+
+	/** Suspicion lost per second. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection", meta = (ClampMin = "0.0"))
+	float SuspicionDecayRate = 0.08f;
+
+	/** Suspicion a heard noise adds per unit of perceived loudness. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection", meta = (ClampMin = "0.0"))
+	float NoiseSuspicionGain = 0.8f;
+
+	/** Suspicion at which the enemy stops and looks. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SuspiciousThreshold = 0.2f;
+
+	/** Suspicion at which the enemy goes to investigate. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float InvestigateThreshold = 0.5f;
+
+	/** Suspicion at which an investigation is urgent (sprint). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float UrgentThreshold = 0.9f;
+
+	/** Seconds a detected target can be out of sight before it counts as lost. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Detection", meta = (ClampMin = "0.0", Units = "s"))
+	float LoseTargetTime = 3.0f;
+
+	// --- Searching and alerts ---
+
+	/** Seconds spent searching after losing a target. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Search", meta = (ClampMin = "0.0", Units = "s"))
+	float SearchDuration = 15.0f;
+
+	/** Search points are picked within this radius of the last known position. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Search", meta = (ClampMin = "0.0", Units = "cm"))
+	float SearchRadius = 800.0f;
+
+	/** Seconds spent looking around at each search point. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Search", meta = (ClampMin = "0.0", Units = "s"))
+	float SearchPointWait = 1.5f;
+
+	/** Enemies within this distance are alerted when this one detects a hostile. 0 = no propagation. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Search", meta = (ClampMin = "0.0", Units = "cm"))
+	float AlertPropagationRadius = 2000.0f;
 
 	// --- Combat ---
 

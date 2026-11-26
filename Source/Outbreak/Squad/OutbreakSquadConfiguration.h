@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Squad/OutbreakSquadTypes.h"
 #include "Weapons/OutbreakWeaponTypes.h"
 
 #include "OutbreakSquadConfiguration.generated.h"
@@ -74,4 +75,8 @@ public:
 	/** Used for teammate slots beyond the Teammates list. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Members")
 	FOutbreakSquadMemberConfig FillerTeammate;
+
+	/** Formation at mission start. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Formation")
+	EOutbreakFormation InitialFormation = EOutbreakFormation::Wedge;
 };

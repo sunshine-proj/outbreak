@@ -48,6 +48,7 @@ void AOutbreakPlayerController::RefreshSquadPanel()
 	if (SquadCommandComponent)
 	{
 		HUDWidget->SetSquadStatus(SquadCommandComponent->BuildSquadStatusText());
+		HUDWidget->SetSquadMenu(SquadCommandComponent->BuildMenuText());
 	}
 	// The game state replicates the mission status; reading it here also covers late replication.
 	if (const AOutbreakGameState* GameState = GetWorld()->GetGameState<AOutbreakGameState>())

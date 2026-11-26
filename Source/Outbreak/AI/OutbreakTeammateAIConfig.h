@@ -7,6 +7,7 @@
 #include "OutbreakTeammateAIConfig.generated.h"
 
 class UBehaviorTree;
+class UEnvQuery;
 
 /**
  * Teammate AI tuning: perception, decision priorities, following, order completion and combat.
@@ -59,19 +60,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Perception", meta = (ClampMin = "0.0", Units = "s"))
 	float SightMaxAge = 5.0f;
 
-	// --- Following and player distance ---
-
-	/** Distance behind the player of the first follow row. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Following", meta = (ClampMin = "50.0", Units = "cm"))
-	float FollowDistance = 300.0f;
-
-	/** Gap between follow positions, so teammates don't converge on one spot. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Following", meta = (ClampMin = "50.0", Units = "cm"))
-	float FollowSpacing = 150.0f;
-
-	/** Teammates per follow row. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Following", meta = (ClampMin = "1"))
-	int32 FollowRowWidth = 3;
+	// --- Following and player distance (slots come from the squad formation) ---
 
 	/** Start moving when farther than this from the follow position. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Following", meta = (ClampMin = "0.0", Units = "cm"))
@@ -102,4 +91,47 @@ public:
 	/** With no target, reload when the magazine is below this fraction. An empty magazine always reloads. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float IdleReloadFraction = 0.5f;
+
+	// --- Cover, defence and retreat (Phase 7) ---
+
+	/**
+	 * EQS query returning cover from the "Outbreak: Threat" context near the "Outbreak: Cover Anchor"
+	 * context (Docs/Phase7-EditorSetup.md). Empty = no cover: Cover orders hold position instead.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cover")
+	TObjectPtr<UEnvQuery> CoverQuery;
+
+	/** Minimum seconds between cover queries per teammate. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cover", meta = (ClampMin = "0.1", Units = "s"))
+	float CoverQueryInterval = 1.5f;
+
+	/** Seconds a threat's last known position is remembered for cover and retreat. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cover", meta = (ClampMin = "0.0", Units = "s"))
+	float ThreatMemory = 10.0f;
+
+	/** A teammate damaged within this many seconds counts as under fire and seeks cover. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cover", meta = (ClampMin = "0.0", Units = "s"))
+	float UnderFireMemory = 3.0f;
+
+	/** Defenders keep within this distance of the defended position (cover included). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cover", meta = (ClampMin = "100.0", Units = "cm"))
+	float DefendRadius = 800.0f;
+
+	/** Defenders spread around the defended position with this spacing. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cover", meta = (ClampMin = "50.0", Units = "cm"))
+	float DefendSpacing = 250.0f;
+
+	// --- Squad stealth (Phase 8) ---
+
+	/** Footstep loudness multiplier in squad stealth mode (on top of crouching). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stealth", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float StealthNoiseMultiplier = 0.5f;
+
+	/** In stealth mode, freeze when any enemy's detection of this teammate reaches this level. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stealth", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float StealthHideThreshold = 0.25f;
+
+	/** How far a retreat moves away from the threat. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cover", meta = (ClampMin = "100.0", Units = "cm"))
+	float RetreatDistance = 1500.0f;
 };

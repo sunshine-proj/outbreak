@@ -37,6 +37,7 @@ void UOutbreakHUDWidget::NativeOnInitialized()
 	}
 	SetInteractionPrompt(FText::GetEmpty());
 	SetMissionStatus(FOutbreakMissionStatus());
+	SetSquadMenu(FText::GetEmpty());
 }
 
 void UOutbreakHUDWidget::BuildDefaultLayout()
@@ -70,6 +71,9 @@ void UOutbreakHUDWidget::BuildDefaultLayout()
 
 	const FAnchors TopLeft(0.0f, 0.0f);
 	SquadStatusText = AddText(TEXT("SquadStatusText"), FText::GetEmpty(), TopLeft, FVector2D(0.0f, 0.0f), FVector2D(40.0f, 40.0f));
+
+	const FAnchors LeftCentre(0.0f, 0.5f);
+	SquadMenuText = AddText(TEXT("SquadMenuText"), FText::GetEmpty(), LeftCentre, FVector2D(0.0f, 0.5f), FVector2D(40.0f, 0.0f));
 
 	const FAnchors TopCentre(0.5f, 0.0f);
 	ObjectiveText = AddText(TEXT("ObjectiveText"), FText::GetEmpty(), TopCentre, FVector2D(0.5f, 0.0f), FVector2D(0.0f, 40.0f));
@@ -136,6 +140,15 @@ void UOutbreakHUDWidget::SetSquadStatus(const FText& SquadStatus)
 	{
 		SquadStatusText->SetText(SquadStatus);
 		SquadStatusText->SetVisibility(SquadStatus.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UOutbreakHUDWidget::SetSquadMenu(const FText& MenuText)
+{
+	if (SquadMenuText)
+	{
+		SquadMenuText->SetText(MenuText);
+		SquadMenuText->SetVisibility(MenuText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
 }
 

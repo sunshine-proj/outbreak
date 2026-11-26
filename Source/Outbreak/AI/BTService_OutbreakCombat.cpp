@@ -68,6 +68,12 @@ void UBTService_OutbreakCombat::TickNode(UBehaviorTreeComponent& OwnerComp, uint
 			Agent->GetEngagementRange(), bAimed, Weapons->CanFire());
 	}
 
+	if (bShouldFire && !Agent->IsFireAllowed())
+	{
+		// Holding fire (squad stealth): keep the target covered without giving the squad away.
+		bShouldFire = false;
+	}
+
 	if (bShouldFire)
 	{
 		// Automatic modes keep firing from one StartFire; semi-automatic modes fire once per call,

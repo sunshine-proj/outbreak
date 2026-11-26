@@ -9,6 +9,7 @@
 
 #include "OutbreakCharacter.generated.h"
 
+class UOutbreakNoiseEmitterComponent;
 class UOutbreakSquadMemberComponent;
 class UOutbreakWeaponComponent;
 
@@ -80,6 +81,8 @@ public:
 
 	UOutbreakSquadMemberComponent* GetSquadMemberComponent() const { return SquadMemberComponent; }
 
+	UOutbreakNoiseEmitterComponent* GetNoiseEmitterComponent() const { return NoiseEmitterComponent; }
+
 protected:
 
 	/** Called on every machine when health decreases. Delta is negative. */
@@ -103,6 +106,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Squad")
 	TObjectPtr<UOutbreakSquadMemberComponent> SquadMemberComponent;
+
+	/** Footsteps and other gameplay noise (Phase 8). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stealth")
+	TObjectPtr<UOutbreakNoiseEmitterComponent> NoiseEmitterComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Team")
 	EOutbreakTeam Team = EOutbreakTeam::Player;

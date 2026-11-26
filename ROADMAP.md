@@ -69,7 +69,7 @@ Do not mark tasks complete unless their acceptance criteria are satisfied.
 - [-] Configure initial game module. — written, not compiled (engine not installed)
 - [ ] Configure project settings.
 - [-] Configure Enhanced Input. — default input classes set in `Config/DefaultInput.ini`; not verified
-- [ ] Configure collision channels.
+- [ ] Configure collision channels. (Interim: character capsules block Visibility so traces hit them; a weapon trace channel should replace this, see D-015.)
 - [-] Configure logging categories. — written, not compiled (engine not installed)
 - [ ] Create initial playable map.
 - [ ] Verify project startup.
@@ -448,29 +448,29 @@ Additional verification:
 
 ### 7.1 Cover
 
-- [ ] Implement cover position queries (EQS).
-- [ ] Implement teammate combat positioning.
+- [-] Implement cover position queries (EQS). — C++ written, not compiled (engine not installed). EQS contexts in C++; query asset pending (see `Docs/Phase7-EditorSetup.md`)
+- [-] Implement teammate combat positioning. — C++ written, not compiled (engine not installed). Cover when under fire, hurt, defending or ordered
 
 ### 7.2 Advanced Squad Commands
 
-- [ ] Implement Defend command.
-- [ ] Implement Cover command.
-- [ ] Implement Retreat command.
+- [-] Implement Defend command. — C++ written, not compiled (engine not installed)
+- [-] Implement Cover command. — C++ written, not compiled (engine not installed)
+- [-] Implement Retreat command. — C++ written, not compiled (engine not installed)
 
 ### 7.3 Formations
 
-- [ ] Implement Column formation.
-- [ ] Implement Wedge formation.
-- [ ] Implement Line formation.
-- [ ] Implement Defensive formation.
-- [ ] Implement Loose formation.
-- [ ] Implement formation spacing configuration.
-- [ ] Implement formation switching.
-- [ ] Test formations with different squad sizes.
+- [-] Implement Column formation. — C++ written, not compiled (engine not installed)
+- [-] Implement Wedge formation. — C++ written, not compiled (engine not installed)
+- [-] Implement Line formation. — C++ written, not compiled (engine not installed)
+- [-] Implement Defensive formation. — C++ written, not compiled (engine not installed)
+- [-] Implement Loose formation. — C++ written, not compiled (engine not installed)
+- [-] Implement formation spacing configuration. — C++ written, not compiled (engine not installed). Per formation in project settings
+- [-] Implement formation switching. — C++ written, not compiled (engine not installed). Key, menu, and per-mission initial formation
+- [-] Test formations with different squad sizes. — automation tests written (`Outbreak.AI.Positioning.FormationSlots`, `Outbreak.Squad.Formation.Switching`), not run; in-editor check pending
 
 ### 7.4 Command Interface
 
-- [ ] Implement command wheel or menu.
+- [-] Implement command wheel or menu. — C++ written, not compiled (engine not installed). HUD command menu with its own input mapping context
 
 ### Phase 7 Acceptance Criteria
 
@@ -486,43 +486,43 @@ Additional verification:
 
 ### 8.1 Noise System
 
-- [ ] Define noise event structure.
-- [ ] Implement noise generation interface.
-- [ ] Implement movement noise.
-- [ ] Implement weapon noise (replaces the Phase 5 minimal hook).
-- [ ] Implement explosion noise.
-- [ ] Implement noise propagation.
-- [ ] Integrate enemy hearing.
-- [ ] Add noise debugging visualization.
+- [-] Define noise event structure. — C++ written, not compiled (engine not installed). `FOutbreakNoiseEvent`
+- [-] Implement noise generation interface. — C++ written, not compiled (engine not installed). `OutbreakNoise::ReportNoise`, `UOutbreakNoiseEmitterComponent`
+- [-] Implement movement noise. — C++ written, not compiled (engine not installed). Footsteps by stance and speed
+- [-] Implement weapon noise (replaces the Phase 5 minimal hook). — C++ written, not compiled (engine not installed)
+- [-] Implement explosion noise. — C++ written, not compiled (engine not installed)
+- [-] Implement noise propagation. — C++ written, not compiled (engine not installed). Distance falloff and per-obstacle attenuation
+- [-] Integrate enemy hearing. — C++ written, not compiled (engine not installed). Noise raises suspicion at its location, scaled by enemy sensitivity
+- [-] Add noise debugging visualization. — C++ written, not compiled (engine not installed). `outbreak.Noise.Debug`
 
 ### 8.2 Visibility
 
-- [ ] Implement lighting-aware visibility.
-- [ ] Implement obstruction checks.
-- [ ] Implement movement influence.
-- [ ] Implement distance influence.
-- [ ] Implement field-of-view influence.
-- [ ] Integrate visibility with enemy AI.
+- [-] Implement lighting-aware visibility. — C++ written, not compiled (engine not installed). `UOutbreakLightingSubsystem` light model and `AOutbreakLightingVolume` overrides
+- [-] Implement obstruction checks. — C++ written, not compiled (engine not installed). Head/chest/legs line of sight (partial cover)
+- [-] Implement movement influence. — C++ written, not compiled (engine not installed)
+- [-] Implement distance influence. — C++ written, not compiled (engine not installed)
+- [-] Implement field-of-view influence. — C++ written, not compiled (engine not installed)
+- [-] Integrate visibility with enemy AI. — C++ written, not compiled (engine not installed). Visibility drives per-target detection
 
 ### 8.3 Detection States
 
-- [ ] Implement detection levels.
-- [ ] Implement suspicion accumulation.
-- [ ] Implement Suspicious state.
-- [ ] Implement Investigation state and transitions.
-- [ ] Implement Alerted state and transitions.
-- [ ] Implement alert propagation.
-- [ ] Implement detection loss.
-- [ ] Implement Searching state after losing target.
+- [-] Implement detection levels. — C++ written, not compiled (engine not installed). Per-target detection 0..1
+- [-] Implement suspicion accumulation. — C++ written, not compiled (engine not installed)
+- [-] Implement Suspicious state. — C++ written, not compiled (engine not installed)
+- [-] Implement Investigation state and transitions. — C++ written, not compiled (engine not installed)
+- [-] Implement Alerted state and transitions. — C++ written, not compiled (engine not installed). Alerted = Combat (detected hostile), see D-015
+- [-] Implement alert propagation. — C++ written, not compiled (engine not installed)
+- [-] Implement detection loss. — C++ written, not compiled (engine not installed). Detection decay; target lost after `LoseTargetTime`
+- [-] Implement Searching state after losing target. — C++ written, not compiled (engine not installed)
 
 ### 8.4 Squad Stealth
 
-- [ ] Implement Stealth command.
-- [ ] Integrate squad commands with stealth.
-- [ ] Implement quieter movement behaviour.
-- [ ] Implement stealth formation.
-- [ ] Implement teammate detection awareness.
-- [ ] Prevent teammates from unnecessarily exposing the squad.
+- [-] Implement Stealth command. — C++ written, not compiled (engine not installed). Squad stealth mode toggle (key and menu), D-016
+- [-] Integrate squad commands with stealth. — C++ written, not compiled (engine not installed). Stealth mode combines with every order
+- [-] Implement quieter movement behaviour. — C++ written, not compiled (engine not installed). Teammates crouch, footsteps softened
+- [-] Implement stealth formation. — C++ written, not compiled (engine not installed). `EOutbreakFormation::Stealth`
+- [-] Implement teammate detection awareness. — C++ written, not compiled (engine not installed). Teammates freeze when an enemy is noticing them
+- [-] Prevent teammates from unnecessarily exposing the squad. — C++ written, not compiled (engine not installed). Hold fire until compromised; compromise tracking
 
 ### Phase 8 Acceptance Criteria
 
@@ -876,7 +876,7 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–6 C++ were written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–8 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
 **Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through the `Docs/Phase*-EditorSetup.md` guides in order.
 
@@ -905,6 +905,8 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 4 verification (all `[-]` tasks in Phase 4) | Same as above. Editor assets: Blackboard, Behavior Tree, teammate AI config, squad input actions, navmesh test map. Steps: `Docs/Phase4-EditorSetup.md`. | 2026-11-26 |
 | Phase 5 verification (all `[-]` tasks in Phase 5) | Same as above. Editor assets: enemy Blackboard and Behavior Tree, alien infantry weapon, definition and Blueprint, perception test map. Steps: `Docs/Phase5-EditorSetup.md`. | 2026-11-26 |
 | Phase 6 verification (all `[-]` tasks in Phase 6) | Same as above. Editor work: greybox prototype level, navmesh, enemy placement and patrols, mission marker and mission asset. Steps: `Docs/Phase6-EditorSetup.md`. | 2026-11-26 |
+| Phase 7 verification (all `[-]` tasks in Phase 7) | Same as above. Editor assets: EQS cover query, tactical order and menu input actions, menu mapping context, cover test map. Steps: `Docs/Phase7-EditorSetup.md`. | 2026-11-26 |
+| Phase 8 verification (all `[-]` tasks in Phase 8) | Same as above. Editor work: stealth input action, lighting volumes, stealth test map; enemy Blackboard enum refresh. Steps: `Docs/Phase8-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -927,12 +929,15 @@ Record architectural and planning decisions here.
 | D-011 | 2026-11-26 | Default behaviour priorities follow AGENTS.md §6.1 (survival > explicit order > threat > formation > default), configurable per AI config. Orders govern movement; firing at visible hostiles is concurrent with every behaviour. Move becomes Hold on arrival; Regroup completes near the player; Attack completes on target death; a downed member's order fails. Commands never target the player member. | Explicit orders must take precedence (AGENTS.md §6.1) without leaving teammates defenceless under a Hold or Move order. |
 | D-012 | 2026-11-26 | Enemies are defined by `UOutbreakEnemyDefinition` data assets on `AOutbreakEnemyCharacter` (which shares the soldier base). Phase 5 states are Idle, Patrol, Alerted and Combat; a single Alerted state covers noise, unseen damage and lost targets until Phase 8 adds detection levels. Teammate and enemy controllers implement `IOutbreakAIAgent`, so the Behavior Tree update and combat services are shared. Weapon fire reports AI hearing events as the minimal noise hook. | Enemy parameters change without touching AI code (Phase 5 acceptance); avoids duplicating combat logic; keeps Phase 8 free to design the full detection model. |
 | D-013 | 2026-11-26 | Missions are `UOutbreakMissionDefinition` assets with an ordered list of instanced `UOutbreakObjective`s, duplicated per play. `UOutbreakMissionSubsystem` (world subsystem, server) evaluates the current objective at a configurable interval and publishes status through a replicated `AOutbreakGameState`. Objectives refer to level actors by marker ID or actor tag. The mission fails when every registered player is dead (configurable) or an objective fails; the prototype restarts the level after a delay. The mission's squad configuration overrides the game mode's. | Smallest mission framework that meets Phase 6 and extends to Phase 11 (dependencies, more objective types, summary screen) without rework; co-op-safe per D-006. |
+| D-014 | 2026-11-26 | Formations are a replicated squad property (`EOutbreakFormation`, initial value per squad configuration, spacing per formation in project settings); slot offsets are a pure function of formation, slot and count. A slot off the navmesh falls back to the Column slot, so squads file through narrow passages. Cover comes from an editor-authored EQS query using C++ contexts for the threat and the cover anchor; it is used for Cover and Defend orders, at low health, and autonomously under fire (damaged within a configurable time). Retreat moves a configurable distance away from the known threat. The Phase 7 command interface is a HUD menu with its own input mapping context; a radial wheel can reuse the same entries later. | Engine EQS for cover (AGENTS.md §6); formations stay testable and size-independent; the menu avoids key conflicts without new UI assets. |
+| D-015 | 2026-11-26 | Stealth model. Gameplay noise (`FOutbreakNoiseEvent`) is separate from audio playback and delivered through engine AI hearing, so it does not depend on the audio backend (O-003 moves to Phase 13). Listeners attenuate noise by distance and by world-geometry obstacles. The gameplay light level is modelled from the level's lights (ambient, point/spot with shadow traces, directional) with designer volume overrides, not read back from rendering. Visibility multiplies light, exposure, movement, distance, field of view and stance, and drives per-target detection; suspicion drives Suspicious / Investigating; detection 1 = Combat (the roadmap's Alerted); losing a target starts Searching; entering Combat alerts nearby enemies. Character capsules block Visibility (the engine Pawn profile ignores it) until a weapon trace channel exists. | Data-driven, testable without rendering or audio; every factor in AGENTS.md §6.2 is represented; fixes shots passing through characters. |
+| D-016 | 2026-11-26 | Squad stealth is a replicated squad mode, not an order, so it combines with every order. In stealth, teammates crouch, soften footsteps, use the Stealth formation, hold fire, and freeze when an enemy is noticing them. Any shot from the squad, a teammate being fully detected or shot compromises the squad (weapons free) for a configurable time. | "Integrate squad commands with stealth" (8.4) needs stealth to apply to Move, Hold, Defend etc.; holding fire is what keeps teammates from exposing the squad. |
 
 ### Open
 
 | ID | Question | Needed by |
 | --- | --- | --- |
-| O-003 | Audio backend: Unreal Audio or FMOD? | Phase 8 (noise events) |
+| O-003 | Audio backend: Unreal Audio or FMOD? Gameplay noise no longer depends on it (D-015). | Phase 13 (audio integration) |
 | O-004 | Pinned Unreal Engine 5 minor version. | Phase 0 |
 | O-005 | Supported development platforms (the PRD targets Windows; Linux development is also in use). | Phase 0 |
 | O-007 | Development hardware: the current machine has only integrated Intel UHD 770 graphics. Is that acceptable for editor work, or will a dedicated GPU be used? | Phase 0 |

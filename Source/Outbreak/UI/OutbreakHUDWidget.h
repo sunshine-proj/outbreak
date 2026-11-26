@@ -50,6 +50,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void SetSquadStatus(const FText& SquadStatus);
 
+	/** Squad command menu. Empty hides it. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetSquadMenu(const FText& MenuText);
+
 	/** Current objective line and, when the mission has ended, the result. */
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void SetMissionStatus(const FOutbreakMissionStatus& Status);
@@ -83,6 +87,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> SquadStatusText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> SquadMenuText;
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> ObjectiveText;

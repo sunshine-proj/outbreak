@@ -5,6 +5,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Outbreak.h"
 #include "Squad/OutbreakSquadMemberComponent.h"
+#include "Stealth/OutbreakNoiseEmitterComponent.h"
 #include "Weapons/OutbreakWeaponComponent.h"
 
 AOutbreakCharacter::AOutbreakCharacter()
@@ -13,10 +14,15 @@ AOutbreakCharacter::AOutbreakCharacter()
 	PrimaryActorTick.bCanEverTick = false;
 
 	GetCapsuleComponent()->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
+	// The engine Pawn profile ignores Visibility, but hitscan shots, the squad command crosshair and
+	// line-of-sight checks all trace on Visibility: soldiers and enemies must block it to be hit.
+	// (A dedicated weapon trace channel replaces this with the Phase 0 collision channel setup.)
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
 	HealthComponent = CreateDefaultSubobject<UOutbreakHealthComponent>(TEXT("HealthComponent"));
 	WeaponComponent = CreateDefaultSubobject<UOutbreakWeaponComponent>(TEXT("WeaponComponent"));
 	SquadMemberComponent = CreateDefaultSubobject<UOutbreakSquadMemberComponent>(TEXT("SquadMemberComponent"));
+	NoiseEmitterComponent = CreateDefaultSubobject<UOutbreakNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
 
 	// The body turns with the controller's yaw.
 	bUseControllerRotationYaw = true;

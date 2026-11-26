@@ -12,10 +12,16 @@ class AOutbreakCharacter;
 class UOutbreakSquadComponent;
 class UOutbreakSquadConfiguration;
 class UOutbreakSquadMemberComponent;
+class UOutbreakWeaponComponent;
 struct FOutbreakSquadMemberConfig;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOutbreakSquadMembershipChangedSignature,
 	UOutbreakSquadComponent*, Squad, UOutbreakSquadMemberComponent*, Member);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOutbreakSquadFormationChangedSignature,
+	UOutbreakSquadComponent*, Squad, EOutbreakFormation, NewFormation);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakSquadStealthChangedSignature, UOutbreakSquadComponent*, Squad);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOutbreakSquadMemberStatusEventSignature,
 	UOutbreakSquadComponent*, Squad, UOutbreakSquadMemberComponent*, Member,
@@ -105,6 +111,48 @@ public:
 	/** Why Member would refuse Command, or None. Usable on clients for immediate feedback. */
 	EOutbreakCommandRejection ValidateCommandForMember(const FOutbreakSquadCommand& Command, const UOutbreakSquadMemberComponent* Member) const;
 
+	// --- Formation ---
+
+	/** Changes the squad formation. On a client this forwards to the server. */
+	UFUNCTION(BlueprintCallable, Category = "Squad|Formation")
+	void SetFormation(EOutbreakFormation NewFormation);
+
+	// --- Stealth mode (Phase 8) ---
+
+	/**
+	 * Squad stealth mode: teammates crouch, move quietly in the Stealth formation, hold fire and
+	 * freeze when noticed. Combines with every order. On a client this forwards to the server.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Squad|Stealth")
+	void SetStealthMode(bool bEnabled);
+
+	UFUNCTION(BlueprintPure, Category = "Squad|Stealth")
+	bool IsStealthMode() const { return bStealthMode; }
+
+	/** In stealth mode: the squad has been detected, shot at or has fired, so teammates fight freely. */
+	UFUNCTION(BlueprintPure, Category = "Squad|Stealth")
+	bool IsCompromised() const { return bCompromised; }
+
+	/** Teammates may fire at will: not in stealth mode, or compromised. */
+	UFUNCTION(BlueprintPure, Category = "Squad|Stealth")
+	bool AreWeaponsFree() const { return !bStealthMode || bCompromised; }
+
+	/** Authority: marks a stealthy squad as compromised for CompromiseDuration (refreshed by repeated calls). */
+	void MarkCompromised();
+
+	UPROPERTY(BlueprintAssignable, Category = "Squad|Stealth")
+	FOutbreakSquadStealthChangedSignature OnStealthChanged;
+
+	/** Switches to the next formation in enum order, wrapping around (Stealth is skipped). */
+	UFUNCTION(BlueprintCallable, Category = "Squad|Formation")
+	void CycleFormation();
+
+	UFUNCTION(BlueprintPure, Category = "Squad|Formation")
+	EOutbreakFormation GetFormation() const { return Formation; }
+
+	UPROPERTY(BlueprintAssignable, Category = "Squad|Formation")
+	FOutbreakSquadFormationChangedSignature OnFormationChanged;
+
 	/** Teammates (non-player members) in squad order. Their 1-based position is their HUD slot. */
 	UFUNCTION(BlueprintPure, Category = "Squad")
 	TArray<UOutbreakSquadMemberComponent*> GetTeammates() const;
@@ -171,6 +219,38 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCancelCommand(const FOutbreakCommandRecipients& Recipients);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetFormation(EOutbreakFormation NewFormation);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetStealthMode(bool bEnabled);
+
+	void AuthSetStealthMode(bool bEnabled);
+	void ClearCompromised();
+
+	UFUNCTION()
+	void HandleMemberShotFired(UOutbreakWeaponComponent* WeaponComponent);
+
+	UFUNCTION()
+	void OnRep_Stealth();
+
+	UPROPERTY(ReplicatedUsing = OnRep_Stealth)
+	bool bStealthMode = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Stealth)
+	bool bCompromised = false;
+
+	EOutbreakFormation FormationBeforeStealth = EOutbreakFormation::Wedge;
+	FTimerHandle CompromiseTimer;
+
+	void AuthSetFormation(EOutbreakFormation NewFormation);
+
+	UFUNCTION()
+	void OnRep_Formation();
+
+	UPROPERTY(ReplicatedUsing = OnRep_Formation)
+	EOutbreakFormation Formation = EOutbreakFormation::Wedge;
 
 	EOutbreakSquadRegistrationResult RegisterMemberInternal(UOutbreakSquadMemberComponent* Member, bool bIsPlayer);
 	AOutbreakCharacter* SpawnTeammate(const FOutbreakSquadMemberConfig& MemberConfig, const APawn* PlayerPawn, int32 TeammateIndex);

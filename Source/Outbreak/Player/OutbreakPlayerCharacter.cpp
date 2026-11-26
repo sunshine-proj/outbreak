@@ -181,6 +181,42 @@ void AOutbreakPlayerCharacter::SetupPlayerInputComponent(UInputComponent* Player
 	{
 		EnhancedInput->BindAction(InputConfig->SquadToggleMemberAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadToggleMember);
 	}
+	if (InputConfig->SquadDefendAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadDefendAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadDefend);
+	}
+	if (InputConfig->SquadCoverAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadCoverAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadCover);
+	}
+	if (InputConfig->SquadRetreatAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadRetreatAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadRetreat);
+	}
+	if (InputConfig->SquadStealthAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadStealthAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadStealth);
+	}
+	if (InputConfig->SquadCycleFormationAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadCycleFormationAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadCycleFormation);
+	}
+	if (InputConfig->SquadMenuAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadMenuAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadMenu);
+	}
+	if (InputConfig->SquadMenuNextAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadMenuNextAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadMenuNext);
+	}
+	if (InputConfig->SquadMenuPreviousAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadMenuPreviousAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadMenuPrevious);
+	}
+	if (InputConfig->SquadMenuConfirmAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadMenuConfirmAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadMenuConfirm);
+	}
 }
 
 void AOutbreakPlayerCharacter::HandleMove(const FInputActionValue& Value)
@@ -385,5 +421,96 @@ void AOutbreakPlayerCharacter::HandleSquadToggleMember(const FInputActionValue& 
 	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
 	{
 		SquadCommands->ToggleSlot(FMath::RoundToInt(Value.Get<float>()));
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadDefend()
+{
+	IssueSquadCommand(EOutbreakSquadCommandType::Defend);
+}
+
+void AOutbreakPlayerCharacter::HandleSquadCover()
+{
+	IssueSquadCommand(EOutbreakSquadCommandType::Cover);
+}
+
+void AOutbreakPlayerCharacter::HandleSquadRetreat()
+{
+	IssueSquadCommand(EOutbreakSquadCommandType::Retreat);
+}
+
+void AOutbreakPlayerCharacter::HandleSquadCycleFormation()
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->CycleFormation();
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadMenu()
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->ToggleMenu();
+		UpdateSquadMenuInput();
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadMenuNext()
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->MenuNext();
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadMenuPrevious()
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->MenuPrevious();
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadMenuConfirm()
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->MenuConfirm();
+		UpdateSquadMenuInput();
+	}
+}
+
+void AOutbreakPlayerCharacter::UpdateSquadMenuInput()
+{
+	const APlayerController* PlayerController = Cast<APlayerController>(Controller);
+	const UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands();
+	if (!PlayerController || !SquadCommands || !InputConfig || !InputConfig->SquadMenuMappingContext)
+	{
+		return;
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
+		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer());
+	if (!InputSubsystem)
+	{
+		return;
+	}
+
+	if (SquadCommands->IsMenuOpen())
+	{
+		InputSubsystem->AddMappingContext(InputConfig->SquadMenuMappingContext, InputConfig->SquadMenuMappingPriority);
+	}
+	else
+	{
+		InputSubsystem->RemoveMappingContext(InputConfig->SquadMenuMappingContext);
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadStealth()
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->ToggleStealthMode();
 	}
 }

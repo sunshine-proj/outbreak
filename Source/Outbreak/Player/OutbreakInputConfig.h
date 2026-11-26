@@ -121,6 +121,50 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
 	TObjectPtr<UInputAction> SquadToggleMemberAction;
 
+	/** Digital. Defend the point under the crosshair (or where teammates stand). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadDefendAction;
+
+	/** Digital. Take cover nearby and provide covering fire. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadCoverAction;
+
+	/** Digital. Move away from the threat. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadRetreatAction;
+
+	/** Digital. Squad stealth mode on / off. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadStealthAction;
+
+	/** Digital. Next formation. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadCycleFormationAction;
+
+	/** Digital. Opens or closes the squad command menu. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad Menu")
+	TObjectPtr<UInputAction> SquadMenuAction;
+
+	/** Digital. Menu navigation, mapped only in SquadMenuMappingContext. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad Menu")
+	TObjectPtr<UInputAction> SquadMenuNextAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad Menu")
+	TObjectPtr<UInputAction> SquadMenuPreviousAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad Menu")
+	TObjectPtr<UInputAction> SquadMenuConfirmAction;
+
+	/**
+	 * Added while the squad menu is open, above the default context, so its keys (for example the
+	 * mouse wheel and left button) drive the menu instead of weapons.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mapping")
+	TObjectPtr<UInputMappingContext> SquadMenuMappingContext;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mapping")
+	int32 SquadMenuMappingPriority = 10;
+
 	/** If true, the crouch input toggles crouching; otherwise crouch is held. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behaviour")
 	bool bToggleCrouch = true;

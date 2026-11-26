@@ -13,6 +13,8 @@ class UOutbreakSquadComponent;
 class UOutbreakSquadMemberComponent;
 class UOutbreakTeammateAIConfig;
 class UOutbreakWeaponComponent;
+class UDamageType;
+struct FEnvQueryResult;
 
 /**
  * AI controller for squad teammates (server only).
@@ -53,7 +55,25 @@ public:
 	virtual float GetAimTolerance() const override;
 	virtual float GetIdleReloadFraction() const override;
 	virtual UOutbreakWeaponComponent* GetAgentWeaponComponent() const override { return WeaponComponent; }
+
+	/** The current threat, or its last known location while remembered. */
+	virtual bool GetCoverThreatLocation(FVector& OutLocation) const override;
+
+	/** The ordered position for Defend and Cover; otherwise the teammate itself (returns false). */
+	virtual bool GetCoverAnchorLocation(FVector& OutLocation) const override;
+
+	/** In squad stealth mode: only when compromised, under fire, or ordered to attack. */
+	virtual bool IsFireAllowed() const override;
 	//~ End IOutbreakAIAgent interface
+
+	/** Damaged within UnderFireMemory seconds. */
+	bool IsUnderFire() const;
+
+	bool HasCover() const { return bHasCover; }
+
+	/** Highest detection of this teammate by any enemy, as of the last update. */
+	float GetNoticedLevel() const { return NoticedLevel; }
+	FVector GetCoverLocation() const { return CoverLocation; }
 
 	AActor* GetCurrentThreat() const { return CurrentThreat.Get(); }
 
@@ -80,8 +100,25 @@ private:
 	void ApplyPerceptionConfig();
 	void UpdateThreat();
 	void UpdateOrderProgress();
-	FVector ComputeMoveLocation(EOutbreakTeammateBehavior Behavior, bool bBehaviorChanged) const;
+	FVector ComputeMoveLocation(EOutbreakTeammateBehavior Behavior, bool bBehaviorChanged);
 	FVector ComputeFollowLocation() const;
+	FVector ComputeDefendLocation() const;
+	FVector ComputeRetreatLocation() const;
+
+	/** Living teammates and this teammate's index among them, for slot assignment. */
+	void GetSlot(int32& OutSlotIndex, int32& OutSlotCount) const;
+
+	/** Snaps Location to the navmesh. False if a navmesh exists but nothing is near (Location unchanged). */
+	bool ProjectToNavigation(FVector& InOutLocation) const;
+
+	double GetTimeSeconds() const;
+	bool HasRememberedThreat() const;
+	void RequestCoverQueryIfNeeded(bool bNeedCover);
+	void HandleCoverQueryResult(TSharedPtr<FEnvQueryResult> Result);
+
+	UFUNCTION()
+	void HandleTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
+		AController* InstigatedBy, AActor* DamageCauser);
 	void WriteBlackboard() const;
 
 	UOutbreakSquadComponent* GetSquad() const;
@@ -109,4 +146,23 @@ private:
 	FOutbreakBehaviorDecision CurrentDecision;
 	FVector MoveLocation = FVector::ZeroVector;
 	bool bUpdatingBehavior = false;
+
+	// Threat memory and fire.
+	FVector LastThreatLocation = FVector::ZeroVector;
+	double LastThreatTime = -1.0e9;
+	double LastDamageTime = -1.0e9;
+
+	// Cover (EQS results arrive asynchronously).
+	FVector CoverLocation = FVector::ZeroVector;
+	bool bHasCover = false;
+	bool bCoverQueryPending = false;
+	double LastCoverQueryTime = -1.0e9;
+
+	FVector RetreatLocation = FVector::ZeroVector;
+	bool bHasRetreatLocation = false;
+
+	// Squad stealth.
+	void UpdateStealth(bool& bOutShouldHide);
+	float NoticedLevel = 0.0f;
+	bool bCrouchedForStealth = false;
 };
