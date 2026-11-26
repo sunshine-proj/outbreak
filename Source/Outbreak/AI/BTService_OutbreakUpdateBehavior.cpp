@@ -1,11 +1,12 @@
 #include "AI/BTService_OutbreakUpdateBehavior.h"
 
-#include "AI/OutbreakSquadAIController.h"
+#include "AI/OutbreakAIAgent.h"
+#include "AIController.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 
 UBTService_OutbreakUpdateBehavior::UBTService_OutbreakUpdateBehavior()
 {
-	NodeName = TEXT("Outbreak: Update Teammate Behavior");
+	NodeName = TEXT("Outbreak: Update Behavior");
 	Interval = 0.25f;
 	RandomDeviation = 0.05f;
 	bNotifyBecomeRelevant = true;
@@ -16,9 +17,9 @@ void UBTService_OutbreakUpdateBehavior::OnBecomeRelevant(UBehaviorTreeComponent&
 {
 	Super::OnBecomeRelevant(OwnerComp, NodeMemory);
 
-	if (AOutbreakSquadAIController* Controller = Cast<AOutbreakSquadAIController>(OwnerComp.GetAIOwner()))
+	if (IOutbreakAIAgent* Agent = Cast<IOutbreakAIAgent>(OwnerComp.GetAIOwner()))
 	{
-		Controller->UpdateBehavior();
+		Agent->UpdateBehavior();
 	}
 }
 
@@ -26,8 +27,8 @@ void UBTService_OutbreakUpdateBehavior::TickNode(UBehaviorTreeComponent& OwnerCo
 {
 	Super::TickNode(OwnerComp, NodeMemory, DeltaSeconds);
 
-	if (AOutbreakSquadAIController* Controller = Cast<AOutbreakSquadAIController>(OwnerComp.GetAIOwner()))
+	if (IOutbreakAIAgent* Agent = Cast<IOutbreakAIAgent>(OwnerComp.GetAIOwner()))
 	{
-		Controller->UpdateBehavior();
+		Agent->UpdateBehavior();
 	}
 }

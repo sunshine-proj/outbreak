@@ -11,11 +11,11 @@ AOutbreakSquadAIController (server)
   Blackboard   Behavior, MoveLocation, TargetActor, PlayerActor
 
 Behavior Tree (editor asset, deliberately tiny)
-  Sequence  [Service: Outbreak: Update Teammate Behavior] [Service: Outbreak: Teammate Combat]
+  Sequence  [Service: Outbreak: Update Behavior] [Service: Outbreak: Combat]
     Move To  MoveLocation (observe value)      <- navigation, detour crowd avoidance
     Wait
 
-UBTService_OutbreakTeammateCombat: focus target, fire when aimed and in range, reload
+UBTService_OutbreakCombat: focus target, fire when aimed and in range, reload
 ```
 
 **Priority layers.** The first layer that applies wins. The order is set by `PriorityOrder` in `UOutbreakTeammateAIConfig`:
@@ -71,7 +71,7 @@ In `Content/AI/`:
    | `PlayerActor` | Object | Base class Actor |
 
 2. **Behavior Tree** `BT_Teammate` using `BB_Teammate`:
-   - **Root → Sequence.** On the Sequence add services **Outbreak: Update Teammate Behavior** (interval 0.25) and **Outbreak: Teammate Combat** (interval 0.15).
+   - **Root → Sequence.** On the Sequence add services **Outbreak: Update Behavior** (interval 0.25) and **Outbreak: Combat** (interval 0.15).
    - **Child 1:** Move To, with Blackboard Key `MoveLocation`, Acceptable Radius 50, **Observe Blackboard Value** on, and Allow Strafe off.
    - **Child 2:** Wait, 0.3 s.
 

@@ -164,4 +164,15 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects")
 	TObjectPtr<USoundBase> FireSound;
+
+	/**
+	 * AI hearing: loudness of a shot (1 = normal; scales the listener's hearing range). 0 = silent.
+	 * Minimal noise hook for Phase 5; the full noise system replaces it in Phase 8.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Noise", meta = (ClampMin = "0.0"))
+	float FireNoiseLoudness = 1.0f;
+
+	/** Maximum distance a shot can be heard from, regardless of the listener. 0 = no limit. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Noise", meta = (ClampMin = "0.0", Units = "cm"))
+	float FireNoiseMaxRange = 0.0f;
 };

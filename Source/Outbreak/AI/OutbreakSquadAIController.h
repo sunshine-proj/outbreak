@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "AI/OutbreakAIAgent.h"
 #include "AI/OutbreakTeammateBehaviorTypes.h"
 
 #include "OutbreakSquadAIController.generated.h"
@@ -23,12 +24,12 @@ class UOutbreakWeaponComponent;
  * - Positioning: turns the behaviour into a destination (follow slot, hold point, approach point).
  * - Navigation: the Behavior Tree moves to the blackboard MoveLocation; detour crowd avoidance
  *   keeps teammates from bumping into each other.
- * - Combat: UBTService_OutbreakTeammateCombat aims, fires and reloads using GetCombatTarget.
+ * - Combat: UBTService_OutbreakCombat aims, fires and reloads using GetCombatTarget.
  *
  * Decision and combat run from Behavior Tree services at their configured intervals, not every frame.
  */
 UCLASS()
-class OUTBREAK_API AOutbreakSquadAIController : public AAIController
+class OUTBREAK_API AOutbreakSquadAIController : public AAIController, public IOutbreakAIAgent
 {
 	GENERATED_BODY()
 
@@ -36,16 +37,25 @@ public:
 
 	AOutbreakSquadAIController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	//~ Begin IOutbreakAIAgent interface
 	/** Re-evaluates threat, order progress and behaviour, and updates the blackboard. */
-	void UpdateBehavior();
+	virtual void UpdateBehavior() override;
 
 	/** Attack target when attacking, otherwise the current threat. */
-	AActor* GetCombatTarget() const;
-
-	AActor* GetCurrentThreat() const { return CurrentThreat.Get(); }
+	virtual AActor* GetCombatTarget() const override;
 
 	/** Whether Actor is currently seen. */
-	bool IsActorVisible(const AActor* Actor) const;
+	virtual bool IsActorVisible(const AActor* Actor) const override;
+
+	/** Maximum firing distance: the role preference if set, otherwise the config. */
+	virtual float GetEngagementRange() const override;
+
+	virtual float GetAimTolerance() const override;
+	virtual float GetIdleReloadFraction() const override;
+	virtual UOutbreakWeaponComponent* GetAgentWeaponComponent() const override { return WeaponComponent; }
+	//~ End IOutbreakAIAgent interface
+
+	AActor* GetCurrentThreat() const { return CurrentThreat.Get(); }
 
 	EOutbreakTeammateBehavior GetCurrentBehavior() const { return CurrentDecision.Behavior; }
 	EOutbreakBehaviorLayer GetCurrentLayer() const { return CurrentDecision.Layer; }
@@ -56,9 +66,6 @@ public:
 	const UOutbreakTeammateAIConfig* GetAIConfig() const;
 	UOutbreakSquadMemberComponent* GetSquadMember() const { return SquadMember; }
 	UOutbreakWeaponComponent* GetWeaponComponent() const { return WeaponComponent; }
-
-	/** Maximum firing distance: the role preference if set, otherwise the config. */
-	float GetEngagementRange() const;
 
 protected:
 

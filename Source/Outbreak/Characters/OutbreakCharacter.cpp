@@ -62,6 +62,12 @@ void AOutbreakCharacter::ApplyMovementSettings()
 	UpdateEyeHeight();
 }
 
+void AOutbreakCharacter::SetMovementSettings(const FOutbreakMovementSettings& NewSettings)
+{
+	MovementSettings = NewSettings;
+	ApplyMovementSettings();
+}
+
 void AOutbreakCharacter::UpdateEyeHeight()
 {
 	// ACharacter::RecalculateBaseEyeHeight restores the CDO value on uncrouch, so the eye height is

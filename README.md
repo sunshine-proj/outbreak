@@ -40,7 +40,7 @@ This is a spiritual successor, not an asset-level recreation of the original gam
 
 ## Project Status
 
-**Current stage:** Phases 1–4 (FPS prototype, combat and weapons, configurable squad, AI teammates and squad commands) C++ written; not yet compiled because Unreal Engine is not installed on the development machine.
+**Current stage:** Phases 1–5 (FPS prototype, combat and weapons, configurable squad, AI teammates and squad commands, basic enemy AI) C++ written; not yet compiled because Unreal Engine is not installed on the development machine.
 
 Development follows the phases described in [ROADMAP.md](ROADMAP.md).
 
@@ -97,7 +97,8 @@ outbreak/
 │   ├── Phase1-EditorSetup.md
 │   ├── Phase2-EditorSetup.md
 │   ├── Phase3-EditorSetup.md
-│   └── Phase4-EditorSetup.md
+│   ├── Phase4-EditorSetup.md
+│   └── Phase5-EditorSetup.md
 │
 └── .gitignore
 ```
@@ -172,7 +173,7 @@ Run the Outbreak automation tests headlessly:
     -testexit="Automation Test Queue Empty"
 ```
 
-Editor assets that C++ depends on (input actions, mapping context, weapon data, Blueprints, test maps) are described in the `Docs/Phase*-EditorSetup.md` guides ([Phase 1](Docs/Phase1-EditorSetup.md), [Phase 2](Docs/Phase2-EditorSetup.md), [Phase 3](Docs/Phase3-EditorSetup.md), [Phase 4](Docs/Phase4-EditorSetup.md)).
+Editor assets that C++ depends on (input actions, mapping context, weapon data, Blueprints, test maps) are described in the `Docs/Phase*-EditorSetup.md` guides ([Phase 1](Docs/Phase1-EditorSetup.md), [Phase 2](Docs/Phase2-EditorSetup.md), [Phase 3](Docs/Phase3-EditorSetup.md), [Phase 4](Docs/Phase4-EditorSetup.md), [Phase 5](Docs/Phase5-EditorSetup.md)).
 
 ## Development Philosophy
 

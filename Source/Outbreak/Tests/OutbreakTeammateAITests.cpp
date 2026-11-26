@@ -5,7 +5,7 @@
 #include "AI/OutbreakSquadAIController.h"
 #include "AI/OutbreakSquadPositioning.h"
 #include "AI/OutbreakTeammateBehaviorTypes.h"
-#include "AI/OutbreakTeammateCombatRules.h"
+#include "AI/OutbreakAICombatRules.h"
 #include "Combat/OutbreakCombatTestTarget.h"
 #include "Combat/OutbreakTeam.h"
 #include "Game/OutbreakPlayerState.h"
@@ -172,22 +172,22 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FOutbreakTeammateCombatRulesTest, "Outbreak.AI.
 bool FOutbreakTeammateCombatRulesTest::RunTest(const FString& Parameters)
 {
 	const FVector Origin = FVector::ZeroVector;
-	TestTrue(TEXT("Aimed straight at"), OutbreakTeammateCombat::IsAimedAt(Origin, FVector::ForwardVector, FVector(1000, 0, 0), 5.0f));
-	TestTrue(TEXT("Within tolerance"), OutbreakTeammateCombat::IsAimedAt(Origin, FVector::ForwardVector, FVector(1000, 50, 0), 5.0f));
-	TestFalse(TEXT("Outside tolerance"), OutbreakTeammateCombat::IsAimedAt(Origin, FVector::ForwardVector, FVector(1000, 500, 0), 5.0f));
-	TestFalse(TEXT("Behind"), OutbreakTeammateCombat::IsAimedAt(Origin, FVector::ForwardVector, FVector(-1000, 0, 0), 5.0f));
+	TestTrue(TEXT("Aimed straight at"), OutbreakAICombat::IsAimedAt(Origin, FVector::ForwardVector, FVector(1000, 0, 0), 5.0f));
+	TestTrue(TEXT("Within tolerance"), OutbreakAICombat::IsAimedAt(Origin, FVector::ForwardVector, FVector(1000, 50, 0), 5.0f));
+	TestFalse(TEXT("Outside tolerance"), OutbreakAICombat::IsAimedAt(Origin, FVector::ForwardVector, FVector(1000, 500, 0), 5.0f));
+	TestFalse(TEXT("Behind"), OutbreakAICombat::IsAimedAt(Origin, FVector::ForwardVector, FVector(-1000, 0, 0), 5.0f));
 
-	TestTrue(TEXT("Fire when everything allows"), OutbreakTeammateCombat::ShouldFire(true, 1000.0f, 3000.0f, true, true));
-	TestFalse(TEXT("Not visible"), OutbreakTeammateCombat::ShouldFire(false, 1000.0f, 3000.0f, true, true));
-	TestFalse(TEXT("Out of range"), OutbreakTeammateCombat::ShouldFire(true, 4000.0f, 3000.0f, true, true));
-	TestFalse(TEXT("Not aimed"), OutbreakTeammateCombat::ShouldFire(true, 1000.0f, 3000.0f, false, true));
-	TestFalse(TEXT("Weapon cannot fire"), OutbreakTeammateCombat::ShouldFire(true, 1000.0f, 3000.0f, true, false));
+	TestTrue(TEXT("Fire when everything allows"), OutbreakAICombat::ShouldFire(true, 1000.0f, 3000.0f, true, true));
+	TestFalse(TEXT("Not visible"), OutbreakAICombat::ShouldFire(false, 1000.0f, 3000.0f, true, true));
+	TestFalse(TEXT("Out of range"), OutbreakAICombat::ShouldFire(true, 4000.0f, 3000.0f, true, true));
+	TestFalse(TEXT("Not aimed"), OutbreakAICombat::ShouldFire(true, 1000.0f, 3000.0f, false, true));
+	TestFalse(TEXT("Weapon cannot fire"), OutbreakAICombat::ShouldFire(true, 1000.0f, 3000.0f, true, false));
 
-	TestTrue(TEXT("Empty: reload even in combat"), OutbreakTeammateCombat::ShouldReload(0, 30, true, 0.5f, true));
-	TestFalse(TEXT("Partial in combat: keep firing"), OutbreakTeammateCombat::ShouldReload(5, 30, true, 0.5f, true));
-	TestTrue(TEXT("Low and no target: top up"), OutbreakTeammateCombat::ShouldReload(10, 30, false, 0.5f, true));
-	TestFalse(TEXT("Plenty and no target: no reload"), OutbreakTeammateCombat::ShouldReload(20, 30, false, 0.5f, true));
-	TestFalse(TEXT("Cannot reload (no reserve)"), OutbreakTeammateCombat::ShouldReload(0, 30, false, 0.5f, false));
+	TestTrue(TEXT("Empty: reload even in combat"), OutbreakAICombat::ShouldReload(0, 30, true, 0.5f, true));
+	TestFalse(TEXT("Partial in combat: keep firing"), OutbreakAICombat::ShouldReload(5, 30, true, 0.5f, true));
+	TestTrue(TEXT("Low and no target: top up"), OutbreakAICombat::ShouldReload(10, 30, false, 0.5f, true));
+	TestFalse(TEXT("Plenty and no target: no reload"), OutbreakAICombat::ShouldReload(20, 30, false, 0.5f, true));
+	TestFalse(TEXT("Cannot reload (no reserve)"), OutbreakAICombat::ShouldReload(0, 30, false, 0.5f, false));
 	return true;
 }
 

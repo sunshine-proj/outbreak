@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 
 /** Firing and reloading rules for AI teammates, kept free of actors so they can be unit tested. */
-namespace OutbreakTeammateCombat
+namespace OutbreakAICombat
 {
 	/** True when ViewDirection points within ToleranceDegrees of TargetLocation. */
 	OUTBREAK_API bool IsAimedAt(const FVector& ViewLocation, const FVector& ViewDirection, const FVector& TargetLocation, float ToleranceDegrees);

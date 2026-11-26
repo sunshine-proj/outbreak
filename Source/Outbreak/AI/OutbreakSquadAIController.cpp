@@ -165,6 +165,16 @@ AActor* AOutbreakSquadAIController::GetCombatTarget() const
 	return CurrentThreat.Get();
 }
 
+float AOutbreakSquadAIController::GetAimTolerance() const
+{
+	return GetAIConfig()->AimTolerance;
+}
+
+float AOutbreakSquadAIController::GetIdleReloadFraction() const
+{
+	return GetAIConfig()->IdleReloadFraction;
+}
+
 float AOutbreakSquadAIController::GetEngagementRange() const
 {
 	const float MaxRange = GetAIConfig()->MaxEngagementRange;

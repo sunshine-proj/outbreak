@@ -1,6 +1,6 @@
-#include "AI/OutbreakTeammateCombatRules.h"
+#include "AI/OutbreakAICombatRules.h"
 
-namespace OutbreakTeammateCombat
+namespace OutbreakAICombat
 {
 	bool IsAimedAt(const FVector& ViewLocation, const FVector& ViewDirection, const FVector& TargetLocation, float ToleranceDegrees)
 	{

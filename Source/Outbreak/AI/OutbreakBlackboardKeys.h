@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 
 /**
- * Blackboard key names written by AOutbreakSquadAIController. The teammate Blackboard asset must
- * define keys with these names and types (Docs/Phase4-EditorSetup.md).
+ * Blackboard key names written by the Outbreak AI controllers. The Blackboard assets must define
+ * keys with these names and types (Docs/Phase4-EditorSetup.md, Docs/Phase5-EditorSetup.md).
  */
 namespace OutbreakBlackboardKeys
 {
@@ -17,6 +17,9 @@ namespace OutbreakBlackboardKeys
 	/** Object (Actor). Current combat target, if any. */
 	inline const FName TargetActor(TEXT("TargetActor"));
 
-	/** Object (Actor). The squad's player pawn. */
+	/** Object (Actor). The squad's player pawn (teammates). */
 	inline const FName PlayerActor(TEXT("PlayerActor"));
+
+	/** Enum (EOutbreakEnemyState). Enemy blackboard only. */
+	inline const FName EnemyState(TEXT("State"));
 }

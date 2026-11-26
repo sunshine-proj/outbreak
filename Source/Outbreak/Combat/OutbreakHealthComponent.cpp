@@ -31,6 +31,18 @@ void UOutbreakHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 
 	DOREPLIFETIME(UOutbreakHealthComponent, Health);
 	DOREPLIFETIME(UOutbreakHealthComponent, HealthState);
+	DOREPLIFETIME(UOutbreakHealthComponent, MaxHealth);
+}
+
+void UOutbreakHealthComponent::SetMaxHealth(float NewMaxHealth, bool bRefillHealth)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority() || NewMaxHealth < 1.0f)
+	{
+		return;
+	}
+
+	MaxHealth = NewMaxHealth;
+	SetHealth(bRefillHealth ? MaxHealth : FMath::Min(Health, MaxHealth));
 }
 
 float UOutbreakHealthComponent::CalculateDamage(float RawDamage, const UDamageType* DamageType) const

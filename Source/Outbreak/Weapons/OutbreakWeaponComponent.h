@@ -11,6 +11,12 @@ class UOutbreakWeaponComponent;
 class UOutbreakWeaponDefinition;
 struct FOutbreakFireModeDefinition;
 
+namespace OutbreakNoiseTags
+{
+	/** AI hearing tag for gunshots. */
+	inline const FName WeaponFire(TEXT("WeaponFire"));
+}
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakWeaponStateChangedSignature, UOutbreakWeaponComponent*, WeaponComponent);
 
 /**

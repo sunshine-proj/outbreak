@@ -6,10 +6,10 @@
 #include "BTService_OutbreakUpdateBehavior.generated.h"
 
 /**
- * Runs AOutbreakSquadAIController::UpdateBehavior at the service interval: threat tracking,
- * order progress and behaviour selection, written to the blackboard.
+ * Runs IOutbreakAIAgent::UpdateBehavior at the service interval (teammates and enemies):
+ * perception, state or behaviour selection and destination, written to the blackboard.
  */
-UCLASS(DisplayName = "Outbreak: Update Teammate Behavior")
+UCLASS(DisplayName = "Outbreak: Update Behavior")
 class OUTBREAK_API UBTService_OutbreakUpdateBehavior : public UBTService
 {
 	GENERATED_BODY()

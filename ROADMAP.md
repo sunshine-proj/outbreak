@@ -365,35 +365,35 @@ Additional verification:
 
 ### 5.1 Enemy Foundation
 
-- [ ] Create enemy base character.
-- [ ] Create enemy AI controller.
-- [ ] Create enemy configuration Data Asset.
-- [ ] Implement enemy health.
-- [ ] Implement enemy damage.
-- [ ] Implement enemy death.
-- [ ] Implement enemy animation integration.
-- [ ] Create perception test map.
+- [-] Create enemy base character. — C++ written, not compiled (engine not installed). `AOutbreakEnemyCharacter`
+- [-] Create enemy AI controller. — C++ written, not compiled (engine not installed). `AOutbreakEnemyAIController`
+- [-] Create enemy configuration Data Asset. — C++ written, not compiled (engine not installed). `UOutbreakEnemyDefinition`
+- [-] Implement enemy health. — C++ written, not compiled (engine not installed). Max health and damage multipliers from the definition
+- [-] Implement enemy damage. — C++ written, not compiled (engine not installed). Enemy weapon from the definition, shared combat service
+- [-] Implement enemy death. — C++ written, not compiled (engine not installed). Stops AI, disables collision, corpse lifetime
+- [-] Implement enemy animation integration. — C++ written, not compiled (engine not installed). Replicated state, Blueprint getters and events; no animation assets yet
+- [-] Create perception test map. — editor asset pending (see `Docs/Phase5-EditorSetup.md`)
 
 ### 5.2 Enemy Perception
 
-- [ ] Configure AI sight perception.
-- [ ] Configure AI hearing perception for weapon fire (minimal noise hook; the full noise system is in Phase 8).
-- [ ] Implement target tracking.
-- [ ] Implement perception debugging.
-- [ ] Implement target prioritization.
+- [-] Configure AI sight perception. — C++ written, not compiled (engine not installed)
+- [-] Configure AI hearing perception for weapon fire (minimal noise hook; the full noise system is in Phase 8). — C++ written, not compiled (engine not installed). Weapon component reports AI hearing events
+- [-] Implement target tracking. — C++ written, not compiled (engine not installed). Visible hostiles, last-seen location, recent attacker
+- [-] Implement perception debugging. — C++ written, not compiled (engine not installed). `outbreak.AI.DebugEnemies` and the Gameplay Debugger
+- [-] Implement target prioritization. — C++ written, not compiled (engine not installed). Distance, recent attacker, player bias (configurable)
 
 ### 5.3 Basic Enemy Behaviour
 
-- [ ] Implement Idle state.
-- [ ] Implement Patrol state.
-- [ ] Implement Combat state.
-- [ ] Implement basic perception-driven transitions (Idle/Patrol → Combat).
-- [ ] Implement target selection.
-- [ ] Implement basic combat positioning.
+- [-] Implement Idle state. — C++ written, not compiled (engine not installed)
+- [-] Implement Patrol state. — C++ written, not compiled (engine not installed). `AOutbreakPatrolRoute`, looping or back-and-forth
+- [-] Implement Combat state. — C++ written, not compiled (engine not installed)
+- [-] Implement basic perception-driven transitions (Idle/Patrol → Combat). — C++ written, not compiled (engine not installed). Plus a basic Alerted state for noise, unseen damage and lost targets
+- [-] Implement target selection. — C++ written, not compiled (engine not installed)
+- [-] Implement basic combat positioning. — C++ written, not compiled (engine not installed). Min / preferred / max range band
 
 ### 5.4 First Archetype
 
-- [ ] Implement basic alien infantry.
+- [-] Implement basic alien infantry. — archetype is data: assets described in `Docs/Phase5-EditorSetup.md`, pending
 
 ### Phase 5 Acceptance Criteria
 
@@ -876,7 +876,7 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–4 C++ were written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–5 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
 **Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through the `Docs/Phase*-EditorSetup.md` guides in order.
 
@@ -903,6 +903,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 2 verification (all `[-]` tasks in Phase 2) | Same as above. Editor assets: weapon and ammunition data assets, new input actions, combat test map. Steps: `Docs/Phase2-EditorSetup.md`. | 2026-11-26 |
 | Phase 3 verification (all `[-]` tasks in Phase 3) | Same as above. Editor assets: teammate Blueprint, role and squad configuration data assets, squad test map. Steps: `Docs/Phase3-EditorSetup.md`. | 2026-11-26 |
 | Phase 4 verification (all `[-]` tasks in Phase 4) | Same as above. Editor assets: Blackboard, Behavior Tree, teammate AI config, squad input actions, navmesh test map. Steps: `Docs/Phase4-EditorSetup.md`. | 2026-11-26 |
+| Phase 5 verification (all `[-]` tasks in Phase 5) | Same as above. Editor assets: enemy Blackboard and Behavior Tree, alien infantry weapon, definition and Blueprint, perception test map. Steps: `Docs/Phase5-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -923,6 +924,7 @@ Record architectural and planning decisions here.
 | D-009 | 2026-11-26 | `UOutbreakSquadComponent` lives on `AOutbreakPlayerState` (one squad per player; survives pawn death; replicates to all clients). Player and teammates share a new `AOutbreakCharacter` base holding movement, health, weapons, squad membership, team and death handling; the player subclass keeps camera, input and interaction. | Avoids duplicating soldier logic between player and teammates (D-002 requires both to be squad members), and keeps co-op (D-006) possible. |
 | D-010 | 2026-11-26 | Behavior Trees for teammate and enemy AI (closes O-002). Decisions live in C++ (controller and priority rules) and are written to the blackboard; the Behavior Tree executes them with a Move To under two C++ services (behaviour update, combat). | Developer decision. Stable API across UE 5.x while the engine version is open (O-004); decision logic stays unit-testable without assets; EQS integration for Phase 7. |
 | D-011 | 2026-11-26 | Default behaviour priorities follow AGENTS.md §6.1 (survival > explicit order > threat > formation > default), configurable per AI config. Orders govern movement; firing at visible hostiles is concurrent with every behaviour. Move becomes Hold on arrival; Regroup completes near the player; Attack completes on target death; a downed member's order fails. Commands never target the player member. | Explicit orders must take precedence (AGENTS.md §6.1) without leaving teammates defenceless under a Hold or Move order. |
+| D-012 | 2026-11-26 | Enemies are defined by `UOutbreakEnemyDefinition` data assets on `AOutbreakEnemyCharacter` (which shares the soldier base). Phase 5 states are Idle, Patrol, Alerted and Combat; a single Alerted state covers noise, unseen damage and lost targets until Phase 8 adds detection levels. Teammate and enemy controllers implement `IOutbreakAIAgent`, so the Behavior Tree update and combat services are shared. Weapon fire reports AI hearing events as the minimal noise hook. | Enemy parameters change without touching AI code (Phase 5 acceptance); avoids duplicating combat logic; keeps Phase 8 free to design the full detection model. |
 
 ### Open
 

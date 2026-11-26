@@ -3,21 +3,22 @@
 #include "CoreMinimal.h"
 #include "BehaviorTree/BTService.h"
 
-#include "BTService_OutbreakTeammateCombat.generated.h"
+#include "BTService_OutbreakCombat.generated.h"
 
 /**
- * Teammate combat at the service interval: aims at the controller's combat target, fires when
- * aimed and in range, and reloads automatically (empty, or low while no target is present).
+ * AI combat at the service interval, for any IOutbreakAIAgent (teammates and enemies): aims at the
+ * agent's combat target, fires when aimed and in range, and reloads automatically (empty, or low
+ * while no target is present).
  * Uses the same weapon component requests as the player, so the server validates every shot.
  */
-UCLASS(DisplayName = "Outbreak: Teammate Combat")
-class OUTBREAK_API UBTService_OutbreakTeammateCombat : public UBTService
+UCLASS(DisplayName = "Outbreak: Combat")
+class OUTBREAK_API UBTService_OutbreakCombat : public UBTService
 {
 	GENERATED_BODY()
 
 public:
 
-	UBTService_OutbreakTeammateCombat();
+	UBTService_OutbreakCombat();
 
 protected:
 

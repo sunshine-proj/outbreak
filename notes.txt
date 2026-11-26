@@ -161,6 +161,43 @@ Simple fallback: a badly hurt teammate retreats to the player's follow position;
 ================================
 
 
+Phase 5 is written the same way as Phases 1–4: nothing has been compiled, run or tested in Unreal. Every Phase 5 task is marked [-] in ROADMAP.md. No open decision blocked it, and the design choices are logged as D-012.
+
+Shared AI services (changes Phase 4 code)
+
+Shared interface: teammate and enemy controllers now both implement a small IOutbreakAIAgent interface (OutbreakAIAgent.h). One update service and one combat service drive both, so the aim/fire/reload logic exists only once.
+Renames: the combat service is now UBTService_OutbreakCombat ("Outbreak: Combat"), the update service's display name is now "Outbreak: Update Behavior", and the combat rules namespace is now OutbreakAICombat.
+Git and the Phase 4 guide: I used git mv for the renames, so they're staged, and updated the Phase 4 guide to match.
+What's implemented
+
+Area	Files
+Enemy character	OutbreakEnemyCharacter.h: built on the shared soldier base. Health, resistances, movement and weapon come from its definition. Its state is copied to all players for animation Blueprints, and dead enemies stop blocking and are removed after a delay.
+Enemy definition	OutbreakEnemyDefinition.h: every enemy setting is data (health, movement, weapon, sight and hearing, alert time, patrol, combat range, targeting weights), with validation.
+Enemy AI controller	OutbreakEnemyAIController.h: sight and hearing as separate senses. Picks the most attractive visible hostile, switches between Idle, Patrol, Alerted and Combat, and keeps within its combat range. Hearing a shot, being hit by someone it can't see, or losing its target sends it to look.
+Pure rules	OutbreakEnemyTypes.h: state selection, target scoring and combat positioning, with no actors involved, so they're unit-tested.
+Patrol	OutbreakPatrolRoute.h: points you drag in the viewport; the route either loops or goes back and forth.
+Gunfire noise	Every shot reports an AI hearing event, with loudness and range set on the weapon. This is the minimal hook; Phase 8 replaces it.
+Debugging	outbreak.AI.DebugEnemies 1 draws each enemy's sight cone (coloured by state), hearing radius, state, target, destination and alert point.
+Tests	7 tests in OutbreakEnemyAITests.cpp.
+Docs: Docs/Phase5-EditorSetup.md covers:
+
+AI assets: the enemy Blackboard and Behavior Tree (same shape as the teammate one).
+Archetype: values for the alien infantry weapon, ammo, definition and Blueprint.
+Test map: a perception test map.
+Checklist: patrol, sight, hearing, damage and death, squad versus enemies, and changing enemies through data only.
+Risks and gaps
+
+Compiling: this is now 5 phases of code that has never been compiled, and Phase 5 also changed Phase 4 code. After the first build, re-run all earlier tests.
+Not covered by automated tests: the test world runs no perception, so actual seeing, hearing and shooting can only be checked by hand.
+Simplified alerts: one Alerted state stands in for Suspicious, Investigating and Searching until Phase 8.
+Unseen attacker: an enemy hit from out of sight learns the attacker's exact position.
+Enemy noise: enemies don't react to each other's gunfire.
+Unused component: enemies carry an unused squad member component from the shared base class.
+Nothing is committed. Phase 6 (prototype mission) is next and finishes the first playable prototype. It needs no open decision, but much of it is level work that can only be done in the editor: the greybox level, navmesh and enemy placement.
+
+
+
+================================
 
 
 

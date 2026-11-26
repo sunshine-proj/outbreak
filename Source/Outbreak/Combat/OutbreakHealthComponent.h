@@ -93,6 +93,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
 	void SetCanBeIncapacitated(bool bInCanBeIncapacitated) { bCanBeIncapacitated = bInCanBeIncapacitated; }
 
+	/** Changes MaxHealth (for example from an enemy definition). Optionally refills health. */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
+	void SetMaxHealth(float NewMaxHealth, bool bRefillHealth);
+
 	UPROPERTY(BlueprintAssignable, Category = "Health")
 	FOutbreakHealthChangedSignature OnHealthChanged;
 
@@ -101,7 +105,7 @@ public:
 
 protected:
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health", meta = (ClampMin = "1.0"))
+	UPROPERTY(EditDefaultsOnly, Replicated, BlueprintReadOnly, Category = "Health", meta = (ClampMin = "1.0"))
 	float MaxHealth = 100.0f;
 
 	/** If true, reaching zero health incapacitates instead of killing; further damage kills. */

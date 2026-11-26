@@ -71,6 +71,9 @@ public:
 
 	const FOutbreakMovementSettings& GetMovementSettings() const { return MovementSettings; }
 
+	/** Replaces and applies the movement settings (for example from an enemy definition). */
+	void SetMovementSettings(const FOutbreakMovementSettings& NewSettings);
+
 	UOutbreakHealthComponent* GetHealthComponent() const { return HealthComponent; }
 
 	UOutbreakWeaponComponent* GetWeaponComponent() const { return WeaponComponent; }
