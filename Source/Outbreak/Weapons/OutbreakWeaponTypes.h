@@ -8,6 +8,38 @@
 class UOutbreakAmmoTypeDefinition;
 class UOutbreakWeaponDefinition;
 
+/** Something a weapon did, for sound, animation and squad callouts (Phase 13). Fired on every machine. */
+UENUM(BlueprintType)
+enum class EOutbreakWeaponAction : uint8
+{
+	Fired,
+	ReloadStarted,
+	Equipped,
+	/** Tried to fire with nothing to load (owning machine only). */
+	DryFired
+};
+
+/** Which body pose set an Animation Blueprint uses for a weapon (Phase 13). */
+UENUM(BlueprintType)
+enum class EOutbreakWeaponPose : uint8
+{
+	Unarmed,
+	Pistol,
+	Rifle,
+	Heavy,
+	Melee
+};
+
+namespace OutbreakWeaponActions
+{
+	/**
+	 * Actions implied by a replicated state change: a reload starting, a different weapon equipped
+	 * (not the first one given). Shots arrive separately, through the shot multicast.
+	 */
+	OUTBREAK_API TArray<EOutbreakWeaponAction> DetectStateActions(bool bWasReloading, const UOutbreakWeaponDefinition* PreviousWeapon,
+		bool bIsReloading, const UOutbreakWeaponDefinition* CurrentWeapon);
+}
+
 /** A quantity of one ammunition type (reserves, loadouts). */
 USTRUCT(BlueprintType)
 struct OUTBREAK_API FOutbreakAmmoAmount

@@ -61,6 +61,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void SetMissionStatus(const FOutbreakMissionStatus& Status, bool bShowAllObjectives = false);
 
+	/** Stealth awareness meter and alarm line (Phase 13). Empty hides it. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetAwareness(const FText& AwarenessLine);
+
+	/** Squad communication subtitle ("Hawk: Contact!"). Empty hides it. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetSubtitle(const FText& Subtitle);
+
+	/** Hit marker at the crosshair: a hit, or a kill (bigger). */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetHitMarker(bool bVisible, bool bKill);
+
 	/** Objective notifications ("Objective complete: ..."), one per line. Empty hides them. */
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void SetNotifications(const FText& Notifications);
@@ -114,6 +126,19 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> NotificationText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> AwarenessText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> SubtitleText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> HitMarkerText;
+
+	/** Blueprint hook for the hit marker (sound, animation). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HUD")
+	void OnHitMarker(bool bKill);
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> InventoryText;

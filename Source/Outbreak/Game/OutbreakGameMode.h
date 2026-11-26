@@ -8,7 +8,7 @@
 class APlayerController;
 class UOutbreakMissionDefinition;
 class UOutbreakSquadConfiguration;
-struct FOutbreakSquadSelection;
+struct FOutbreakDeploymentSelection;
 
 /**
  * Default game mode: spawns the player as AOutbreakPlayerCharacter at a Player Start, controlled
@@ -43,7 +43,7 @@ public:
 	virtual void RestartPlayer(AController* NewPlayer) override;
 
 	/** A player left the briefing with Selection (from AOutbreakPlayerController). Ignored once deployed. */
-	void HandleDeployRequest(APlayerController* Player, const FOutbreakSquadSelection& Selection);
+	void HandleDeployRequest(APlayerController* Player, const FOutbreakDeploymentSelection& Selection);
 
 	/** A player asked to replay the mission from the summary screen. */
 	void HandleRestartRequest(APlayerController* Player);
@@ -64,7 +64,7 @@ protected:
 private:
 
 	/** Moves the player to the starting location, builds its squad (Selection null = default squad) and reports it deployed. */
-	void DeployPlayer(AController* Player, const FOutbreakSquadSelection* Selection);
+	void DeployPlayer(AController* Player, const FOutbreakDeploymentSelection* Selection);
 
 	/** The mission's squad configuration, else the game mode's, else the project default (may be null). */
 	UOutbreakSquadConfiguration* ResolveSquadConfiguration() const;

@@ -73,6 +73,11 @@ private:
 
 	void ApplyDefinition();
 
+	/** Every machine: barks (Phase 13). Authority: reports combat to the alarm. */
+	void HandleEnemyStateChanged(EOutbreakEnemyState NewState, EOutbreakEnemyState OldState);
+
+	double LastBarkTime = -1.0e9;
+
 	UFUNCTION()
 	void OnRep_EnemyState(EOutbreakEnemyState OldState);
 

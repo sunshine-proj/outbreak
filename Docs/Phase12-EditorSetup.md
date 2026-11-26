@@ -160,4 +160,4 @@ Then:
 - **Switched lights are per machine:** lights aren't replicated actors, so each machine switches its own copy from the equipment's replicated state. A late-joining client gets the right state from that replication; a Blueprint that switches lights directly would need to do the same.
 - **Teammate perception:** environment zones affect enemy perception only.
 - **Time of day:** it drives directional and sky lights; fog, sky colour and exposure aren't adjusted (set Exposure in a Post Process Volume for night levels).
-- **Ambience:** zone ambience uses the engine audio component (Unreal Audio). If FMOD is chosen (O-003), the zone's audio component is the one piece to replace.
+- **Ambience:** zone ambience uses the engine audio component (Unreal Audio). Unreal Audio is the chosen backend (D-021).

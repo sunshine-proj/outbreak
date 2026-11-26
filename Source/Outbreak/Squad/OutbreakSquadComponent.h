@@ -25,6 +25,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOutbreakSquadFormationChangedSigna
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakSquadStealthChangedSignature, UOutbreakSquadComponent*, Squad);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOutbreakSquadCommandAcceptedSignature,
+	UOutbreakSquadComponent*, Squad, EOutbreakSquadCommandType, CommandType, UOutbreakSquadMemberComponent*, FirstAcceptedMember);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOutbreakSquadMemberStatusEventSignature,
 	UOutbreakSquadComponent*, Squad, UOutbreakSquadMemberComponent*, Member,
 	EOutbreakSquadMemberStatus, NewStatus, EOutbreakSquadMemberStatus, OldStatus);
@@ -73,7 +76,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Squad")
 	bool InitializeSquadWithSelection(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn,
-		const FOutbreakSquadSelection& Selection);
+		const FOutbreakDeploymentSelection& Selection);
 
 	// --- Equipment selection (Phase 10) ---
 
@@ -244,6 +247,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Squad")
 	FOutbreakSquadMemberStatusEventSignature OnMemberStatusChanged;
 
+	/** Authority: an order was accepted by at least one member (squad communication acknowledges it). */
+	UPROPERTY(BlueprintAssignable, Category = "Squad|Orders")
+	FOutbreakSquadCommandAcceptedSignature OnCommandAccepted;
+
 private:
 
 	UFUNCTION(Server, Reliable)
@@ -297,7 +304,7 @@ private:
 
 	/** Shared by both InitializeSquad variants. Selection null = the configuration's composition and RequestedSizeOverride. */
 	bool InitializeSquadInternal(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn,
-		int32 RequestedSizeOverride, const FOutbreakSquadSelection* Selection);
+		int32 RequestedSizeOverride, const FOutbreakDeploymentSelection* Selection);
 
 	EOutbreakSquadRegistrationResult RegisterMemberInternal(UOutbreakSquadMemberComponent* Member, bool bIsPlayer);
 	AOutbreakCharacter* SpawnTeammate(const FOutbreakSquadMemberConfig& MemberConfig, const APawn* PlayerPawn, int32 TeammateIndex);

@@ -15,7 +15,7 @@ namespace OutbreakSquadSelection
 			return Configuration ? Configuration->Teammates.Num() : 0;
 		}
 
-		bool IsUsedByOtherSlot(const FOutbreakSquadSelection& Selection, int32 RosterIndex, int32 ExceptSlot)
+		bool IsUsedByOtherSlot(const FOutbreakDeploymentSelection& Selection, int32 RosterIndex, int32 ExceptSlot)
 		{
 			for (int32 Slot = 0; Slot < Selection.TeammateRosterIndices.Num(); ++Slot)
 			{
@@ -27,7 +27,7 @@ namespace OutbreakSquadSelection
 			return false;
 		}
 
-		int32 FirstUnusedRosterIndex(const UOutbreakSquadConfiguration* Configuration, const FOutbreakSquadSelection& Selection)
+		int32 FirstUnusedRosterIndex(const UOutbreakSquadConfiguration* Configuration, const FOutbreakDeploymentSelection& Selection)
 		{
 			for (int32 RosterIndex = 0; RosterIndex < RosterSize(Configuration); ++RosterIndex)
 			{
@@ -68,14 +68,14 @@ namespace OutbreakSquadSelection
 		return Global.IsValid() ? Global : FOutbreakSquadSizeLimits();
 	}
 
-	FOutbreakSquadSelection MakeDefault(const UOutbreakSquadConfiguration* Configuration, const FOutbreakSquadSizeLimits& Limits,
+	FOutbreakDeploymentSelection MakeDefault(const UOutbreakSquadConfiguration* Configuration, const FOutbreakSquadSizeLimits& Limits,
 		int32 RequestedSize)
 	{
 		int32 Size = RequestedSize > 0 ? RequestedSize
 			: (Configuration && Configuration->SquadSize > 0 ? Configuration->SquadSize : Limits.DefaultSquadSize);
 		Size = FMath::Clamp(Size, Limits.MinSquadSize, Limits.MaxSquadSize);
 
-		FOutbreakSquadSelection Selection;
+		FOutbreakDeploymentSelection Selection;
 		Selection.SquadSize = Size;
 		for (int32 Slot = 0; Slot < Size - 1; ++Slot)
 		{
@@ -86,7 +86,7 @@ namespace OutbreakSquadSelection
 	}
 
 	bool Validate(const UOutbreakSquadConfiguration* Configuration, const FOutbreakSquadSizeLimits& Limits,
-		const FOutbreakSquadSelection& Selection, TArray<FText>& OutErrors)
+		const FOutbreakDeploymentSelection& Selection, TArray<FText>& OutErrors)
 	{
 		const int32 InitialErrorCount = OutErrors.Num();
 
@@ -138,7 +138,7 @@ namespace OutbreakSquadSelection
 	}
 
 	void SetSquadSize(const UOutbreakSquadConfiguration* Configuration, const FOutbreakSquadSizeLimits& Limits,
-		FOutbreakSquadSelection& Selection, int32 NewSize)
+		FOutbreakDeploymentSelection& Selection, int32 NewSize)
 	{
 		NewSize = FMath::Clamp(NewSize, Limits.MinSquadSize, Limits.MaxSquadSize);
 		Selection.SquadSize = NewSize;
@@ -155,7 +155,7 @@ namespace OutbreakSquadSelection
 		Selection.MemberLoadouts.SetNum(NewSize);
 	}
 
-	void CycleTeammate(const UOutbreakSquadConfiguration* Configuration, FOutbreakSquadSelection& Selection, int32 Slot, int32 Direction)
+	void CycleTeammate(const UOutbreakSquadConfiguration* Configuration, FOutbreakDeploymentSelection& Selection, int32 Slot, int32 Direction)
 	{
 		if (!Selection.TeammateRosterIndices.IsValidIndex(Slot))
 		{
@@ -173,7 +173,7 @@ namespace OutbreakSquadSelection
 		Selection.TeammateRosterIndices[Slot] = Step(Options, Selection.TeammateRosterIndices[Slot], Direction);
 	}
 
-	void CycleLoadout(const UOutbreakSquadConfiguration* Configuration, FOutbreakSquadSelection& Selection, int32 MemberIndex, int32 Direction)
+	void CycleLoadout(const UOutbreakSquadConfiguration* Configuration, FOutbreakDeploymentSelection& Selection, int32 MemberIndex, int32 Direction)
 	{
 		if (MemberIndex < 0 || MemberIndex >= Selection.SquadSize)
 		{
@@ -199,7 +199,7 @@ namespace OutbreakSquadSelection
 	}
 
 	const FOutbreakSquadMemberConfig& GetTeammateConfig(const UOutbreakSquadConfiguration* Configuration,
-		const FOutbreakSquadSelection& Selection, int32 Slot)
+		const FOutbreakDeploymentSelection& Selection, int32 Slot)
 	{
 		static const FOutbreakSquadMemberConfig EmptyConfig;
 		if (!Configuration)
@@ -210,7 +210,7 @@ namespace OutbreakSquadSelection
 		return Configuration->Teammates.IsValidIndex(RosterIndex) ? Configuration->Teammates[RosterIndex] : Configuration->FillerTeammate;
 	}
 
-	UOutbreakLoadoutDefinition* GetLoadout(const FOutbreakSquadSelection& Selection, int32 MemberIndex)
+	UOutbreakLoadoutDefinition* GetLoadout(const FOutbreakDeploymentSelection& Selection, int32 MemberIndex)
 	{
 		return Selection.MemberLoadouts.IsValidIndex(MemberIndex) ? Selection.MemberLoadouts[MemberIndex].Get() : nullptr;
 	}

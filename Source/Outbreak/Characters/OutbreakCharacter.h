@@ -7,6 +7,7 @@
 #include "GameFramework/Character.h"
 #include "GenericTeamAgentInterface.h"
 #include "Interaction/OutbreakInteractable.h"
+#include "Weapons/OutbreakWeaponTypes.h"
 
 #include "OutbreakCharacter.generated.h"
 
@@ -15,6 +16,7 @@ class UOutbreakMedicalComponent;
 class UOutbreakNoiseEmitterComponent;
 class UOutbreakSquadMemberComponent;
 class UOutbreakWeaponComponent;
+class UOutbreakWeaponDefinition;
 
 /**
  * Base for every Outbreak soldier: the player (AOutbreakPlayerCharacter) and AI teammates
@@ -120,6 +122,13 @@ protected:
 	/** Called after BaseEyeHeight changes (crouch, settings). The player moves its camera here. */
 	virtual void HandleEyeHeightChanged() {}
 
+	/** Plays the weapon's montage for Action on the character mesh (every machine). Phase 13. */
+	virtual void HandleWeaponAction(EOutbreakWeaponAction Action, UOutbreakWeaponDefinition* Weapon);
+
+	/** Blueprint notification for weapon actions (extra effects, first-person arms). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Combat")
+	void OnWeaponAction(EOutbreakWeaponAction Action, UOutbreakWeaponDefinition* Weapon);
+
 	/** Blueprint notification for HandleDowned. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Combat")
 	void OnDowned(EOutbreakHealthState NewState);
@@ -152,6 +161,9 @@ protected:
 	FOutbreakMovementSettings MovementSettings;
 
 private:
+
+	UFUNCTION()
+	void OnWeaponComponentAction(UOutbreakWeaponComponent* InWeaponComponent, EOutbreakWeaponAction Action, UOutbreakWeaponDefinition* Weapon);
 
 	UFUNCTION()
 	void OnHealthChanged(UOutbreakHealthComponent* InHealthComponent, float NewHealth, float Delta);

@@ -18,7 +18,7 @@ struct FOutbreakSquadMemberConfig;
  * and the server validates it.
  */
 USTRUCT(BlueprintType)
-struct OUTBREAK_API FOutbreakSquadSelection
+struct OUTBREAK_API FOutbreakDeploymentSelection
 {
 	GENERATED_BODY()
 
@@ -48,29 +48,29 @@ namespace OutbreakSquadSelection
 	 * The squad InitializeSquad would build: RequestedSize (0 = the configuration's size, else the
 	 * default size, clamped into Limits), roster soldiers in order, then fillers, default equipment.
 	 */
-	OUTBREAK_API FOutbreakSquadSelection MakeDefault(const UOutbreakSquadConfiguration* Configuration,
+	OUTBREAK_API FOutbreakDeploymentSelection MakeDefault(const UOutbreakSquadConfiguration* Configuration,
 		const FOutbreakSquadSizeLimits& Limits, int32 RequestedSize = 0);
 
 	/** Returns false, appending a reason for each problem: size, slot count, roster indices, duplicates, loadouts. */
 	OUTBREAK_API bool Validate(const UOutbreakSquadConfiguration* Configuration, const FOutbreakSquadSizeLimits& Limits,
-		const FOutbreakSquadSelection& Selection, TArray<FText>& OutErrors);
+		const FOutbreakDeploymentSelection& Selection, TArray<FText>& OutErrors);
 
 	/** Resizes to NewSize (clamped into Limits): new slots take the next unused roster soldier, else a filler. */
 	OUTBREAK_API void SetSquadSize(const UOutbreakSquadConfiguration* Configuration, const FOutbreakSquadSizeLimits& Limits,
-		FOutbreakSquadSelection& Selection, int32 NewSize);
+		FOutbreakDeploymentSelection& Selection, int32 NewSize);
 
 	/** Steps teammate slot Slot through the roster soldiers not used by other slots, and the filler. Direction ±1. */
-	OUTBREAK_API void CycleTeammate(const UOutbreakSquadConfiguration* Configuration, FOutbreakSquadSelection& Selection,
+	OUTBREAK_API void CycleTeammate(const UOutbreakSquadConfiguration* Configuration, FOutbreakDeploymentSelection& Selection,
 		int32 Slot, int32 Direction);
 
 	/** Steps member MemberIndex (0 = player) through default equipment and the AvailableLoadouts. Direction ±1. */
-	OUTBREAK_API void CycleLoadout(const UOutbreakSquadConfiguration* Configuration, FOutbreakSquadSelection& Selection,
+	OUTBREAK_API void CycleLoadout(const UOutbreakSquadConfiguration* Configuration, FOutbreakDeploymentSelection& Selection,
 		int32 MemberIndex, int32 Direction);
 
 	/** The member configuration for teammate slot Slot (roster entry or filler); an empty one without a configuration. */
 	OUTBREAK_API const FOutbreakSquadMemberConfig& GetTeammateConfig(const UOutbreakSquadConfiguration* Configuration,
-		const FOutbreakSquadSelection& Selection, int32 Slot);
+		const FOutbreakDeploymentSelection& Selection, int32 Slot);
 
 	/** Member MemberIndex's chosen loadout, or null for default equipment. */
-	OUTBREAK_API UOutbreakLoadoutDefinition* GetLoadout(const FOutbreakSquadSelection& Selection, int32 MemberIndex);
+	OUTBREAK_API UOutbreakLoadoutDefinition* GetLoadout(const FOutbreakDeploymentSelection& Selection, int32 MemberIndex);
 }

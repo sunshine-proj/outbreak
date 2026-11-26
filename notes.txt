@@ -464,6 +464,49 @@ Next step: it's unchanged. Install Unreal Engine, build and run the tests. If it
 ================================
 
 
+I've written the Phase 13 C++, but none of it has been compiled or run, because Unreal Engine still isn't installed. Most of Phase 13 is mission content, art, audio assets and playtesting, which need the editor. For that I wrote a mission spec and checklists in Docs/Phase13-EditorSetup.md. Every Phase 13 task in ROADMAP.md is [-] and the phase is recorded as blocked.
+
+A Phase 11 bug, now fixed: Phase 11 had a compile error I introduced. My squad-selection struct used the same name as an existing type (FOutbreakSquadSelection, the command-recipient selection), and the squad component includes both headers. I renamed mine to FOutbreakDeploymentSelection everywhere. I then scanned the whole module for other duplicate type names and found none.
+
+Your two decisions are applied:
+
+Audio: Unreal Audio. I closed O-003 and recorded it as D-021.
+Alarm: when an enemy spots the squad, a countdown starts (4 s by default, set per mission). If that enemy is still alive and fighting when it ends, the alarm goes up. So killing the spotter fast keeps the base quiet. Sirens sound, a teammate calls it out, and encounters set to the alarm bring reinforcements. An alarm panel can silence it, and each mission can turn the alarm off.
+What the new code does:
+
+Encounters: scripted enemy groups for the mission's set pieces: reinforcements, a counterattack, a pursuit to the extraction point. They spawn at chosen points when a trigger fires: mission start, an objective starting or completing, a player entering an area, the alarm, or a script. They then guard, investigate or hunt the squad, and carry a tag so objectives can count them.
+
+Squad communication: teammates call out:
+
+an order acknowledged;
+first contact;
+reloading;
+a squadmate down or killed, by name;
+the alarm;
+an objective done.
+Each callout is a voice line plus a subtitle, rate-limited so routine chatter doesn't spam, while urgent lines cut in. Voices are data assets assigned on squad roles.
+
+Audio hooks:
+
+Weapons: reload, equip and empty-click sounds; fire and impact sounds already existed.
+Enemies: a bark per AI state and a death sound.
+Alarm: a siren.
+Animation: a base class for Animation Blueprints that exposes movement, stance, weapon pose, downed/dead and enemy state. Weapon definitions also carry fire, reload and equip animations; the reload animation is stretched to the reload time.
+
+HUD: a stealth awareness meter, an ALARM RAISED line, hit markers (not for friendly fire), and subtitles.
+
+These choices are recorded as D-022 in the roadmap.
+
+Tests: I wrote 8 new automation tests in Tests/OutbreakVerticalSliceTests.cpp; none have run. Changes to weapons, enemy state handling and the Phase 11 rename mean the existing weapon, AI, stealth and mission tests need re-running too.
+
+What's in the change: 18 new source files, changes to 33 existing files, and the new Phase 13 guide. Nothing is committed.
+
+Next step: it's unchanged. Install Unreal Engine, build and run the tests, then work through the guides. Phase 13 is the first real demo milestone, and it can only be accepted once the mission has actually been played.
+
+
+
+================================
+
 
 
 

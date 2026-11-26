@@ -42,6 +42,9 @@ void UOutbreakHUDWidget::NativeOnInitialized()
 	SetInventory(FText::GetEmpty());
 	SetMedicalStatus(FText::GetEmpty());
 	SetNotifications(FText::GetEmpty());
+	SetAwareness(FText::GetEmpty());
+	SetSubtitle(FText::GetEmpty());
+	SetHitMarker(false, false);
 }
 
 void UOutbreakHUDWidget::BuildDefaultLayout()
@@ -83,6 +86,9 @@ void UOutbreakHUDWidget::BuildDefaultLayout()
 	ObjectiveText = AddText(TEXT("ObjectiveText"), FText::GetEmpty(), TopCentre, FVector2D(0.5f, 0.0f), FVector2D(0.0f, 40.0f));
 	MissionResultText = AddText(TEXT("MissionResultText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 1.0f), FVector2D(0.0f, -60.0f));
 	NotificationText = AddText(TEXT("NotificationText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 1.0f), FVector2D(0.0f, -160.0f));
+	AwarenessText = AddText(TEXT("AwarenessText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 1.0f), FVector2D(0.0f, -25.0f));
+	SubtitleText = AddText(TEXT("SubtitleText"), FText::GetEmpty(), FAnchors(0.5f, 1.0f), FVector2D(0.5f, 1.0f), FVector2D(0.0f, -110.0f));
+	HitMarkerText = AddText(TEXT("HitMarkerText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 0.5f), FVector2D::ZeroVector);
 
 	const FAnchors RightCentre(1.0f, 0.5f);
 	InventoryText = AddText(TEXT("InventoryText"), FText::GetEmpty(), RightCentre, FVector2D(1.0f, 0.5f), FVector2D(-40.0f, 0.0f));
@@ -204,6 +210,37 @@ void UOutbreakHUDWidget::SetMissionStatus(const FOutbreakMissionStatus& Status, 
 		}
 		MissionResultText->SetText(Result);
 		MissionResultText->SetVisibility(bEnded ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+void UOutbreakHUDWidget::SetAwareness(const FText& AwarenessLine)
+{
+	if (AwarenessText)
+	{
+		AwarenessText->SetText(AwarenessLine);
+		AwarenessText->SetVisibility(AwarenessLine.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UOutbreakHUDWidget::SetSubtitle(const FText& Subtitle)
+{
+	if (SubtitleText)
+	{
+		SubtitleText->SetText(Subtitle);
+		SubtitleText->SetVisibility(Subtitle.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UOutbreakHUDWidget::SetHitMarker(bool bVisible, bool bKill)
+{
+	if (HitMarkerText)
+	{
+		HitMarkerText->SetText(bKill ? LOCTEXT("KillMarker", "[ X ]") : LOCTEXT("HitMarker", "x"));
+		HitMarkerText->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (bVisible)
+	{
+		OnHitMarker(bKill);
 	}
 }
 

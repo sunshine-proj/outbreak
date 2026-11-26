@@ -7,6 +7,7 @@
 #include "Sound/SoundBase.h"
 #include "Weapons/OutbreakAmmoTypeDefinition.h"
 #include "Weapons/OutbreakWeaponDefinition.h"
+#include "Weapons/OutbreakWeaponTypes.h"
 
 namespace OutbreakWeaponEffects
 {
@@ -16,6 +17,27 @@ namespace OutbreakWeaponEffects
 		{
 			const UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr;
 			return World && World->GetNetMode() != NM_DedicatedServer;
+		}
+	}
+
+	void PlayActionSound(const UObject* WorldContextObject, const UOutbreakWeaponDefinition* Weapon,
+		EOutbreakWeaponAction Action, const FVector& Location)
+	{
+		if (!Weapon || !CanPlayEffects(WorldContextObject))
+		{
+			return;
+		}
+		USoundBase* Sound = nullptr;
+		switch (Action)
+		{
+		case EOutbreakWeaponAction::ReloadStarted: Sound = Weapon->ReloadSound; break;
+		case EOutbreakWeaponAction::Equipped:      Sound = Weapon->EquipSound; break;
+		case EOutbreakWeaponAction::DryFired:      Sound = Weapon->EmptySound; break;
+		default: break;
+		}
+		if (Sound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(WorldContextObject, Sound, Location);
 		}
 	}
 

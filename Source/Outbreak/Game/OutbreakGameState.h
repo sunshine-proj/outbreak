@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/NetSerialization.h"
 #include "GameFramework/GameStateBase.h"
 #include "Missions/OutbreakMissionTypes.h"
 
@@ -10,6 +11,7 @@ class UOutbreakMissionDefinition;
 class UOutbreakSquadConfiguration;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakMissionStatusChangedSignature, const FOutbreakMissionStatus&, Status);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakAlarmChangedSignature, bool, bAlarmRaised);
 
 /**
  * Replicates the mission to every client: the definition and squad configuration the briefing
@@ -46,6 +48,18 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Mission")
 	UOutbreakSquadConfiguration* GetSquadConfiguration() const { return SquadConfiguration; }
 
+	/** Authority: set by UOutbreakAlarmSubsystem (Phase 13). */
+	void SetAlarm(bool bRaised, const FVector& Location);
+
+	UFUNCTION(BlueprintPure, Category = "Alarm")
+	bool IsAlarmRaised() const { return bAlarmRaised; }
+
+	FVector GetAlarmLocation() const { return AlarmLocation; }
+
+	/** Fires on every machine when the alarm goes up or is silenced. */
+	UPROPERTY(BlueprintAssignable, Category = "Alarm")
+	FOutbreakAlarmChangedSignature OnAlarmChanged;
+
 	/** Fires on every machine when the status changes. */
 	UPROPERTY(BlueprintAssignable, Category = "Mission")
 	FOutbreakMissionStatusChangedSignature OnMissionStatusChanged;
@@ -66,4 +80,13 @@ private:
 
 	UPROPERTY(Replicated)
 	TObjectPtr<UOutbreakSquadConfiguration> SquadConfiguration;
+
+	UFUNCTION()
+	void OnRep_Alarm();
+
+	UPROPERTY(ReplicatedUsing = OnRep_Alarm)
+	bool bAlarmRaised = false;
+
+	UPROPERTY(Replicated)
+	FVector_NetQuantize AlarmLocation = FVector::ZeroVector;
 };

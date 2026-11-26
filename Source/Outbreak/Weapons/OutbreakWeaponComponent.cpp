@@ -268,7 +268,13 @@ void UOutbreakWeaponComponent::FireLocalShot()
 	if (!CanFire())
 	{
 		const FOutbreakWeaponSlot* Slot = GetActiveSlot();
-		if (bAutoReloadWhenEmpty && Slot && Slot->AmmoInMagazine < FireMode->AmmoPerShot)
+		const bool bEmpty = Slot && Slot->AmmoInMagazine < FireMode->AmmoPerShot;
+		if (bEmpty && (!bAutoReloadWhenEmpty || !CanReload()) && !bIsReloading)
+		{
+			// Click: empty and nothing to reload with. Local feedback only.
+			BroadcastWeaponAction(EOutbreakWeaponAction::DryFired, Slot->Definition);
+		}
+		if (bAutoReloadWhenEmpty && bEmpty)
 		{
 			StartReload();
 		}
@@ -390,6 +396,7 @@ void UOutbreakWeaponComponent::MulticastPlayShotEffects_Implementation(UOutbreak
 	const TArray<FOutbreakShotImpact>& Impacts)
 {
 	OutbreakWeaponEffects::PlayMuzzleEffects(this, Weapon, Origin, Direction);
+	OnWeaponAction.Broadcast(this, EOutbreakWeaponAction::Fired, Weapon);
 	for (const FOutbreakShotImpact& Impact : Impacts)
 	{
 		if (Impact.bBlockingHit)
@@ -765,7 +772,28 @@ void UOutbreakWeaponComponent::AddReserve(UOutbreakAmmoTypeDefinition* AmmoType,
 
 void UOutbreakWeaponComponent::BroadcastStateChanged()
 {
+	// Presentation (Phase 13): this runs on the authority and, through OnRep, on every client.
+	const FOutbreakWeaponSlot* Slot = GetActiveSlot();
+	UOutbreakWeaponDefinition* Current = Slot ? Slot->Definition.Get() : nullptr;
+	const TArray<EOutbreakWeaponAction> Actions = OutbreakWeaponActions::DetectStateActions(
+		bLastBroadcastReloading, LastBroadcastWeapon.Get(), bIsReloading, Current);
+	bLastBroadcastReloading = bIsReloading;
+	LastBroadcastWeapon = Current;
+	for (const EOutbreakWeaponAction Action : Actions)
+	{
+		BroadcastWeaponAction(Action, Current);
+	}
+
 	OnWeaponStateChanged.Broadcast(this);
+}
+
+void UOutbreakWeaponComponent::BroadcastWeaponAction(EOutbreakWeaponAction Action, UOutbreakWeaponDefinition* Weapon)
+{
+	if (Action != EOutbreakWeaponAction::Fired && GetOwner())
+	{
+		OutbreakWeaponEffects::PlayActionSound(this, Weapon, Action, GetOwner()->GetActorLocation());
+	}
+	OnWeaponAction.Broadcast(this, Action, Weapon);
 }
 
 void UOutbreakWeaponComponent::OnRep_WeaponState()

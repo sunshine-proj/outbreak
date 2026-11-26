@@ -5,6 +5,7 @@
 
 #include "OutbreakPlayerState.generated.h"
 
+class UOutbreakSquadCommsComponent;
 class UOutbreakSquadComponent;
 
 /**
@@ -23,8 +24,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Squad")
 	UOutbreakSquadComponent* GetSquadComponent() const { return SquadComponent; }
 
+	UFUNCTION(BlueprintPure, Category = "Squad")
+	UOutbreakSquadCommsComponent* GetSquadCommsComponent() const { return SquadCommsComponent; }
+
 protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Squad")
 	TObjectPtr<UOutbreakSquadComponent> SquadComponent;
+
+	/** Squad communication: callouts and subtitles (Phase 13). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Squad")
+	TObjectPtr<UOutbreakSquadCommsComponent> SquadCommsComponent;
 };

@@ -147,7 +147,7 @@ void AOutbreakGameMode::RestartPlayer(AController* NewPlayer)
 	DeployPlayer(NewPlayer, nullptr);
 }
 
-void AOutbreakGameMode::HandleDeployRequest(APlayerController* Player, const FOutbreakSquadSelection& Selection)
+void AOutbreakGameMode::HandleDeployRequest(APlayerController* Player, const FOutbreakDeploymentSelection& Selection)
 {
 	const AOutbreakPlayerState* PlayerState = Player ? Player->GetPlayerState<AOutbreakPlayerState>() : nullptr;
 	const UOutbreakSquadComponent* Squad = PlayerState ? PlayerState->GetSquadComponent() : nullptr;
@@ -158,7 +158,7 @@ void AOutbreakGameMode::HandleDeployRequest(APlayerController* Player, const FOu
 	DeployPlayer(Player, &Selection);
 }
 
-void AOutbreakGameMode::DeployPlayer(AController* Player, const FOutbreakSquadSelection* Selection)
+void AOutbreakGameMode::DeployPlayer(AController* Player, const FOutbreakDeploymentSelection* Selection)
 {
 	APawn* Pawn = Player ? Player->GetPawn() : nullptr;
 	AOutbreakPlayerState* PlayerState = Player ? Player->GetPlayerState<AOutbreakPlayerState>() : nullptr;

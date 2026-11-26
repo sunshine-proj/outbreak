@@ -4,12 +4,14 @@
 #include "Characters/OutbreakMovementSettings.h"
 #include "Combat/OutbreakHealthComponent.h"
 #include "AI/OutbreakEnemyTactics.h"
+#include "AI/OutbreakEnemyTypes.h"
 #include "Engine/DataAsset.h"
 #include "Stealth/OutbreakVisibility.h"
 
 #include "OutbreakEnemyDefinition.generated.h"
 
 class UBehaviorTree;
+class USoundBase;
 class UOutbreakWeaponDefinition;
 
 /**
@@ -46,6 +48,22 @@ public:
 	/** Seconds a dead enemy remains before it is removed. 0 = remains. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health", meta = (ClampMin = "0.0", Units = "s"))
 	float CorpseLifetime = 10.0f;
+
+	// --- Audio (Phase 13) ---
+
+	/**
+	 * Bark played where the enemy stands when it enters a state (a growl when Suspicious, a shriek
+	 * at Combat). Cosmetic: what other enemies hear is the separate gameplay noise.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio")
+	TMap<EOutbreakEnemyState, TObjectPtr<USoundBase>> StateSounds;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio")
+	TObjectPtr<USoundBase> DeathSound;
+
+	/** Seconds between barks, so state flicker does not spam sounds. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (ClampMin = "0.0", Units = "s"))
+	float BarkCooldown = 3.0f;
 
 	// --- Movement ---
 

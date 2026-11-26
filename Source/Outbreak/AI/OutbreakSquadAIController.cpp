@@ -22,6 +22,7 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISense_Sight.h"
+#include "Squad/OutbreakSquadCommsComponent.h"
 #include "Squad/OutbreakSquadComponent.h"
 #include "Squad/OutbreakSquadMemberComponent.h"
 #include "Squad/OutbreakSquadRoleDefinition.h"
@@ -128,6 +129,9 @@ void AOutbreakSquadAIController::HandleCommandChanged(UOutbreakSquadMemberCompon
 
 void AOutbreakSquadAIController::UpdateThreat()
 {
+	// Squad communication (Phase 13): the first hostile after a quiet spell is called out.
+	const bool bThreatWasKnown = CurrentThreat.IsValid() || HasRememberedThreat();
+
 	VisibleHostiles.Reset();
 	CurrentThreat = nullptr;
 
@@ -166,6 +170,15 @@ void AOutbreakSquadAIController::UpdateThreat()
 	{
 		LastThreatLocation = Threat->GetActorLocation();
 		LastThreatTime = GetTimeSeconds();
+
+		UOutbreakSquadMemberComponent* Member = ControlledPawn->FindComponentByClass<UOutbreakSquadMemberComponent>();
+		if (!bThreatWasKnown)
+		{
+			if (UOutbreakSquadCommsComponent* Comms = UOutbreakSquadCommsComponent::FindFor(Member))
+			{
+				Comms->RequestCallout(EOutbreakCallout::Contact, Member);
+			}
+		}
 	}
 }
 

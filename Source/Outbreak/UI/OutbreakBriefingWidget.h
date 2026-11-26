@@ -14,7 +14,7 @@ class UOutbreakSquadConfiguration;
 class UPanelWidget;
 class UTextBlock;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakDeployRequestedSignature, const FOutbreakSquadSelection&, Selection);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakDeployRequestedSignature, const FOutbreakDeploymentSelection&, Selection);
 
 /**
  * Mission briefing screen (Phase 11): mission name, description, briefing and objectives, then
@@ -38,7 +38,7 @@ public:
 	void ShowMission(UOutbreakMissionDefinition* Mission, UOutbreakSquadConfiguration* Configuration);
 
 	UFUNCTION(BlueprintPure, Category = "Briefing")
-	const FOutbreakSquadSelection& GetSelection() const { return Selection; }
+	const FOutbreakDeploymentSelection& GetSelection() const { return Selection; }
 
 	UFUNCTION(BlueprintCallable, Category = "Briefing")
 	void ChangeSquadSize(int32 Delta);
@@ -92,7 +92,7 @@ protected:
 	TObjectPtr<UOutbreakSquadConfiguration> SquadConfiguration;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Briefing")
-	FOutbreakSquadSelection Selection;
+	FOutbreakDeploymentSelection Selection;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Briefing")
 	FOutbreakSquadSizeLimits SizeLimits;

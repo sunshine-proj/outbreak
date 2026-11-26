@@ -2,12 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
+#include "Squad/OutbreakSquadComms.h"
 #include "Squad/OutbreakSquadTypes.h"
 
 #include "OutbreakSquadSettings.generated.h"
 
 class AOutbreakTeammateCharacter;
 class UOutbreakSquadConfiguration;
+class UOutbreakVoiceDefinition;
 
 /**
  * Project-wide squad settings: Project Settings → Game → Outbreak Squad, stored in
@@ -52,4 +54,11 @@ public:
 	/** In stealth mode, seconds without new compromising events before the squad goes quiet again. */
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Stealth", meta = (ClampMin = "0.0", Units = "s"))
 	float CompromiseDuration = 15.0f;
+
+	/** Voice for teammates whose role has none (Phase 13). */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Communication")
+	TSoftObjectPtr<UOutbreakVoiceDefinition> DefaultVoice;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Communication")
+	FOutbreakSquadCommsSettings Comms;
 };

@@ -16,6 +16,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakWeaponStateChangedSignature
 /** Authority only: a shot was fired (after validation). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakWeaponFiredSignature, UOutbreakWeaponComponent*, WeaponComponent);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOutbreakWeaponActionSignature, UOutbreakWeaponComponent*, WeaponComponent,
+	EOutbreakWeaponAction, Action, UOutbreakWeaponDefinition*, Weapon);
+
 /**
  * Carries weapons and ammunition reserves, and fires, reloads and switches weapons.
  *
@@ -170,6 +173,13 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Weapons")
 	FOutbreakWeaponFiredSignature OnShotFired;
 
+	/**
+	 * Fires on every machine for presentation (Phase 13): shots, reloads starting, weapons drawn;
+	 * dry fire on the shooting machine only. Sounds are played here; characters play montages.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "Weapons")
+	FOutbreakWeaponActionSignature OnWeaponAction;
+
 protected:
 
 	virtual void BeginPlay() override;
@@ -266,6 +276,11 @@ private:
 	double LastAuthShotTime = -1.0e9;
 	float CurrentBloom = 0.0f;
 	FTimerHandle ReloadTimer;
+
+	/** Weapon presentation: compare with the last broadcast state to find reloads and weapon changes. */
+	void BroadcastWeaponAction(EOutbreakWeaponAction Action, UOutbreakWeaponDefinition* Weapon);
+	bool bLastBroadcastReloading = false;
+	TWeakObjectPtr<UOutbreakWeaponDefinition> LastBroadcastWeapon;
 
 	// Local (requesting machine) fire state.
 	double LastLocalShotTime = -1.0e9;

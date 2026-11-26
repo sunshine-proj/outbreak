@@ -4,8 +4,11 @@
 #include "AI/OutbreakEnemyDefinition.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Missions/OutbreakAlarmSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Outbreak.h"
+#include "Sound/SoundBase.h"
 #include "Weapons/OutbreakWeaponComponent.h"
 #include "Weapons/OutbreakWeaponDefinition.h"
 
@@ -85,17 +88,46 @@ void AOutbreakEnemyCharacter::SetEnemyState(EOutbreakEnemyState NewState)
 	}
 	const EOutbreakEnemyState OldState = EnemyState;
 	EnemyState = NewState;
-	OnEnemyStateChanged(NewState, OldState);
+	HandleEnemyStateChanged(NewState, OldState);
 }
 
 void AOutbreakEnemyCharacter::OnRep_EnemyState(EOutbreakEnemyState OldState)
 {
-	OnEnemyStateChanged(EnemyState, OldState);
+	HandleEnemyStateChanged(EnemyState, OldState);
+}
+
+void AOutbreakEnemyCharacter::HandleEnemyStateChanged(EOutbreakEnemyState NewState, EOutbreakEnemyState OldState)
+{
+	// Stealth is broken: the alarm goes up unless this enemy is silenced in time (Phase 13).
+	if (HasAuthority() && NewState == EOutbreakEnemyState::Combat && OldState != EOutbreakEnemyState::Retreating)
+	{
+		if (UOutbreakAlarmSubsystem* Alarm = GetWorld() ? GetWorld()->GetSubsystem<UOutbreakAlarmSubsystem>() : nullptr)
+		{
+			Alarm->ReportCombatStarted(this);
+		}
+	}
+
+	const UWorld* World = GetWorld();
+	const TObjectPtr<USoundBase>* Bark = EnemyDefinition ? EnemyDefinition->StateSounds.Find(NewState) : nullptr;
+	if (Bark && *Bark && World && World->GetNetMode() != NM_DedicatedServer
+		&& World->GetTimeSeconds() - LastBarkTime >= EnemyDefinition->BarkCooldown)
+	{
+		LastBarkTime = World->GetTimeSeconds();
+		UGameplayStatics::SpawnSoundAttached(*Bark, GetRootComponent());
+	}
+
+	OnEnemyStateChanged(NewState, OldState);
 }
 
 void AOutbreakEnemyCharacter::HandleDowned(EOutbreakHealthState NewState)
 {
 	Super::HandleDowned(NewState);
+
+	if (NewState == EOutbreakHealthState::Dead && EnemyDefinition && EnemyDefinition->DeathSound
+		&& GetNetMode() != NM_DedicatedServer)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, EnemyDefinition->DeathSound, GetActorLocation());
+	}
 
 	// The body no longer blocks movement or shots.
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);

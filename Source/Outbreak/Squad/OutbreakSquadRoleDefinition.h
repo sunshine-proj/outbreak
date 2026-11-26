@@ -8,6 +8,7 @@
 #include "OutbreakSquadRoleDefinition.generated.h"
 
 class UOutbreakLoadoutDefinition;
+class UOutbreakVoiceDefinition;
 class UOutbreakWeaponDefinition;
 
 /**
@@ -59,4 +60,8 @@ public:
 	/** Distance this role prefers to fight at. Read by teammate AI (Phase 4). */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat Preferences", meta = (ClampMin = "0.0", Units = "cm"))
 	float PreferredEngagementRange = 1500.0f;
+
+	/** What members with this role say (Phase 13 squad communication). Empty = the project default voice. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Communication")
+	TObjectPtr<UOutbreakVoiceDefinition> Voice;
 };

@@ -5,7 +5,7 @@
 
 class UOutbreakMissionDefinition;
 class UOutbreakSquadConfiguration;
-struct FOutbreakSquadSelection;
+struct FOutbreakDeploymentSelection;
 
 /**
  * Text for the mission UI (Phase 11): the objective display, objective notifications, the briefing
@@ -27,10 +27,10 @@ namespace OutbreakMissionText
 	OUTBREAK_API FText BuildBriefing(const UOutbreakMissionDefinition* Mission);
 
 	/** Name for teammate slot Slot of a selection: the roster soldier's name, or the filler's ("Reinforcement" when unnamed). */
-	OUTBREAK_API FText GetTeammateName(const UOutbreakSquadConfiguration* Configuration, const FOutbreakSquadSelection& Selection, int32 Slot);
+	OUTBREAK_API FText GetTeammateName(const UOutbreakSquadConfiguration* Configuration, const FOutbreakDeploymentSelection& Selection, int32 Slot);
 
 	/** Loadout name for member MemberIndex (0 = player), "Default equipment" when none is chosen. */
-	OUTBREAK_API FText GetLoadoutName(const FOutbreakSquadSelection& Selection, int32 MemberIndex);
+	OUTBREAK_API FText GetLoadoutName(const FOutbreakDeploymentSelection& Selection, int32 MemberIndex);
 
 	/** "MISSION COMPLETE" or "MISSION FAILED". */
 	OUTBREAK_API FText BuildResultTitle(const FOutbreakMissionResults& Results);

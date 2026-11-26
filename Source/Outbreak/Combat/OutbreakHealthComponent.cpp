@@ -1,5 +1,6 @@
 #include "Combat/OutbreakHealthComponent.h"
 
+#include "Combat/OutbreakCombatEvents.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/DamageType.h"
 #include "GameFramework/GameStateBase.h"
@@ -235,7 +236,12 @@ void UOutbreakHealthComponent::SetDamageMultiplier(TSubclassOf<UDamageType> Dama
 void UOutbreakHealthComponent::HandleTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
 	AController* InstigatedBy, AActor* DamageCauser)
 {
+	const bool bWasAlive = IsAlive();
 	const float Applied = ApplyDamage(Damage, DamageType);
+	if (Applied > 0.0f)
+	{
+		OutbreakCombatEvents::OnDamageDealt().Broadcast(DamagedActor, InstigatedBy, Applied, bWasAlive && !IsAlive());
+	}
 
 	UE_LOG(LogOutbreak, Verbose, TEXT("%s took %.1f damage (%s) from %s; health %.1f."),
 		*GetNameSafe(DamagedActor), Applied, *GetNameSafe(DamageType ? DamageType->GetClass() : nullptr),

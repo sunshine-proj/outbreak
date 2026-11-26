@@ -72,6 +72,17 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Environment", meta = (ClampMin = "-1.0", ClampMax = "24.0"))
 	float StartHour = -1.0f;
 
+	/**
+	 * Alarm (Phase 13): an enemy that detects the squad raises the alarm after Alarm Delay unless it
+	 * is silenced first. Encounters can bring reinforcements on the alarm. Off = no alarm.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Alarm")
+	bool bAlarmEnabled = true;
+
+	/** Seconds between an enemy detecting the squad and the alarm going up: the window to silence it. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Alarm", meta = (ClampMin = "0.0", Units = "s", EditCondition = "bAlarmEnabled"))
+	float AlarmDelay = 4.0f;
+
 	/** Sideways spacing between players deploying at the same marker (co-op). */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flow", meta = (ClampMin = "0.0", Units = "cm"))
 	float DeploymentSpacing = 150.0f;

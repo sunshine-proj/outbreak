@@ -42,7 +42,7 @@ struct OUTBREAK_API FOutbreakEnvironmentPerception
  * Environmental audio: AmbientSound (a looping sound) fades in for the local player while they are
  * inside, on top of the level's positional ambient sounds and Audio Volume reverb (engine actors).
  * The ambience is cosmetic; gameplay masking is HearingMultiplier. Uses the engine audio component
- * (Unreal Audio); see O-003.
+ * (Unreal Audio, D-021).
  */
 UCLASS()
 class OUTBREAK_API AOutbreakEnvironmentVolume : public AActor

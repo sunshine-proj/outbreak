@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "Missions/OutbreakMissionTypes.h"
+#include "Squad/OutbreakSquadComms.h"
 #include "Squad/OutbreakSquadSelection.h"
 
 #include "OutbreakPlayerController.generated.h"
@@ -11,6 +12,8 @@ class AOutbreakGameState;
 class UOutbreakBriefingWidget;
 class UOutbreakHealthComponent;
 class UOutbreakMissionSummaryWidget;
+class UOutbreakSquadCommsComponent;
+class UOutbreakSquadMemberComponent;
 class UOutbreakSquadCommandComponent;
 class UOutbreakHUDWidget;
 class UOutbreakWeaponComponent;
@@ -50,7 +53,7 @@ public:
 
 	/** Leaves the briefing with Selection; the server builds the squad and deploys this player. */
 	UFUNCTION(BlueprintCallable, Category = "Mission")
-	void RequestDeploy(const FOutbreakSquadSelection& Selection);
+	void RequestDeploy(const FOutbreakDeploymentSelection& Selection);
 
 	/** Replays the mission after it has ended (the summary's Retry). */
 	UFUNCTION(BlueprintCallable, Category = "Mission")
@@ -59,6 +62,12 @@ public:
 	/** Quits the game (the summary's Quit). A main menu arrives with the Phase 14 campaign. */
 	UFUNCTION(BlueprintCallable, Category = "Mission")
 	void QuitMission();
+
+	/** Highest detection of this player's pawn by any enemy, 0..1 (replicated from the server, Phase 13). */
+	UFUNCTION(BlueprintPure, Category = "Stealth")
+	float GetEnemyAwareness() const { return EnemyAwareness / 100.0f; }
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
 
@@ -98,6 +107,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Mission", meta = (ClampMin = "1"))
 	int32 MaxNotifications = 3;
 
+	/** Seconds the hit marker shows after a hit. */
+	UPROPERTY(EditDefaultsOnly, Category = "HUD", meta = (ClampMin = "0.05", Units = "s"))
+	float HitMarkerDuration = 0.25f;
+
+	/** Seconds between server updates of the stealth awareness meter. */
+	UPROPERTY(EditDefaultsOnly, Category = "HUD", meta = (ClampMin = "0.05", Units = "s"))
+	float AwarenessUpdateInterval = 0.25f;
+
 private:
 
 	void CreateHUDWidget();
@@ -113,7 +130,7 @@ private:
 	void RefreshSquadPanel();
 
 	UFUNCTION(Server, Reliable)
-	void ServerRequestDeploy(const FOutbreakSquadSelection& Selection);
+	void ServerRequestDeploy(const FOutbreakDeploymentSelection& Selection);
 
 	UFUNCTION(Server, Reliable)
 	void ServerRequestRestartMission();
@@ -132,7 +149,7 @@ private:
 	void ApplyInputMode();
 
 	UFUNCTION()
-	void HandleBriefingDeployRequested(const FOutbreakSquadSelection& Selection);
+	void HandleBriefingDeployRequested(const FOutbreakDeploymentSelection& Selection);
 
 	UFUNCTION()
 	void HandleSummaryRetry();
@@ -150,6 +167,29 @@ private:
 	FOutbreakMissionStatus LastMissionStatus;
 	TArray<TPair<FText, double>> Notifications;
 	bool bDeployRequested = false;
+
+	// --- HUD polish (Phase 13) ---
+
+	UFUNCTION(Client, Unreliable)
+	void ClientShowHitMarker(bool bKill);
+
+	void HandleDamageDealt(AActor* Victim, AController* DamageInstigator, float Damage, bool bTakenDown);
+	void HideHitMarker();
+	void UpdateEnemyAwareness();
+	void BindToSquadComms();
+
+	UFUNCTION()
+	void HandleCallout(UOutbreakSquadMemberComponent* Speaker, EOutbreakCallout Callout, const FText& Subtitle);
+
+	/** Percent, so it replicates as one byte. */
+	UPROPERTY(Replicated)
+	uint8 EnemyAwareness = 0;
+
+	FDelegateHandle DamageDealtHandle;
+	FTimerHandle AwarenessTimer;
+	FTimerHandle HitMarkerTimer;
+	TWeakObjectPtr<UOutbreakSquadCommsComponent> BoundComms;
+	double SubtitleExpiry = 0.0;
 
 	FTimerHandle SquadPanelTimer;
 	bool bInventoryPanelOpen = false;

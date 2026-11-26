@@ -75,13 +75,13 @@ bool UOutbreakSquadComponent::InitializeSquad(const UOutbreakSquadConfiguration*
 }
 
 bool UOutbreakSquadComponent::InitializeSquadWithSelection(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn,
-	const FOutbreakSquadSelection& Selection)
+	const FOutbreakDeploymentSelection& Selection)
 {
 	return InitializeSquadInternal(Configuration, PlayerPawn, 0, &Selection);
 }
 
 bool UOutbreakSquadComponent::InitializeSquadInternal(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn,
-	int32 RequestedSizeOverride, const FOutbreakSquadSelection* RequestedSelection)
+	int32 RequestedSizeOverride, const FOutbreakDeploymentSelection* RequestedSelection)
 {
 	if (!HasOwnerAuthority() || bSquadInitialized)
 	{
@@ -120,7 +120,7 @@ bool UOutbreakSquadComponent::InitializeSquadInternal(const UOutbreakSquadConfig
 			ResolvedLimits, Error);
 
 	// A briefing selection replaces the configuration's size and composition (Phase 11).
-	FOutbreakSquadSelection Selection;
+	FOutbreakDeploymentSelection Selection;
 	if (RequestedSelection && bLimitsValid)
 	{
 		TArray<FText> SelectionErrors;
@@ -725,6 +725,12 @@ TArray<FOutbreakCommandResult> UOutbreakSquadComponent::AuthIssueCommand(const F
 			*OutbreakSquadCommands::GetCommandDisplayName(Command.Type).ToString(),
 			*Member->GetDisplayName().ToString(),
 			*OutbreakSquadCommands::GetRejectionText(Result.Rejection).ToString());
+	}
+
+	const FOutbreakCommandResult* FirstAccepted = Results.FindByPredicate([](const FOutbreakCommandResult& Result) { return Result.WasAccepted(); });
+	if (FirstAccepted)
+	{
+		OnCommandAccepted.Broadcast(this, Command.Type, FirstAccepted->Member);
 	}
 	return Results;
 }

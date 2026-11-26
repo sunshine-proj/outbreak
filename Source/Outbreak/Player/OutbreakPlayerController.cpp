@@ -1,5 +1,8 @@
 #include "Player/OutbreakPlayerController.h"
 
+#include "AI/OutbreakEnemyAIController.h"
+#include "Combat/OutbreakCombatEvents.h"
+#include "Combat/OutbreakTeam.h"
 #include "GameFramework/Pawn.h"
 #include "Combat/OutbreakHealthComponent.h"
 #include "Interaction/OutbreakInteractionComponent.h"
@@ -8,12 +11,17 @@
 #include "Engine/World.h"
 #include "Game/OutbreakGameMode.h"
 #include "Game/OutbreakGameState.h"
+#include "Game/OutbreakPlayerState.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Missions/OutbreakMissionText.h"
+#include "Net/UnrealNetwork.h"
 #include "Outbreak.h"
 #include "Player/OutbreakSquadCommandComponent.h"
+#include "Squad/OutbreakSquadCommsComponent.h"
+#include "Squad/OutbreakSquadSettings.h"
 #include "TimerManager.h"
 #include "UI/OutbreakBriefingWidget.h"
+#include "UI/OutbreakHUDText.h"
 #include "UI/OutbreakHUDWidget.h"
 #include "UI/OutbreakMissionSummaryWidget.h"
 #include "Weapons/OutbreakAmmoTypeDefinition.h"
@@ -41,11 +49,31 @@ void AOutbreakPlayerController::BeginPlay()
 		GetWorldTimerManager().SetTimer(SquadPanelTimer, this, &ThisClass::RefreshSquadPanel, SquadPanelRefreshInterval, true);
 		BindToGameState();
 	}
+
+	// Server: hit markers for this player's hits, and the stealth awareness meter.
+	if (HasAuthority())
+	{
+		DamageDealtHandle = OutbreakCombatEvents::OnDamageDealt().AddUObject(this, &ThisClass::HandleDamageDealt);
+		GetWorldTimerManager().SetTimer(AwarenessTimer, this, &ThisClass::UpdateEnemyAwareness, AwarenessUpdateInterval, true);
+	}
+}
+
+void AOutbreakPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION(AOutbreakPlayerController, EnemyAwareness, COND_OwnerOnly);
 }
 
 void AOutbreakPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(SquadPanelTimer);
+	GetWorldTimerManager().ClearTimer(AwarenessTimer);
+	GetWorldTimerManager().ClearTimer(HitMarkerTimer);
+	OutbreakCombatEvents::OnDamageDealt().Remove(DamageDealtHandle);
+	if (UOutbreakSquadCommsComponent* Comms = BoundComms.Get())
+	{
+		Comms->OnCallout.RemoveDynamic(this, &ThisClass::HandleCallout);
+	}
 	if (AOutbreakGameState* GameState = BoundGameState.Get())
 	{
 		GameState->OnMissionStatusChanged.RemoveDynamic(this, &ThisClass::HandleMissionStatusChanged);
@@ -74,11 +102,86 @@ void AOutbreakPlayerController::RefreshSquadPanel()
 
 	// The game state replicates the mission status; reading it here also covers late replication.
 	BindToGameState();
-	if (const AOutbreakGameState* GameState = GetWorld()->GetGameState<AOutbreakGameState>())
+	const AOutbreakGameState* GameState = GetWorld()->GetGameState<AOutbreakGameState>();
+	if (GameState)
 	{
 		HUDWidget->SetMissionStatus(GameState->GetMissionStatus(), bInventoryPanelOpen);
 	}
 	RefreshNotifications();
+
+	// Phase 13: stealth meter, alarm, squad subtitles.
+	HUDWidget->SetAwareness(OutbreakHUDText::BuildAwarenessText(GetEnemyAwareness(), GameState && GameState->IsAlarmRaised()));
+	BindToSquadComms();
+	if (SubtitleExpiry > 0.0 && GetWorld()->GetTimeSeconds() >= SubtitleExpiry)
+	{
+		SubtitleExpiry = 0.0;
+		HUDWidget->SetSubtitle(FText::GetEmpty());
+	}
+}
+
+// --- HUD polish ----------------------------------------------------------------------------------
+
+void AOutbreakPlayerController::UpdateEnemyAwareness()
+{
+	const float Awareness = AOutbreakEnemyAIController::GetHighestDetectionOf(GetWorld(), GetPawn());
+	EnemyAwareness = static_cast<uint8>(FMath::RoundToInt(FMath::Clamp(Awareness, 0.0f, 1.0f) * 100.0f));
+}
+
+void AOutbreakPlayerController::HandleDamageDealt(AActor* Victim, AController* DamageInstigator, float Damage, bool bTakenDown)
+{
+	const APawn* ControlledPawn = GetPawn();
+	if (DamageInstigator != this || !Victim || Victim == ControlledPawn)
+	{
+		return;
+	}
+	// No marker for hurting friends; enemies and objects (no team) count.
+	if (ControlledPawn && OutbreakTeam::GetAttitude(FGenericTeamId::GetTeamIdentifier(ControlledPawn),
+		FGenericTeamId::GetTeamIdentifier(Victim)) == ETeamAttitude::Friendly)
+	{
+		return;
+	}
+	ClientShowHitMarker(bTakenDown);
+}
+
+void AOutbreakPlayerController::ClientShowHitMarker_Implementation(bool bKill)
+{
+	if (HUDWidget)
+	{
+		HUDWidget->SetHitMarker(true, bKill);
+		GetWorldTimerManager().SetTimer(HitMarkerTimer, this, &ThisClass::HideHitMarker, HitMarkerDuration, false);
+	}
+}
+
+void AOutbreakPlayerController::HideHitMarker()
+{
+	if (HUDWidget)
+	{
+		HUDWidget->SetHitMarker(false, false);
+	}
+}
+
+void AOutbreakPlayerController::BindToSquadComms()
+{
+	if (BoundComms.IsValid() || !IsLocalController())
+	{
+		return;
+	}
+	const AOutbreakPlayerState* OutbreakPlayerState = GetPlayerState<AOutbreakPlayerState>();
+	if (UOutbreakSquadCommsComponent* Comms = OutbreakPlayerState ? OutbreakPlayerState->GetSquadCommsComponent() : nullptr)
+	{
+		BoundComms = Comms;
+		Comms->OnCallout.AddUniqueDynamic(this, &ThisClass::HandleCallout);
+	}
+}
+
+void AOutbreakPlayerController::HandleCallout(UOutbreakSquadMemberComponent* Speaker, EOutbreakCallout Callout, const FText& Subtitle)
+{
+	if (!HUDWidget || Subtitle.IsEmpty())
+	{
+		return;
+	}
+	HUDWidget->SetSubtitle(Subtitle);
+	SubtitleExpiry = GetWorld()->GetTimeSeconds() + GetDefault<UOutbreakSquadSettings>()->Comms.SubtitleDuration;
 }
 
 // --- Mission flow --------------------------------------------------------------------------------
@@ -236,7 +339,7 @@ void AOutbreakPlayerController::ApplyInputMode()
 	}
 }
 
-void AOutbreakPlayerController::RequestDeploy(const FOutbreakSquadSelection& Selection)
+void AOutbreakPlayerController::RequestDeploy(const FOutbreakDeploymentSelection& Selection)
 {
 	if (bDeployRequested)
 	{
@@ -248,7 +351,7 @@ void AOutbreakPlayerController::RequestDeploy(const FOutbreakSquadSelection& Sel
 	ServerRequestDeploy(Selection);
 }
 
-void AOutbreakPlayerController::ServerRequestDeploy_Implementation(const FOutbreakSquadSelection& Selection)
+void AOutbreakPlayerController::ServerRequestDeploy_Implementation(const FOutbreakDeploymentSelection& Selection)
 {
 	if (AOutbreakGameMode* GameMode = GetWorld()->GetAuthGameMode<AOutbreakGameMode>())
 	{
@@ -274,7 +377,7 @@ void AOutbreakPlayerController::QuitMission()
 	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, /*bIgnorePlatformRestrictions=*/ false);
 }
 
-void AOutbreakPlayerController::HandleBriefingDeployRequested(const FOutbreakSquadSelection& Selection)
+void AOutbreakPlayerController::HandleBriefingDeployRequested(const FOutbreakDeploymentSelection& Selection)
 {
 	RequestDeploy(Selection);
 }

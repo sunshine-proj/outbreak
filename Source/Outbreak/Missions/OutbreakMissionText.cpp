@@ -166,13 +166,13 @@ namespace OutbreakMissionText
 		return Join(Lines);
 	}
 
-	FText GetTeammateName(const UOutbreakSquadConfiguration* Configuration, const FOutbreakSquadSelection& Selection, int32 Slot)
+	FText GetTeammateName(const UOutbreakSquadConfiguration* Configuration, const FOutbreakDeploymentSelection& Selection, int32 Slot)
 	{
 		const FText& Name = OutbreakSquadSelection::GetTeammateConfig(Configuration, Selection, Slot).DisplayName;
 		return Name.IsEmpty() ? LOCTEXT("Reinforcement", "Reinforcement") : Name;
 	}
 
-	FText GetLoadoutName(const FOutbreakSquadSelection& Selection, int32 MemberIndex)
+	FText GetLoadoutName(const FOutbreakDeploymentSelection& Selection, int32 MemberIndex)
 	{
 		const UOutbreakLoadoutDefinition* Loadout = OutbreakSquadSelection::GetLoadout(Selection, MemberIndex);
 		if (!Loadout)

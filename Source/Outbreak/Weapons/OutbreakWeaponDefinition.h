@@ -3,9 +3,11 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Inventory/OutbreakItem.h"
+#include "Weapons/OutbreakWeaponTypes.h"
 
 #include "OutbreakWeaponDefinition.generated.h"
 
+class UAnimMontage;
 class UNiagaraSystem;
 class UOutbreakAmmoTypeDefinition;
 class UOutbreakFireBehavior;
@@ -187,6 +189,33 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects")
 	TObjectPtr<USoundBase> FireSound;
+
+	/** Played where the soldier stands when a reload starts (Phase 13). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects")
+	TObjectPtr<USoundBase> ReloadSound;
+
+	/** Played when the weapon is drawn. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects")
+	TObjectPtr<USoundBase> EquipSound;
+
+	/** Played for the shooter only when trying to fire with nothing to load. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effects")
+	TObjectPtr<USoundBase> EmptySound;
+
+	/** Body pose set for the Animation Blueprint (UOutbreakCharacterAnimInstance::WeaponPose). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	EOutbreakWeaponPose WeaponPose = EOutbreakWeaponPose::Rifle;
+
+	/** Played on the soldier's mesh for each shot. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	TObjectPtr<UAnimMontage> FireMontage;
+
+	/** Played on reload, sped up or slowed down to last ReloadDuration. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	TObjectPtr<UAnimMontage> ReloadMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	TObjectPtr<UAnimMontage> EquipMontage;
 
 	/** Gameplay noise of a shot (1 = a normal gunshot). 0 = silent. Suppressed weapons use less. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Noise", meta = (ClampMin = "0.0"))

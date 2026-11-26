@@ -1,8 +1,11 @@
 #include "Characters/OutbreakCharacter.h"
 
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
 #include "Combat/OutbreakMedicalComponent.h"
 #include "Combat/OutbreakMedicalSettings.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Inventory/OutbreakInventoryComponent.h"
@@ -10,6 +13,7 @@
 #include "Squad/OutbreakSquadMemberComponent.h"
 #include "Stealth/OutbreakNoiseEmitterComponent.h"
 #include "Weapons/OutbreakWeaponComponent.h"
+#include "Weapons/OutbreakWeaponDefinition.h"
 
 #define LOCTEXT_NAMESPACE "OutbreakCharacter"
 
@@ -48,6 +52,7 @@ void AOutbreakCharacter::PostInitializeComponents()
 	ApplyMovementSettings();
 
 	HealthComponent->OnHealthChanged.AddUniqueDynamic(this, &ThisClass::OnHealthChanged);
+	WeaponComponent->OnWeaponAction.AddUniqueDynamic(this, &ThisClass::OnWeaponComponentAction);
 	HealthComponent->OnHealthStateChanged.AddUniqueDynamic(this, &ThisClass::OnHealthStateChanged);
 
 	// Squad soldiers go down and can be revived instead of dying outright (Phase 10).
@@ -248,3 +253,44 @@ void AOutbreakCharacter::HandleDowned(EOutbreakHealthState NewState)
 }
 
 #undef LOCTEXT_NAMESPACE
+
+void AOutbreakCharacter::OnWeaponComponentAction(UOutbreakWeaponComponent* InWeaponComponent, EOutbreakWeaponAction Action,
+	UOutbreakWeaponDefinition* Weapon)
+{
+	HandleWeaponAction(Action, Weapon);
+}
+
+void AOutbreakCharacter::HandleWeaponAction(EOutbreakWeaponAction Action, UOutbreakWeaponDefinition* Weapon)
+{
+	UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	if (Weapon && AnimInstance)
+	{
+		switch (Action)
+		{
+		case EOutbreakWeaponAction::Fired:
+			if (Weapon->FireMontage)
+			{
+				AnimInstance->Montage_Play(Weapon->FireMontage);
+			}
+			break;
+		case EOutbreakWeaponAction::ReloadStarted:
+			if (Weapon->ReloadMontage)
+			{
+				// Stretch the animation to the gameplay reload time.
+				const float Length = Weapon->ReloadMontage->GetPlayLength();
+				const float Rate = Weapon->ReloadDuration > 0.0f && Length > 0.0f ? Length / Weapon->ReloadDuration : 1.0f;
+				AnimInstance->Montage_Play(Weapon->ReloadMontage, Rate);
+			}
+			break;
+		case EOutbreakWeaponAction::Equipped:
+			if (Weapon->EquipMontage)
+			{
+				AnimInstance->Montage_Play(Weapon->EquipMontage);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	OnWeaponAction(Action, Weapon);
+}

@@ -760,7 +760,7 @@ bool FOutbreakSquadSelectionRulesTest::RunTest(const FString& Parameters)
 	Limits.DefaultSquadSize = 4;
 	Limits.MaxSquadSize = 6;
 
-	FOutbreakSquadSelection Selection = MakeDefault(Configuration, Limits);
+	FOutbreakDeploymentSelection Selection = MakeDefault(Configuration, Limits);
 	TestEqual(TEXT("Configuration size"), Selection.SquadSize, 4);
 	TestTrue(TEXT("Roster in order"), Selection.TeammateRosterIndices == TArray<int32>({ 0, 1, 2 }));
 	TestEqual(TEXT("A loadout entry per member"), Selection.MemberLoadouts.Num(), 4);
@@ -791,28 +791,28 @@ bool FOutbreakSquadSelectionRulesTest::RunTest(const FString& Parameters)
 	CycleLoadout(Configuration, Selection, 0, 1);
 	TestNull(TEXT("Wraps to default equipment"), GetLoadout(Selection, 0));
 
-	FOutbreakSquadSelection Duplicate = Selection;
+	FOutbreakDeploymentSelection Duplicate = Selection;
 	Duplicate.TeammateRosterIndices = { 1, 1 };
 	Errors.Reset();
 	TestFalse(TEXT("Same soldier twice rejected"), Validate(Configuration, Limits, Duplicate, Errors));
 
-	FOutbreakSquadSelection Foreign = Selection;
+	FOutbreakDeploymentSelection Foreign = Selection;
 	Foreign.MemberLoadouts[1] = MakeLoadout(MakeMissionItem(TEXT("Other")));
 	Errors.Reset();
 	TestFalse(TEXT("Loadout not offered rejected"), Validate(Configuration, Limits, Foreign, Errors));
 
-	FOutbreakSquadSelection BadSlots = Selection;
+	FOutbreakDeploymentSelection BadSlots = Selection;
 	BadSlots.TeammateRosterIndices = { 0 };
 	Errors.Reset();
 	TestFalse(TEXT("Slot count must match the size"), Validate(Configuration, Limits, BadSlots, Errors));
 
-	FOutbreakSquadSelection TooBig = MakeDefault(Configuration, Limits);
+	FOutbreakDeploymentSelection TooBig = MakeDefault(Configuration, Limits);
 	TooBig.SquadSize = 7;
 	TooBig.TeammateRosterIndices.SetNum(6);
 	Errors.Reset();
 	TestFalse(TEXT("Size above the limit rejected"), Validate(Configuration, Limits, TooBig, Errors));
 
-	const FOutbreakSquadSelection Generic = MakeDefault(nullptr, Limits);
+	const FOutbreakDeploymentSelection Generic = MakeDefault(nullptr, Limits);
 	TestTrue(TEXT("No configuration: default size of fillers"), Generic.SquadSize == 4
 		&& Generic.TeammateRosterIndices == TArray<int32>({ INDEX_NONE, INDEX_NONE, INDEX_NONE }));
 	return true;
@@ -833,7 +833,7 @@ bool FOutbreakSquadSelectionInitTest::RunTest(const FString& Parameters)
 		AOutbreakPlayerCharacter* Player = TestWorld.Spawn<AOutbreakPlayerCharacter>();
 		UOutbreakSquadComponent* Squad = PlayerState->GetSquadComponent();
 
-		FOutbreakSquadSelection Selection;
+		FOutbreakDeploymentSelection Selection;
 		Selection.SquadSize = 3;
 		Selection.TeammateRosterIndices = { 2, INDEX_NONE };
 		Selection.MemberLoadouts = { Loadout, nullptr, Loadout };
@@ -861,7 +861,7 @@ bool FOutbreakSquadSelectionInitTest::RunTest(const FString& Parameters)
 		AOutbreakPlayerCharacter* Player = TestWorld.Spawn<AOutbreakPlayerCharacter>();
 		UOutbreakSquadComponent* Squad = PlayerState->GetSquadComponent();
 
-		FOutbreakSquadSelection Invalid;
+		FOutbreakDeploymentSelection Invalid;
 		Invalid.SquadSize = 3;
 		Invalid.TeammateRosterIndices = { 1, 1 };
 		Squad->InitializeSquadWithSelection(Configuration, Player, Invalid);
