@@ -1,0 +1,105 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Character.h"
+#include "Characters/OutbreakMovementSettings.h"
+
+#include "OutbreakPlayerCharacter.generated.h"
+
+class UCameraComponent;
+class UOutbreakInputConfig;
+class UOutbreakInteractionComponent;
+struct FInputActionValue;
+
+/**
+ * First-person player character.
+ *
+ * Owns the first-person camera, movement states (walk, sprint, crouch, jump) and input binding.
+ * Other responsibilities live in components (interaction now; health, weapons and squad
+ * membership in later phases).
+ */
+UCLASS(Blueprintable)
+class OUTBREAK_API AOutbreakPlayerCharacter : public ACharacter
+{
+	GENERATED_BODY()
+
+public:
+
+	AOutbreakPlayerCharacter();
+
+	//~ Begin AActor / APawn / ACharacter interface
+	virtual void PostInitializeComponents() override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	virtual void NotifyControllerChanged() override;
+	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	//~ End AActor / APawn / ACharacter interface
+
+	/** Starts sprinting if allowed. Returns true if the character is sprinting afterwards. */
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	bool StartSprinting();
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void StopSprinting();
+
+	UFUNCTION(BlueprintPure, Category = "Movement")
+	bool IsSprinting() const { return bIsSprinting; }
+
+	/** Sprinting is not allowed while crouched or while a crouch is pending. */
+	UFUNCTION(BlueprintPure, Category = "Movement")
+	bool CanSprint() const;
+
+	/** Stops sprinting and requests a crouch. */
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void BeginCrouch();
+
+	/** Requests standing up. */
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void EndCrouch();
+
+	/** True when crouched or when a crouch has been requested but not yet applied by movement. */
+	UFUNCTION(BlueprintPure, Category = "Movement")
+	bool IsCrouchedOrCrouchRequested() const;
+
+	/** Pushes MovementSettings to the movement component. Called automatically on initialization. */
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void ApplyMovementSettings();
+
+	const FOutbreakMovementSettings& GetMovementSettings() const { return MovementSettings; }
+
+	UCameraComponent* GetFirstPersonCamera() const { return FirstPersonCamera; }
+
+	UOutbreakInteractionComponent* GetInteractionComponent() const { return InteractionComponent; }
+
+protected:
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	TObjectPtr<UCameraComponent> FirstPersonCamera;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
+	TObjectPtr<UOutbreakInteractionComponent> InteractionComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	FOutbreakMovementSettings MovementSettings;
+
+	/** Enhanced Input assets. Without it the character cannot be controlled (a warning is logged). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UOutbreakInputConfig> InputConfig;
+
+private:
+
+	void HandleMove(const FInputActionValue& Value);
+	void HandleLook(const FInputActionValue& Value);
+	void HandleJumpStarted();
+	void HandleJumpCompleted();
+	void HandleCrouchStarted();
+	void HandleCrouchCompleted();
+	void HandleSprintStarted();
+	void HandleSprintCompleted();
+	void HandleInteract();
+
+	/** Sets the camera and eye height for the current crouch state. */
+	void UpdateEyeHeight();
+
+	bool bIsSprinting = false;
+};

@@ -24,6 +24,37 @@ While you install, I could write the project skeleton by hand: Outbreak.uproject
 ================================
 
 
+Yes, and it's done. All of Phase 1 is written in C++. None of it has been compiled, run or tested in Unreal, so every Phase 1 task in ROADMAP.md is marked [-] with a note saying what's still pending.
+
+What's implemented
+
+Area	Files
+Player character	OutbreakPlayerCharacter.h: first-person camera, walk, sprint (hold), crouch (toggle or hold), jump. Crouching cancels and blocks sprint.
+Movement settings	OutbreakMovementSettings.h: speeds, jump and eye heights, editable in the Blueprint. AI teammates can reuse it in Phase 3.
+Input	OutbreakInputConfig.h: a data asset holding the mapping context and the actions (move, look, jump, crouch, sprint, interact, fire, aim, reload). Fire, aim and reload get bound in Phase 2.
+Interaction	OutbreakInteractable.h is the interface, usable from C++ or Blueprint. OutbreakInteractionComponent.h does a line trace on a 0.1 s timer rather than every frame. OutbreakTestInteractableActor.h is a cube that toggles.
+HUD	OutbreakHUDWidget.h: crosshair, health and ammo placeholders, and the interaction prompt. It builds its own layout in C++, so no Widget Blueprint is needed.
+Controller and game mode	OutbreakPlayerController.h, OutbreakGameMode.h. DefaultEngine.ini sets the default game mode and points to the engine's basic map for now.
+Tests	5 automation tests in Tests/ covering components, movement settings, sprint and crouch rules, the test object's toggle, and the interaction range checks.
+Docs: Docs/Phase1-EditorSetup.md lists, in order, what to do once the engine is installed:
+
+Build.
+Run the tests.
+Create the input assets, Blueprints and test map.
+Work through a checklist for checking it by hand.
+I also added untested build and test commands to README.md. In ROADMAP.md I added a blocker and decision log entries D-004 and D-005.
+
+What couldn't be done
+
+Compiling: some fixes will probably be needed on the first build, because the engine version is still undecided (O-004). The likeliest problems are small API differences between UE 5.x versions.
+Input assets: Input Actions, the Mapping Context, Blueprints and maps are binary files that only the editor can create. Until they exist the character can't be controlled; it logs a warning instead.
+Interaction trace: the automation tests only check the range logic. The trace itself still has to be tested in the editor.
+Nothing is committed yet. When the engine is in, the next step is to build, run Automation RunTests Outbreak, and then follow the setup guide.
+
+
+================================
+
+
 
 
 

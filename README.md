@@ -40,7 +40,7 @@ This is a spiritual successor, not an asset-level recreation of the original gam
 
 ## Project Status
 
-**Current stage:** Project specification and architecture.
+**Current stage:** Phase 1 (basic FPS prototype) C++ written; not yet compiled because Unreal Engine is not installed on the development machine.
 
 Development follows the phases described in [ROADMAP.md](ROADMAP.md).
 
@@ -64,6 +64,7 @@ outbreak/
 │   └── Outbreak/
 │       ├── Outbreak.Build.cs
 │       ├── Outbreak.h / Outbreak.cpp
+│       ├── Game/
 │       ├── Characters/
 │       ├── Player/
 │       ├── Squad/
@@ -93,6 +94,7 @@ outbreak/
 ├── Config/
 │
 ├── Docs/
+│   └── Phase1-EditorSetup.md
 │
 └── .gitignore
 ```
@@ -141,14 +143,33 @@ git lfs install
 git lfs pull
 ```
 
-The Unreal project file will be added during the initial project bootstrap phase.
+The Unreal project file is `Outbreak.uproject` in the repository root.
 
 ### Build and Test Commands
 
-To be documented during Phase 0 (see `ROADMAP.md` 0.2), once the project exists. This section must include:
+> **Not yet verified.** Unreal Engine is not installed on the development machine yet, so these commands have not been run. Confirm and correct them during Phase 0.
 
-- The command-line build of the Development Editor target.
-- The command to run the Outbreak automation tests headlessly.
+Set `UE_ROOT` to the engine install directory (for example `~/UnrealEngine`).
+
+Build the Development Editor target (Linux):
+
+```bash
+"$UE_ROOT/Engine/Build/BatchFiles/Linux/Build.sh" OutbreakEditor Linux Development \
+    -Project="$PWD/Outbreak.uproject" -WaitMutex
+```
+
+On Windows, use `Engine\Build\BatchFiles\Build.bat OutbreakEditor Win64 Development -Project="%CD%\Outbreak.uproject" -WaitMutex`.
+
+Run the Outbreak automation tests headlessly:
+
+```bash
+"$UE_ROOT/Engine/Binaries/Linux/UnrealEditor-Cmd" "$PWD/Outbreak.uproject" \
+    -ExecCmds="Automation RunTests Outbreak; Quit" \
+    -unattended -nopause -nosplash -NullRHI -log \
+    -testexit="Automation Test Queue Empty"
+```
+
+Editor assets that C++ depends on (input actions, mapping context, Blueprints, test map) are described in [Docs/Phase1-EditorSetup.md](Docs/Phase1-EditorSetup.md).
 
 ## Development Philosophy
 

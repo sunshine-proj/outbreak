@@ -14,10 +14,21 @@ public class Outbreak : ModuleRules
 		{
 			"Core",
 			"CoreUObject",
-			"Engine"
+			"Engine",
+			"InputCore",
+			// Public: UOutbreakInputConfig exposes Enhanced Input types in its header.
+			"EnhancedInput",
+			// Public: UOutbreakHUDWidget derives from UUserWidget.
+			"UMG"
 		});
 
-		// Add further modules (EnhancedInput, AIModule, NavigationSystem, UMG, ...)
+		PrivateDependencyModuleNames.AddRange(new string[]
+		{
+			"Slate",
+			"SlateCore"
+		});
+
+		// Add further modules (AIModule, NavigationSystem, ...)
 		// only when the code that needs them is added.
 	}
 }

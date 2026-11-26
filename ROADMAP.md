@@ -73,7 +73,7 @@ Do not mark tasks complete unless their acceptance criteria are satisfied.
 - [-] Configure logging categories. — written, not compiled (engine not installed)
 - [ ] Create initial playable map.
 - [ ] Verify project startup.
-- [ ] Document command-line build and automation test commands in `README.md`.
+- [-] Document command-line build and automation test commands in `README.md`. — documented, not yet run
 
 ### 0.3 Repository
 
@@ -104,44 +104,44 @@ Do not mark tasks complete unless their acceptance criteria are satisfied.
 
 ### 1.1 Player Character
 
-- [ ] Create `AOutbreakPlayerCharacter`.
-- [ ] Configure first-person camera.
-- [ ] Implement camera movement.
-- [ ] Implement walking.
-- [ ] Implement running.
-- [ ] Implement crouching.
-- [ ] Implement jumping.
-- [ ] Configure collision.
-- [ ] Configure movement parameters.
-- [ ] Implement player spawning.
+- [-] Create `AOutbreakPlayerCharacter`. — C++ written, not compiled (engine not installed)
+- [-] Configure first-person camera. — C++ written, not compiled (engine not installed)
+- [-] Implement camera movement. — C++ written, not compiled (engine not installed)
+- [-] Implement walking. — C++ written, not compiled (engine not installed)
+- [-] Implement running. — C++ written, not compiled (engine not installed). Sprint is held; blocked and cancelled by crouching
+- [-] Implement crouching. — C++ written, not compiled (engine not installed). Toggle or hold, set in `UOutbreakInputConfig`
+- [-] Implement jumping. — C++ written, not compiled (engine not installed)
+- [-] Configure collision. — C++ written, not compiled (engine not installed). Capsule uses the `Pawn` profile; project collision channels are still 0.2
+- [-] Configure movement parameters. — C++ written, not compiled (engine not installed). `FOutbreakMovementSettings` on the character
+- [-] Implement player spawning. — C++ written, not compiled (engine not installed). `AOutbreakGameMode` set as the global default game mode
 
 ### 1.2 Input System
 
-- [ ] Create input mapping context.
-- [ ] Configure movement input.
-- [ ] Configure look input.
-- [ ] Configure jump input.
-- [ ] Configure crouch input.
-- [ ] Configure sprint input.
-- [ ] Configure interaction input.
-- [ ] Configure weapon input.
+- [-] Create input mapping context. — C++ written; editor asset pending (see `Docs/Phase1-EditorSetup.md`)
+- [-] Configure movement input. — C++ written, not compiled (engine not installed); `IA_Move` asset pending
+- [-] Configure look input. — C++ written, not compiled (engine not installed); `IA_Look` asset pending
+- [-] Configure jump input. — C++ written, not compiled (engine not installed); `IA_Jump` asset pending
+- [-] Configure crouch input. — C++ written, not compiled (engine not installed); `IA_Crouch` asset pending
+- [-] Configure sprint input. — C++ written, not compiled (engine not installed); `IA_Sprint` asset pending
+- [-] Configure interaction input. — C++ written, not compiled (engine not installed); `IA_Interact` asset pending
+- [-] Configure weapon input. — Fire, Aim and Reload slots in `UOutbreakInputConfig`; assets pending; bindings come with Phase 2
 
 ### 1.3 Basic Interaction
 
-- [ ] Create interaction interface.
-- [ ] Implement interaction detection.
-- [ ] Implement interaction prompt.
-- [ ] Implement a test interactive object.
-- [ ] Test interaction range.
+- [-] Create interaction interface. — C++ written, not compiled (engine not installed). `IOutbreakInteractable`
+- [-] Implement interaction detection. — C++ written, not compiled (engine not installed). `UOutbreakInteractionComponent`, timer-driven line trace
+- [-] Implement interaction prompt. — C++ written, not compiled (engine not installed)
+- [-] Implement a test interactive object. — C++ written, not compiled (engine not installed). `AOutbreakTestInteractableActor`
+- [-] Test interaction range. — automation test written (`Outbreak.Interaction.Component.TargetValidation`), not run; in-editor check pending
 
 ### 1.4 Basic HUD
 
-- [ ] Create main HUD widget.
-- [ ] Add crosshair.
-- [ ] Add health display placeholder.
-- [ ] Add ammunition display placeholder.
-- [ ] Add interaction prompt.
-- [ ] Integrate HUD with player controller.
+- [-] Create main HUD widget. — C++ written, not compiled (engine not installed). `UOutbreakHUDWidget` builds a default layout when no Widget Blueprint is used
+- [-] Add crosshair. — C++ written, not compiled (engine not installed)
+- [-] Add health display placeholder. — C++ written, not compiled (engine not installed)
+- [-] Add ammunition display placeholder. — C++ written, not compiled (engine not installed)
+- [-] Add interaction prompt. — C++ written, not compiled (engine not installed)
+- [-] Integrate HUD with player controller. — C++ written, not compiled (engine not installed). `AOutbreakPlayerController`
 
 ### Phase 1 Acceptance Criteria
 
@@ -876,9 +876,9 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation.
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phase 1 C++ was written ahead of Phase 0 at the developer's request (D-004).
 
-**Next task:** Install and verify the Unreal Engine C++ development environment.
+**Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through [Docs/Phase1-EditorSetup.md](Docs/Phase1-EditorSetup.md).
 
 **Current milestone:** M6 — First playable prototype (end of Phase 6).
 
@@ -899,6 +899,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Task | Blocker | Since |
 | --- | --- | --- |
 | 0.1 Install Unreal Engine 5 | Not installed on the development machine (Ubuntu 24.04). The download requires the developer's Epic Games account, so an agent cannot install it. All later tasks depend on it. | 2026-11-23 |
+| Phase 1 verification (all `[-]` tasks in Phase 1) | Same as above: Phase 1 C++ cannot be compiled or tested, and its editor assets (input actions, mapping context, Blueprints, test map) cannot be created until the engine is installed. Steps: `Docs/Phase1-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -911,6 +912,8 @@ Record architectural and planning decisions here.
 | D-001 | 2026-11-23 | Phases are ordered by PRD priority: all P0 work (Phases 0–6) comes before P1 work. | The previous order placed the mission framework after stealth and inventory, so the P0 prototype could not exist until most P1 work was done. |
 | D-002 | 2026-11-23 | Squad membership is represented by `UOutbreakSquadMemberComponent`, attached to both the player and AI teammates. The squad stores components, not an actor subclass. | The player (`AOutbreakPlayerCharacter`) must count as a squad member, which a teammate-only actor class cannot hold. |
 | D-003 | 2026-11-23 | P0 "basic squad commands" are Follow, Hold, Move, Regroup and Attack. Defend, Cover and Retreat move to Phase 7; Stealth moves to Phase 8. | Defend, Cover and Retreat need cover positions (P1 "Tactical cover"); Stealth needs the noise and detection system (P1). Developer confirmation requested. |
+| D-004 | 2026-11-26 | Phase 1 C++ is written before Phase 0 is verified, while the engine is not installed. All Phase 1 tasks stay `[-]` until the code compiles, the tests pass and the editor checks are done. | Developer request: make progress while the engine install is blocked. Risk: compile fixes may be needed once the engine version (O-004) is known. |
+| D-005 | 2026-11-26 | Input assets are grouped in a `UOutbreakInputConfig` data asset assigned to the player character Blueprint. The HUD (`UOutbreakHUDWidget`) builds a default layout in C++ when no Widget Blueprint subclass is used. | Key bindings stay in assets, so they can be changed without code. The HUD works before UI assets exist, and designers can still replace the layout. |
 
 ### Open
 
