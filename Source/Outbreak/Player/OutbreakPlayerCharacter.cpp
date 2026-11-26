@@ -3,7 +3,6 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Engine/CollisionProfile.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -18,33 +17,15 @@
 
 AOutbreakPlayerCharacter::AOutbreakPlayerCharacter()
 {
-	// Movement is ticked by the movement component; the character itself needs no tick.
-	PrimaryActorTick.bCanEverTick = false;
-
-	UCapsuleComponent* Capsule = GetCapsuleComponent();
-	Capsule->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
-
 	FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-	FirstPersonCamera->SetupAttachment(Capsule);
+	FirstPersonCamera->SetupAttachment(GetCapsuleComponent());
 	FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, MovementSettings.StandingEyeHeight));
 	FirstPersonCamera->bUsePawnControlRotation = true;
-
 	FirstPersonCamera->SetFieldOfView(DefaultFieldOfView);
 
 	InteractionComponent = CreateDefaultSubobject<UOutbreakInteractionComponent>(TEXT("InteractionComponent"));
-	HealthComponent = CreateDefaultSubobject<UOutbreakHealthComponent>(TEXT("HealthComponent"));
-	WeaponComponent = CreateDefaultSubobject<UOutbreakWeaponComponent>(TEXT("WeaponComponent"));
 
-	// The body turns with the controller's yaw; pitch only affects the camera.
-	bUseControllerRotationYaw = true;
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationRoll = false;
-
-	UCharacterMovementComponent* Movement = GetCharacterMovement();
-	Movement->bOrientRotationToMovement = false;
-	Movement->GetNavAgentPropertiesRef().bCanCrouch = true;
-
-	// The body mesh (none yet) is for other viewers; the owner sees first-person arms (Phase 2).
+	// The body mesh (none yet) is for other viewers; the owner will see first-person arms.
 	GetMesh()->SetOwnerNoSee(true);
 }
 
@@ -52,99 +33,13 @@ void AOutbreakPlayerCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	ApplyMovementSettings();
 	FirstPersonCamera->SetFieldOfView(DefaultFieldOfView);
-
-	HealthComponent->OnHealthChanged.AddUniqueDynamic(this, &ThisClass::HandleHealthChanged);
-	HealthComponent->OnHealthStateChanged.AddUniqueDynamic(this, &ThisClass::HandleHealthStateChanged);
 	WeaponComponent->OnWeaponStateChanged.AddUniqueDynamic(this, &ThisClass::HandleWeaponStateChanged);
 }
 
-FGenericTeamId AOutbreakPlayerCharacter::GetGenericTeamId() const
+void AOutbreakPlayerCharacter::HandleEyeHeightChanged()
 {
-	return OutbreakTeam::ToGenericTeamId(Team);
-}
-
-void AOutbreakPlayerCharacter::ApplyMovementSettings()
-{
-	if (MovementSettings.SprintSpeed < MovementSettings.WalkSpeed)
-	{
-		UE_LOG(LogOutbreak, Warning, TEXT("%s: SprintSpeed (%.1f) is lower than WalkSpeed (%.1f)."),
-			*GetName(), MovementSettings.SprintSpeed, MovementSettings.WalkSpeed);
-	}
-
-	UCharacterMovementComponent* Movement = GetCharacterMovement();
-	Movement->MaxWalkSpeed = bIsSprinting ? MovementSettings.SprintSpeed : MovementSettings.WalkSpeed;
-	Movement->MaxWalkSpeedCrouched = MovementSettings.CrouchSpeed;
-	Movement->JumpZVelocity = MovementSettings.JumpZVelocity;
-	Movement->AirControl = MovementSettings.AirControl;
-	Movement->SetCrouchedHalfHeight(MovementSettings.CrouchedHalfHeight);
-
-	CrouchedEyeHeight = MovementSettings.CrouchedEyeHeight;
-	UpdateEyeHeight();
-}
-
-void AOutbreakPlayerCharacter::UpdateEyeHeight()
-{
-	// ACharacter::RecalculateBaseEyeHeight restores the CDO value on uncrouch, so the eye height is
-	// always derived from MovementSettings here instead.
-	BaseEyeHeight = bIsCrouched ? MovementSettings.CrouchedEyeHeight : MovementSettings.StandingEyeHeight;
 	FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, BaseEyeHeight));
-}
-
-bool AOutbreakPlayerCharacter::CanSprint() const
-{
-	return !IsCrouchedOrCrouchRequested();
-}
-
-bool AOutbreakPlayerCharacter::StartSprinting()
-{
-	if (!CanSprint())
-	{
-		return false;
-	}
-
-	bIsSprinting = true;
-	GetCharacterMovement()->MaxWalkSpeed = MovementSettings.SprintSpeed;
-	return true;
-}
-
-void AOutbreakPlayerCharacter::StopSprinting()
-{
-	bIsSprinting = false;
-	GetCharacterMovement()->MaxWalkSpeed = MovementSettings.WalkSpeed;
-}
-
-void AOutbreakPlayerCharacter::BeginCrouch()
-{
-	StopSprinting();
-	Crouch();
-}
-
-void AOutbreakPlayerCharacter::EndCrouch()
-{
-	UnCrouch();
-}
-
-bool AOutbreakPlayerCharacter::IsCrouchedOrCrouchRequested() const
-{
-	return bIsCrouched || GetCharacterMovement()->bWantsToCrouch;
-}
-
-void AOutbreakPlayerCharacter::OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
-{
-	Super::OnStartCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
-
-	// Covers crouches that were not requested through BeginCrouch (for example from Blueprint).
-	StopSprinting();
-	UpdateEyeHeight();
-}
-
-void AOutbreakPlayerCharacter::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
-{
-	Super::OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
-
-	UpdateEyeHeight();
 }
 
 void AOutbreakPlayerCharacter::NotifyControllerChanged()
@@ -353,33 +248,18 @@ void AOutbreakPlayerCharacter::HandleCycleAmmoType()
 	WeaponComponent->CycleAmmoType();
 }
 
-void AOutbreakPlayerCharacter::HandleHealthChanged(UOutbreakHealthComponent* InHealthComponent, float NewHealth, float Delta)
+void AOutbreakPlayerCharacter::HandleDamaged(float Delta)
 {
-	// Basic hit reaction: a small upward view kick for the player who was hit.
-	if (Delta < 0.0f && IsLocallyControlled() && Controller)
+	// Basic hit reaction: a small upward view kick for the local player who was hit.
+	if (IsLocallyControlled() && IsPlayerControlled() && Controller)
 	{
 		Controller->SetControlRotation(Controller->GetControlRotation() + FRotator(HitReactionPitchKick, 0.0f, 0.0f));
 	}
 }
 
-void AOutbreakPlayerCharacter::HandleHealthStateChanged(UOutbreakHealthComponent* InHealthComponent,
-	EOutbreakHealthState NewState, EOutbreakHealthState OldState)
+void AOutbreakPlayerCharacter::HandleDowned(EOutbreakHealthState NewState)
 {
-	if (NewState == EOutbreakHealthState::Alive)
-	{
-		return;
-	}
-
-	// Incapacitated or dead: the player can no longer act. Mission failure is Phase 6.
-	StopSprinting();
-	WeaponComponent->StopFire();
-	WeaponComponent->SetAiming(false);
-	if (HasAuthority())
-	{
-		WeaponComponent->SetWeaponsEnabled(false);
-	}
-
-	GetCharacterMovement()->DisableMovement();
+	// Mission failure on player death is Phase 6.
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
 		if (PlayerController->IsLocalController())
@@ -388,7 +268,7 @@ void AOutbreakPlayerCharacter::HandleHealthStateChanged(UOutbreakHealthComponent
 		}
 	}
 
-	OnDowned(NewState);
+	Super::HandleDowned(NewState);
 }
 
 void AOutbreakPlayerCharacter::HandleWeaponStateChanged(UOutbreakWeaponComponent* InWeaponComponent)

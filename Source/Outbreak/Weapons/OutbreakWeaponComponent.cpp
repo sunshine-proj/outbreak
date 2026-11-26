@@ -288,7 +288,8 @@ void UOutbreakWeaponComponent::ApplyLocalRecoil(const FOutbreakFireModeDefinitio
 {
 	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
 	AController* Controller = OwnerPawn ? OwnerPawn->GetController() : nullptr;
-	if (!Controller || !OwnerPawn->IsLocallyControlled())
+	// View recoil is for local human players only; AI aim is handled by its controller.
+	if (!Controller || !Controller->IsLocalPlayerController())
 	{
 		return;
 	}

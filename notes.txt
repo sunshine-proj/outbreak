@@ -89,6 +89,39 @@ Nothing is committed. The next roadmap step is Phase 3 (squad architecture), but
 ================================
 
 
+Phase 3 is written the same way as Phases 1 and 2: nothing has been compiled, run or tested in Unreal. Every Phase 3 task is marked [-] in ROADMAP.md, except "Track member current order", which stays [ ] because order types don't exist until Phase 4.2.
+
+Your answer on squad limits is logged as D-008, and open decision O-001 is closed:
+
+Project limits: min 2, default 4, max 6, in Project Settings (saved to DefaultGame.ini).
+Mission limits: a mission's squad configuration can narrow them but never widen them.
+Invalid sizes: an invalid size is rejected with a logged error, and only the player is in the squad.
+What's implemented
+
+Area	Files
+Shared character base	OutbreakCharacter.h: movement, sprint and crouch, health, weapons, squad membership, team and death handling. The player and teammates both use it; the player keeps its camera, input, interaction and aim.
+AI teammate	OutbreakTeammateCharacter.h: possessed by a plain AI controller and stands still until Phase 4.
+Squad member	OutbreakSquadMemberComponent.h: on the player and every teammate. Holds an ID unique within the squad, a name and a role. Status (Active / Incapacitated / Dead) comes from health; it also reports health fraction, position and whether the member can take orders.
+Squad	OutbreakSquadComponent.h: a dynamic list of members with no fixed size. Handles registration, removal (including when a member is destroyed), size limits, composition checks, status queries and events. It lives on the new OutbreakPlayerState.h, so it survives the player's death.
+Configuration	OutbreakSquadSettings.h holds the project limits. OutbreakSquadConfiguration.h sets a mission's size, named teammates and a filler teammate for remaining slots. OutbreakSquadRoleDefinition.h gives each role default weapons and ammo; a member's own equipment replaces the role's.
+Spawning	The game mode builds the squad the first time the player spawns. Adding ?SquadSize=N to the map URL changes the size for quick tests, still within the limits.
+Tests	7 tests in OutbreakSquadTests.cpp, including the full 2–6 squad-size matrix with the player counted.
+Other changes
+
+Base-class refactor (D-009): the player character was moved onto the shared base, and its public API is unchanged. After the first compile, re-check the defaults in BP_OutbreakPlayerCharacter, because properties that moved to the base class may reset to their C++ defaults.
+Recoil fix: weapon recoil now only moves a local human player's view, not an AI teammate's.
+Docs: Docs/Phase3-EditorSetup.md covers the teammate Blueprint, role and squad assets, sizes 2–6 via ?SquadSize, the limit cases, and checks for member death and 2-player client runs.
+
+Risks and gaps
+
+Compiling: three phases (about 4,000 lines) are now written without a compile. The base-class refactor touches code that Phases 1 and 2 depend on, so re-run all their tests after the first build.
+Teammates don't act: they can't move, follow or take orders until Phase 4, and teammates without a mesh are invisible.
+Dead teammates: they stay in the squad and take up a slot until removed.
+Nothing is committed. The next roadmap step is Phase 4 (AI teammates and basic commands), and it needs open decision O-002 first: StateTree or Behavior Trees for teammate and enemy AI.
+
+
+
+================================
 
 
 

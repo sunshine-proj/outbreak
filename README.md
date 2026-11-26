@@ -40,7 +40,7 @@ This is a spiritual successor, not an asset-level recreation of the original gam
 
 ## Project Status
 
-**Current stage:** Phase 1 (basic FPS prototype) and Phase 2 (combat and weapons) C++ written; not yet compiled because Unreal Engine is not installed on the development machine.
+**Current stage:** Phases 1–3 (FPS prototype, combat and weapons, configurable squad) C++ written; not yet compiled because Unreal Engine is not installed on the development machine.
 
 Development follows the phases described in [ROADMAP.md](ROADMAP.md).
 
@@ -95,7 +95,8 @@ outbreak/
 │
 ├── Docs/
 │   ├── Phase1-EditorSetup.md
-│   └── Phase2-EditorSetup.md
+│   ├── Phase2-EditorSetup.md
+│   └── Phase3-EditorSetup.md
 │
 └── .gitignore
 ```
@@ -170,7 +171,7 @@ Run the Outbreak automation tests headlessly:
     -testexit="Automation Test Queue Empty"
 ```
 
-Editor assets that C++ depends on (input actions, mapping context, weapon data, Blueprints, test maps) are described in [Docs/Phase1-EditorSetup.md](Docs/Phase1-EditorSetup.md) and [Docs/Phase2-EditorSetup.md](Docs/Phase2-EditorSetup.md).
+Editor assets that C++ depends on (input actions, mapping context, weapon data, Blueprints, test maps) are described in the `Docs/Phase*-EditorSetup.md` guides ([Phase 1](Docs/Phase1-EditorSetup.md), [Phase 2](Docs/Phase2-EditorSetup.md), [Phase 3](Docs/Phase3-EditorSetup.md)).
 
 ## Development Philosophy
 
@@ -210,7 +211,7 @@ Default squad size: 4
 Maximum squad size: 6
 ```
 
-These are defaults, not architectural limitations.
+These are defaults, not architectural limitations. They are set in **Project Settings → Game → Outbreak Squad** (`Config/DefaultGame.ini`); a mission's squad configuration asset may narrow them but not widen them.
 
 The player is included in the total squad size.
 

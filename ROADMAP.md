@@ -233,45 +233,45 @@ Do not mark tasks complete unless their acceptance criteria are satisfied.
 
 ### 3.1 Squad Member
 
-- [ ] Create `UOutbreakSquadMemberComponent`, attached to both the player and AI teammates.
-- [ ] Create the AI teammate character class.
-- [ ] Implement member identification.
-- [ ] Implement member status.
-- [ ] Integrate health component.
-- [ ] Integrate weapon component.
-- [ ] Implement member registration.
-- [ ] Implement member removal.
+- [-] Create `UOutbreakSquadMemberComponent`, attached to both the player and AI teammates. — C++ written, not compiled (engine not installed). Added to the shared `AOutbreakCharacter` base
+- [-] Create the AI teammate character class. — C++ written, not compiled (engine not installed). `AOutbreakTeammateCharacter`; plain `AAIController` until Phase 4
+- [-] Implement member identification. — C++ written, not compiled (engine not installed). Squad-unique member ID, display name, role
+- [-] Implement member status. — C++ written, not compiled (engine not installed). Active / Incapacitated / Dead from health
+- [-] Integrate health component. — C++ written, not compiled (engine not installed)
+- [-] Integrate weapon component. — C++ written, not compiled (engine not installed)
+- [-] Implement member registration. — C++ written, not compiled (engine not installed)
+- [-] Implement member removal. — C++ written, not compiled (engine not installed). Explicit, and automatic when the member is destroyed
 
 ### 3.2 Squad Component
 
-- [ ] Create `UOutbreakSquadComponent` (or a subsystem, if justified in the Decision Log).
-- [ ] Implement dynamic member collection.
-- [ ] Implement player registration.
-- [ ] Implement AI member registration.
-- [ ] Implement configurable minimum squad size.
-- [ ] Implement configurable maximum squad size.
-- [ ] Implement default squad size of four.
-- [ ] Implement squad composition validation.
-- [ ] Implement squad status queries.
+- [-] Create `UOutbreakSquadComponent` (or a subsystem, if justified in the Decision Log). — C++ written, not compiled (engine not installed). Component on `AOutbreakPlayerState` (D-009)
+- [-] Implement dynamic member collection. — C++ written, not compiled (engine not installed)
+- [-] Implement player registration. — C++ written, not compiled (engine not installed)
+- [-] Implement AI member registration. — C++ written, not compiled (engine not installed)
+- [-] Implement configurable minimum squad size. — C++ written, not compiled (engine not installed). Project settings, narrowed per configuration (D-008)
+- [-] Implement configurable maximum squad size. — C++ written, not compiled (engine not installed). Project settings, narrowed per configuration (D-008)
+- [-] Implement default squad size of four. — C++ written, not compiled (engine not installed)
+- [-] Implement squad composition validation. — C++ written, not compiled (engine not installed)
+- [-] Implement squad status queries. — C++ written, not compiled (engine not installed). Counts, available teammates, find by ID, distance to player
 
 ### 3.3 Squad Configuration
 
-- [ ] Define squad configuration Data Asset.
-- [ ] Define squad member configuration.
-- [ ] Define tactical role configuration.
-- [ ] Define default equipment.
-- [ ] Implement squad initialization.
-- [ ] Implement initial squad spawning.
-- [ ] Test multiple squad configurations.
+- [-] Define squad configuration Data Asset. — C++ written, not compiled (engine not installed). `UOutbreakSquadConfiguration`
+- [-] Define squad member configuration. — C++ written, not compiled (engine not installed). `FOutbreakSquadMemberConfig`
+- [-] Define tactical role configuration. — C++ written, not compiled (engine not installed). `UOutbreakSquadRoleDefinition`
+- [-] Define default equipment. — C++ written, not compiled (engine not installed). Role defaults, member overrides
+- [-] Implement squad initialization. — C++ written, not compiled (engine not installed). `InitializeSquad`, called by `AOutbreakGameMode::RestartPlayer`
+- [-] Implement initial squad spawning. — C++ written, not compiled (engine not installed). Two columns behind the player
+- [-] Test multiple squad configurations. — automation tests written (`Outbreak.Squad.Initialization.*`), not run; in-editor check pending
 
 ### 3.4 Squad Status
 
-- [ ] Track member health.
-- [ ] Track member alive/dead status.
-- [ ] Track member incapacitation state (state defined in 2.5; gameplay in Phase 10).
-- [ ] Track member current order.
-- [ ] Track member position.
-- [ ] Implement squad status events.
+- [-] Track member health. — C++ written, not compiled (engine not installed). `GetHealthFraction`
+- [-] Track member alive/dead status. — C++ written, not compiled (engine not installed)
+- [-] Track member incapacitation state (state defined in 2.5; gameplay in Phase 10). — C++ written, not compiled (engine not installed)
+- [ ] Track member current order. (Depends on 4.2 command types; implemented with them.)
+- [-] Track member position. — C++ written, not compiled (engine not installed). `GetMemberLocation`, `GetDistanceToPlayer`
+- [-] Implement squad status events. — C++ written, not compiled (engine not installed). Member added/removed/status changed, on every machine
 
 ### Phase 3 Acceptance Criteria
 
@@ -876,9 +876,9 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phase 1 and Phase 2 C++ were written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–3 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
-**Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through [Docs/Phase1-EditorSetup.md](Docs/Phase1-EditorSetup.md) and [Docs/Phase2-EditorSetup.md](Docs/Phase2-EditorSetup.md).
+**Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through the `Docs/Phase*-EditorSetup.md` guides in order.
 
 **Current milestone:** M6 — First playable prototype (end of Phase 6).
 
@@ -901,6 +901,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | 0.1 Install Unreal Engine 5 | Not installed on the development machine (Ubuntu 24.04). The download requires the developer's Epic Games account, so an agent cannot install it. All later tasks depend on it. | 2026-11-23 |
 | Phase 1 verification (all `[-]` tasks in Phase 1) | Same as above: Phase 1 C++ cannot be compiled or tested, and its editor assets (input actions, mapping context, Blueprints, test map) cannot be created until the engine is installed. Steps: `Docs/Phase1-EditorSetup.md`. | 2026-11-26 |
 | Phase 2 verification (all `[-]` tasks in Phase 2) | Same as above. Editor assets: weapon and ammunition data assets, new input actions, combat test map. Steps: `Docs/Phase2-EditorSetup.md`. | 2026-11-26 |
+| Phase 3 verification (all `[-]` tasks in Phase 3) | Same as above. Editor assets: teammate Blueprint, role and squad configuration data assets, squad test map. Steps: `Docs/Phase3-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -917,12 +918,13 @@ Record architectural and planning decisions here.
 | D-005 | 2026-11-26 | Input assets are grouped in a `UOutbreakInputConfig` data asset assigned to the player character Blueprint. The HUD (`UOutbreakHUDWidget`) builds a default layout in C++ when no Widget Blueprint subclass is used. | Key bindings stay in assets, so they can be changed without code. The HUD works before UI assets exist, and designers can still replace the layout. |
 | D-006 | 2026-11-26 | Server-authoritative gameplay from Phase 2 (closes O-006). Clients send requests through Server RPCs; the server validates fire rate, ammunition, reload state and shot origin, applies damage and multicasts cosmetics. Health and weapon state replicate and fire change events on every machine. Recoil is applied locally; ammunition is not predicted. | Developer decision: keeps P3 co-op possible without rewriting weapons and health. |
 | D-007 | 2026-11-26 | Weapons are data: `UOutbreakWeaponDefinition` holds fire modes; each fire mode holds an instanced, stateless `UOutbreakFireBehavior` (hitscan or projectile). `FireModes[0]` is primary and the rest are alternatives, cycled by input. Ammunition types are separate data assets; switching type reloads and returns loaded rounds to reserve. Reserves live in the weapon component until the Phase 10 inventory. Damage uses the engine damage pipeline with `UOutbreakDamageType` subclasses. | New firing behaviours and ammunition need no weapon-component changes; the engine pipeline lets any actor receive damage. |
+| D-008 | 2026-11-26 | Squad size limits (closes O-001): global min/default/max in `UOutbreakSquadSettings` (Project Settings, `DefaultGame.ini`). A `UOutbreakSquadConfiguration` sets the mission's size and may narrow the limits; overrides outside the global range are clamped into it. A size outside the resolved range is rejected with a logged error, leaving only the player in the squad. Dead members stay registered until removed. | Developer decision. PRD §5.1 asks for project-level configuration; missions still need their own composition. |
+| D-009 | 2026-11-26 | `UOutbreakSquadComponent` lives on `AOutbreakPlayerState` (one squad per player; survives pawn death; replicates to all clients). Player and teammates share a new `AOutbreakCharacter` base holding movement, health, weapons, squad membership, team and death handling; the player subclass keeps camera, input and interaction. | Avoids duplicating soldier logic between player and teammates (D-002 requires both to be squad members), and keeps co-op (D-006) possible. |
 
 ### Open
 
 | ID | Question | Needed by |
 | --- | --- | --- |
-| O-001 | Source of squad size limits: `UDeveloperSettings` (project config) for global limits and a Data Asset for per-mission composition? Which takes precedence? | Phase 3 |
 | O-002 | AI framework: StateTree or Behavior Trees for teammates and enemies? | Phase 4 |
 | O-003 | Audio backend: Unreal Audio or FMOD? | Phase 8 (noise events) |
 | O-004 | Pinned Unreal Engine 5 minor version. | Phase 0 |

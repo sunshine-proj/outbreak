@@ -25,7 +25,9 @@ public class Outbreak : ModuleRules
 			// Public: weapon and ammunition definitions reference Niagara systems.
 			"Niagara",
 			// Public: FVector_NetQuantize and replication types in weapon headers.
-			"NetCore"
+			"NetCore",
+			// Public: UOutbreakSquadSettings derives from UDeveloperSettings.
+			"DeveloperSettings"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
