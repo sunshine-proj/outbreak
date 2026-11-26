@@ -6,6 +6,7 @@
 #include "OutbreakLightingSubsystem.generated.h"
 
 class AOutbreakLightingVolume;
+class AOutbreakTimeOfDay;
 class UDirectionalLightComponent;
 class ULocalLightComponent;
 
@@ -16,6 +17,9 @@ class ULocalLightComponent;
  * point and spot light in range that has a clear line to the location, plus unshadowed directional
  * light. An AOutbreakLightingVolume containing the location overrides the result. Light lists are
  * cached and refreshed every LightCacheRefreshInterval seconds.
+ *
+ * With an AOutbreakTimeOfDay in the level (Phase 12), the ambient level follows the hour and the
+ * sun's and moon's contributions are scaled by daylight and moonlight.
  */
 UCLASS()
 class OUTBREAK_API UOutbreakLightingSubsystem : public UWorldSubsystem
@@ -38,5 +42,6 @@ private:
 	TArray<TWeakObjectPtr<ULocalLightComponent>> LocalLights;
 	TArray<TWeakObjectPtr<UDirectionalLightComponent>> DirectionalLights;
 	TArray<TWeakObjectPtr<AOutbreakLightingVolume>> Volumes;
+	TWeakObjectPtr<AOutbreakTimeOfDay> TimeOfDay;
 	double LastRefreshTime = -1.0e9;
 };

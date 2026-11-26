@@ -659,34 +659,34 @@ Additional verification:
 
 ### 12.1 Greybox Environment
 
-- [ ] Create outdoor terrain.
-- [ ] Create military installation.
-- [ ] Create indoor facility.
-- [ ] Create corridors and rooms.
-- [ ] Add tactical cover.
-- [ ] Configure collision.
-- [ ] Configure navigation.
-- [ ] Test squad movement.
+- [-] Create outdoor terrain. — editor work pending; layout spec (see `Docs/Phase12-EditorSetup.md`)
+- [-] Create military installation. — editor work pending; layout spec (see `Docs/Phase12-EditorSetup.md`)
+- [-] Create indoor facility. — editor work pending; layout spec (see `Docs/Phase12-EditorSetup.md`)
+- [-] Create corridors and rooms. — editor work pending; layout spec (see `Docs/Phase12-EditorSetup.md`)
+- [-] Add tactical cover. — editor work pending (see `Docs/Phase12-EditorSetup.md`); destructible cover in 12.2
+- [-] Configure collision. — editor work pending (see `Docs/Phase12-EditorSetup.md`)
+- [-] Configure navigation. — `Config/DefaultEngine.ini` sets navmesh Runtime Generation to Dynamic Modifiers Only (doors); level navmesh is editor work pending (see `Docs/Phase12-EditorSetup.md`)
+- [-] Test squad movement. — manual test pending (see `Docs/Phase12-EditorSetup.md`)
 
 ### 12.2 Environment Systems
 
-- [ ] Configure lighting.
-- [ ] Implement basic day/night support.
-- [ ] Implement environmental audio.
-- [ ] Implement interactive doors.
-- [ ] Implement interactable equipment.
-- [ ] Implement basic destruction.
-- [ ] Implement environment-specific perception settings.
+- [-] Configure lighting. — editor work pending (see `Docs/Phase12-EditorSetup.md`); Movable sun, moon and sky light for the time of day
+- [-] Implement basic day/night support. — C++ written, not compiled (engine not installed). `AOutbreakTimeOfDay`: sun and moon by hour, optional time passing, mission Start Hour, drives the stealth light level
+- [-] Implement environmental audio. — C++ written, not compiled (engine not installed). Zone ambience on `AOutbreakEnvironmentVolume`; positional ambience and reverb use engine Ambient Sound and Audio Volume actors
+- [-] Implement interactive doors. — C++ written, not compiled (engine not installed). `AOutbreakDoor`: swing or slide, locks and keys, AI auto-open, navigation modifier, noise, switchable
+- [-] Implement interactable equipment. — C++ written, not compiled (engine not installed). `AOutbreakMissionEquipment` extended: switch off again, linked doors and lights, use noise (`IOutbreakSwitchable`)
+- [-] Implement basic destruction. — C++ written, not compiled (engine not installed). `AOutbreakDestructibleObject` extended: damaged stage, rubble or removal, destruction noise and effects, chain explosions
+- [-] Implement environment-specific perception settings. — C++ written, not compiled (engine not installed). `AOutbreakEnvironmentVolume` zones: enemy sight range, hearing masking, footstep loudness by surface
 
 ### 12.3 Level Validation
 
-- [ ] Test player navigation.
-- [ ] Test teammate navigation.
-- [ ] Test squad formations.
-- [ ] Test enemy navigation.
-- [ ] Test cover positions.
-- [ ] Test indoor/outdoor transitions.
-- [ ] Test stealth in different lighting conditions.
+- [-] Test player navigation. — manual test pending (see `Docs/Phase12-EditorSetup.md`)
+- [-] Test teammate navigation. — manual test pending (see `Docs/Phase12-EditorSetup.md`)
+- [-] Test squad formations. — manual test pending (see `Docs/Phase12-EditorSetup.md`)
+- [-] Test enemy navigation. — manual test pending (see `Docs/Phase12-EditorSetup.md`)
+- [-] Test cover positions. — manual test pending (see `Docs/Phase12-EditorSetup.md`)
+- [-] Test indoor/outdoor transitions. — manual test pending (see `Docs/Phase12-EditorSetup.md`)
+- [-] Test stealth in different lighting conditions. — manual test pending (see `Docs/Phase12-EditorSetup.md`)
 
 ### Phase 12 Acceptance Criteria
 
@@ -876,7 +876,7 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–11 C++ were written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–12 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
 **Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through the `Docs/Phase*-EditorSetup.md` guides in order.
 
@@ -910,6 +910,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 9 verification (all `[-]` tasks in Phase 9) | Same as above. Editor assets: enemy cover EQS query, stalker and brute weapons, definitions and Blueprints, tactics test map; enemy Blackboard enum refresh. Steps: `Docs/Phase9-EditorSetup.md`. | 2026-11-26 |
 | Phase 10 verification (all `[-]` tasks in Phase 10) | Same as above. Editor assets: item, loadout and pickup assets, weapon weights and slots, four input actions, Medical settings, teammate AI priority order refresh, medical test map. Steps: `Docs/Phase10-EditorSetup.md`. | 2026-11-26 |
 | Phase 11 verification (all `[-]` tasks in Phase 11) | Same as above. Editor work: mission items, destructible relay and uplink terminal Blueprints, squad roster names, Phase 11 mission asset, mission test map; optional Widget Blueprints for the briefing and summary. Steps: `Docs/Phase11-EditorSetup.md`. | 2026-11-26 |
+| Phase 12 (all `[-]` tasks in Phase 12) | Same as above. Most of Phase 12 is level building: the greybox outpost level, lighting, collision, navmesh, door, equipment and destructible Blueprints, environment zones, and every 12.3 validation test. Steps and layout spec: `Docs/Phase12-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -938,6 +939,7 @@ Record architectural and planning decisions here.
 | D-017 | 2026-11-26 | Enemy tactics are a per-archetype `FOutbreakEnemyTacticsSettings` on the enemy definition. In Combat, a pure decision picks one movement (Retreat > Charge > Flank > TakeCover > Engage); firing stays concurrent. Combat styles Ranged / Melee / Advance distinguish infantry, melee attackers and heavies. Coordination is a world subsystem of engagement reports (shared sightings, one pin plus flankers per target, target spreading), refreshed by each enemy and expiring otherwise. Retreating is a new enemy state appended to the enum. Disengagement is a leash around the home position. Melee attacks use the weapon system (a Melee fire behaviour, `bUnlimitedAmmo`) so the shared combat service drives them. | Phase 9 acceptance (behaviours differ, cover and flanking, configured without AI code); reuses the Phase 7 EQS contexts and the shared combat service; decision logic stays unit-testable without navmesh or perception. |
 | D-018 | 2026-11-26 | Inventory and medical model (developer decisions: weight-based capacity; everyone can be downed). Carryable things implement `IOutbreakItem`: weapon and ammunition definitions stay where they are (weapons in the weapon component, one per Primary/Secondary slot; ammunition in its reserve, loaded rounds weighed too), other items are `UOutbreakItemDefinition`s with instanced use actions in the inventory component. Capacity is carried weight. Loadouts are data assets applied without the weight check (validated as assets). Squad soldiers are incapacitated at zero health, bleed out after a configurable time, can be revived a configurable number of times by a timed revive without an item, and further damage kills. Interaction now runs on the server. Teammate AI gets a Medical Assistance layer, second by default: reviving overrides orders, healing does not. The mission fails when no player stands and no squadmate can revive one. | PRD §9 (simple medical), §10 (capacity, no unlimited loot); avoids duplicating the weapon and ammunition state; downing keeps squad play meaningful without a respawn system. |
 | D-019 | 2026-11-26 | Mission framework (Phase 11). Objectives form a dependency graph: each has an optional ID and an activation rule (After Previous = after the nearest earlier required objective, the default, so Phase 6 missions run unchanged; At Mission Start; After Prerequisites by ID); optional objectives never fail the mission and a required objective may depend only on required ones; objectives cut off by a failed prerequisite are cancelled; every active objective is evaluated, and the mission completes when all required objectives have. Mission time advances with the update timer, so timed objectives are testable. The briefing runs in the mission level, not a separate front-end map: a Briefing mission state with the game paused; each player sends one validated `FOutbreakSquadSelection` (size, roster soldier per slot, loadout per member) and is moved to the starting-location marker; the squad is built then, equipment selection closes, and the mission starts when every player has deployed. Results are a replicated `FOutbreakMissionResults`; the summary screen replaces the automatic restart (Restart Delay now defaults to 0). Screens and notifications follow the replicated status, so they work for remote players (D-006). | Agent decision, open to change: no campaign or menu exists until Phase 14, so a separate briefing map would have nothing to return to; building the squad at deployment means selection never has to replace spawned teammates; the graph keeps existing missions valid. |
+| D-020 | 2026-11-26 | Environment systems (Phase 12). Day/night is a level actor (`AOutbreakTimeOfDay`) driving Movable sun, moon and sky lights from a replicated hour, with time passing optional and a per-mission start hour; the stealth light model takes its ambient level and sun/moon contributions from it, and is unchanged without one. Environment-specific perception is box zones (`AOutbreakEnvironmentVolume`, highest priority wins) scaling enemy sight range (lower of viewer's and target's zone), hearing (listener's zone) and footstep loudness (walker's zone). Environmental audio is zone ambience on the same volume (engine audio component) plus engine Ambient Sound and Audio Volume actors; gameplay masking stays separate from audio (D-015). Doors use a navigation modifier (impassable while locked or not AI-openable) with navmesh runtime generation Dynamic Modifiers Only; AI-controlled pawns open unlocked doors by touch. Interactable equipment extends the Phase 11 equipment class (toggle, linked switchable actors and lights) rather than adding a second class; destruction extends the Phase 11 destructible. | Agent decision, open to change: reuses the stealth model, the Phase 11 actors and engine audio and navigation instead of parallel systems; event- and timer-driven only; modifiers-only navmesh keeps runtime cost low (destroyed objects do not open new paths). |
 
 ### Open
 

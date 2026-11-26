@@ -434,6 +434,34 @@ Next step: it's unchanged. Install Unreal Engine, build, run all Outbreak.* test
 ================================
 
 
+I've written the Phase 12 environment systems in C++, but none of it has been compiled or run, because Unreal Engine still isn't installed. Most of Phase 12 is building the level itself in the editor, which I can't do here. For that I wrote a layout spec and a validation checklist in Docs/Phase12-EditorSetup.md. Every Phase 12 task in ROADMAP.md is [-] and the phase is recorded as blocked.
+
+What the new code does:
+
+Day/night: a time-of-day actor turns the sun and moon and sets light levels by hour. Time can pass or stay fixed, and missions can set a start hour. It also feeds the stealth light model, so night is darker for enemies too. Levels without one behave as before.
+Environment zones: a box volume that changes enemy perception inside it. It can shorten sight (fog, forest), mask hearing (a noisy generator hall) and make footsteps louder or quieter (metal floor, grass). It can also play a looping ambience for the player inside. For positional sound and reverb, the guide uses the engine's own Ambient Sound and Audio Volume actors.
+Doors:
+Locks: they swing or slide open, can be locked, and open with a key item or a terminal.
+AI: teammates and enemies open unlocked doors by walking into them. Locked doors block AI paths.
+Stealth: closed doors block sight and muffle noise, and opening one makes noise enemies can hear.
+Equipment: I extended the Phase 11 equipment class rather than adding a new one. It can now be switched off again, makes noise when used, and drives linked doors and lights. Cutting a generator darkens the floodlit yard for stealth.
+Destruction: I extended the Phase 11 destructible object. It shows a damaged stage, turns to rubble or disappears (so cover behind it is gone), is loud when destroyed, and can explode and set off other destructibles.
+Settings you should know about:
+
+Navigation: I added a setting to Config/DefaultEngine.ini that lets doors change AI navigation at runtime. A navmesh already saved in a level keeps its own value, so it needs setting there too.
+Destroyed objects: they don't open new AI paths with that setting; full dynamic navigation would, but costs more.
+Teammates: zones only affect enemy perception, not teammates.
+These choices are recorded as D-020 in the roadmap.
+
+Tests: I wrote 6 new automation tests in Tests/OutbreakEnvironmentTests.cpp; none have run. The explosion test depends on physics overlaps working in the headless test world, so if only its blast checks fail, try the explosion in the editor before assuming a bug. The changes touch the stealth lighting, footstep noise, enemy perception and Phase 11 equipment and destructibles, so all existing stealth and mission tests need re-running too.
+
+What's in the change: 11 new files in Source/Outbreak/Environment/ plus the test file, changes to 12 existing files, and the new Phase 12 guide. Nothing is committed.
+
+Next step: it's unchanged. Install Unreal Engine, build and run the tests. If it helps, I can write an Unreal Python editor script that blocks out the greybox level from the spec, so building it is mostly a matter of running the script.
+
+
+
+================================
 
 
 

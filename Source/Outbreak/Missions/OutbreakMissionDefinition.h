@@ -65,6 +65,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flow")
 	FName DeploymentMarkerId;
 
+	/**
+	 * Environment configuration: hour of day at mission start (0..24), applied to the level's
+	 * AOutbreakTimeOfDay. Negative = keep the level's own start hour.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Environment", meta = (ClampMin = "-1.0", ClampMax = "24.0"))
+	float StartHour = -1.0f;
+
 	/** Sideways spacing between players deploying at the same marker (co-op). */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flow", meta = (ClampMin = "0.0", Units = "cm"))
 	float DeploymentSpacing = 150.0f;

@@ -2,6 +2,7 @@
 
 #include "Combat/OutbreakTeam.h"
 #include "Engine/World.h"
+#include "Environment/OutbreakTimeOfDay.h"
 #include "Game/OutbreakGameState.h"
 #include "Game/OutbreakPlayerState.h"
 #include "Missions/OutbreakMissionDefinition.h"
@@ -74,6 +75,15 @@ bool AOutbreakGameMode::ShouldRunBriefing() const
 void AOutbreakGameMode::StartPlay()
 {
 	Super::StartPlay();
+
+	// Environment configuration: the mission's hour replaces the level's (after the clock's BeginPlay).
+	if (MissionDefinition && MissionDefinition->StartHour >= 0.0f)
+	{
+		if (AOutbreakTimeOfDay* TimeOfDay = AOutbreakTimeOfDay::Find(GetWorld()))
+		{
+			TimeOfDay->SetHour(MissionDefinition->StartHour);
+		}
+	}
 
 	UOutbreakMissionSubsystem* Mission = GetWorld()->GetSubsystem<UOutbreakMissionSubsystem>();
 	if (!Mission || !Mission->GetMissionDefinition())

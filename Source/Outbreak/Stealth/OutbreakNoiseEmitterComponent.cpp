@@ -1,6 +1,7 @@
 #include "Stealth/OutbreakNoiseEmitterComponent.h"
 
 #include "Characters/OutbreakCharacter.h"
+#include "Environment/OutbreakEnvironmentSubsystem.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
@@ -63,7 +64,13 @@ float UOutbreakNoiseEmitterComponent::GetCurrentMovementLoudness() const
 
 void UOutbreakNoiseEmitterComponent::EmitFootstep()
 {
-	const float Loudness = GetCurrentMovementLoudness();
+	float Loudness = GetCurrentMovementLoudness();
+	// Environment (Phase 12): the surface underfoot makes steps louder or quieter.
+	UOutbreakEnvironmentSubsystem* Environment = GetWorld() ? GetWorld()->GetSubsystem<UOutbreakEnvironmentSubsystem>() : nullptr;
+	if (Environment && GetOwner())
+	{
+		Loudness *= Environment->GetPerceptionAt(GetOwner()->GetActorLocation()).FootstepLoudnessMultiplier;
+	}
 	if (Loudness > 0.0f)
 	{
 		ReportNoise(EOutbreakNoiseType::Footstep, Loudness);

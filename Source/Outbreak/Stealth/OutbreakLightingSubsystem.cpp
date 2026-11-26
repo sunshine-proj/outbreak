@@ -5,6 +5,7 @@
 #include "Components/LocalLightComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Engine/World.h"
+#include "Environment/OutbreakTimeOfDay.h"
 #include "EngineUtils.h"
 #include "Stealth/OutbreakLightingVolume.h"
 #include "Stealth/OutbreakStealthSettings.h"
@@ -43,6 +44,7 @@ void UOutbreakLightingSubsystem::RefreshCacheIfNeeded()
 	{
 		Volumes.Add(*It);
 	}
+	TimeOfDay = AOutbreakTimeOfDay::Find(World);
 }
 
 bool UOutbreakLightingSubsystem::IsShadowed(const FVector& From, const FVector& To, const AActor* IgnoredActor) const
@@ -72,7 +74,8 @@ float UOutbreakLightingSubsystem::GetLightLevelAt(const FVector& Location, const
 		return Override->GetLightLevel();
 	}
 
-	float Level = Settings->AmbientLightLevel;
+	const AOutbreakTimeOfDay* Clock = TimeOfDay.Get();
+	float Level = Clock ? Clock->GetGameplayAmbientLightLevel() : Settings->AmbientLightLevel;
 
 	for (const TWeakObjectPtr<ULocalLightComponent>& Entry : LocalLights)
 	{
@@ -111,10 +114,15 @@ float UOutbreakLightingSubsystem::GetLightLevelAt(const FVector& Location, const
 		{
 			continue;
 		}
+		const float Factor = Clock ? Clock->GetDirectionalLightFactor(Light) : 1.0f;
+		if (Factor <= 0.0f)
+		{
+			continue;
+		}
 		const FVector TowardLight = -Light->GetDirection();
 		if (!IsShadowed(Location + TowardLight * Settings->DirectionalShadowTraceDistance, Location, IgnoredActor))
 		{
-			Level += Settings->DirectionalLightContribution;
+			Level += Settings->DirectionalLightContribution * Factor;
 		}
 	}
 

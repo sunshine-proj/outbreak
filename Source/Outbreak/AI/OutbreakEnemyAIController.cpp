@@ -8,6 +8,7 @@
 #include "BrainComponent.h"
 #include "Characters/OutbreakEnemyCharacter.h"
 #include "CollisionQueryParams.h"
+#include "Environment/OutbreakEnvironmentSubsystem.h"
 #include "Combat/OutbreakTeam.h"
 #include "Components/CapsuleComponent.h"
 #include "DrawDebugHelpers.h"
@@ -210,9 +211,13 @@ void AOutbreakEnemyAIController::HandleTargetPerceptionUpdated(AActor* Actor, FA
 		FVector::Dist(Stimulus.StimulusLocation, EarLocation), OutbreakNoise::GetEffectiveRange(Noise),
 		Occluders, Settings->OcclusionAttenuation);
 
+	// Environment (Phase 12): ambient noise where this enemy listens masks what it hears.
+	UOutbreakEnvironmentSubsystem* Environment = GetWorld()->GetSubsystem<UOutbreakEnvironmentSubsystem>();
+	const float Masked = Environment ? Perceived * Environment->GetPerceptionAt(EarLocation).HearingMultiplier : Perceived;
+
 	const UOutbreakEnemyDefinition* Definition = GetDefinition();
 	ReportStimulus(Stimulus.StimulusLocation,
-		OutbreakDetection::NoiseSuspicion(Perceived, Definition->NoiseSuspicionGain, Definition->HearingSensitivity));
+		OutbreakDetection::NoiseSuspicion(Masked, Definition->NoiseSuspicionGain, Definition->HearingSensitivity));
 }
 
 void AOutbreakEnemyAIController::HandleTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
@@ -354,7 +359,10 @@ float AOutbreakEnemyAIController::ComputeTargetVisibility(const AActor* Target) 
 	Inputs.Speed = Target->GetVelocity().Size2D();
 	Inputs.bCrouched = TargetCharacter && TargetCharacter->bIsCrouched;
 	Inputs.Distance = ToTarget.Size();
-	Inputs.SightRadius = Definition->SightRadius;
+	// Environment (Phase 12): fog, smoke and foliage shorten sight into or out of their zone.
+	UOutbreakEnvironmentSubsystem* Environment = World->GetSubsystem<UOutbreakEnvironmentSubsystem>();
+	Inputs.SightRadius = Definition->SightRadius
+		* (Environment ? Environment->GetSightRangeMultiplier(EyeLocation, TargetLocation) : 1.0f);
 	Inputs.AngleFromView = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(
 		FVector::DotProduct(EyeRotation.Vector(), ToTarget.GetSafeNormal()), -1.0f, 1.0f)));
 	Inputs.PeripheralHalfAngle = Definition->PeripheralVisionHalfAngle;
