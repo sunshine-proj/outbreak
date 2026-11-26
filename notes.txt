@@ -124,6 +124,44 @@ Nothing is committed. The next roadmap step is Phase 4 (AI teammates and basic c
 ================================
 
 
+Phase 4 is written the same way as Phases 1–3: nothing has been compiled, run or tested in Unreal. Every Phase 4 task is marked [-] in ROADMAP.md. "Track member current order" from Phase 3 is now implemented and also marked [-].
+
+Your answer on the AI framework is logged as D-010, and open decision O-002 is closed. All decisions are made in C++ and written to the blackboard. The Behavior Tree only executes them: a Move To and a Wait under two C++ services, one for the behaviour decision and one for combat. That keeps the editor work small and the decision code testable.
+
+What's implemented
+
+Area	Files
+Squad AI controller	OutbreakSquadAIController.h: sight perception, tracking the nearest visible hostile, checking whether the current order is done, choosing a behaviour and the place to move to. Teammates steer around each other in crowds.
+Priority rules (D-011)	OutbreakTeammateBehaviorTypes.h: survival > explicit order > threat > staying in position > idle, as in AGENTS.md §6.1. The order can be changed per AI config. Teammates shoot visible hostiles whatever they're doing, so Hold or Move doesn't leave them defenceless.
+BT services	BTService_OutbreakUpdateBehavior.h runs the decision step. BTService_OutbreakTeammateCombat.h aims, fires and reloads automatically, going through the same server-checked weapon requests as the player.
+AI config	OutbreakTeammateAIConfig.h: perception, priorities, follow distances, when orders count as done, and combat settings, with validation.
+Commands	OutbreakSquadCommandTypes.h: Follow, Hold, Move, Regroup and Attack as structured data. Each order is Active, Completed, Cancelled or Failed. Move becomes Hold on arrival, Regroup ends near the player, Attack ends when the target dies, and a downed teammate's order fails.
+Distribution	The squad component sends orders to the whole squad, one teammate or a selection, checked on the server. The player can never be ordered.
+Command interface	OutbreakSquadCommandComponent.h: select by slot, add or remove from the selection, select all. Move and Attack take their target from the crosshair. A squad panel on the HUD shows each teammate's order, activity, health or KIA, and distance.
+Follow positions	OutbreakSquadPositioning.h: a separate spot behind the player for each teammate, for any squad size.
+Tests	13 new tests in OutbreakTeammateAITests.cpp and OutbreakSquadCommandTests.cpp, including commands for every squad size from 2 to 6.
+Docs: Docs/Phase4-EditorSetup.md covers:
+
+Blackboard: the exact key names and types.
+Behavior Tree: a 4-node tree.
+Navigation: navmesh setup.
+Input: 9 squad input actions. Member keys F1–F5 use a value per key, so a bigger squad needs only more keys, not code.
+Test map: an open area and a narrow passage.
+Checklist: to run with squads of 2, 4 and 6.
+Risks and gaps
+
+Compiling: this is now 4 phases of code that has never been compiled. Phase 4 is the most engine-API-heavy part (AI controller, perception, Behavior Tree nodes, crowd following), so expect fixes on the first build.
+Not covered by automated tests: the test world has no navmesh and runs no AI, so actual movement, perception and shooting can only be checked by hand in the editor.
+Friendly fire: teammates may shoot through the player or each other.
+Sight only: teammates react to what they see; hearing comes in Phase 8.
+Simple fallback: a badly hurt teammate retreats to the player's follow position; it doesn't look for cover until Phase 7.
+
+
+
+================================
+
+
+
 
 
 

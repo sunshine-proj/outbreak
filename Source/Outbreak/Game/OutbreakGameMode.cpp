@@ -1,5 +1,6 @@
 #include "Game/OutbreakGameMode.h"
 
+#include "Combat/OutbreakTeam.h"
 #include "Game/OutbreakPlayerState.h"
 #include "GameFramework/Controller.h"
 #include "Kismet/GameplayStatics.h"
@@ -12,6 +13,14 @@ AOutbreakGameMode::AOutbreakGameMode()
 	DefaultPawnClass = AOutbreakPlayerCharacter::StaticClass();
 	PlayerControllerClass = AOutbreakPlayerController::StaticClass();
 	PlayerStateClass = AOutbreakPlayerState::StaticClass();
+}
+
+void AOutbreakGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+
+	// AI perception uses the global solver to tell enemies from friends.
+	FGenericTeamId::SetAttitudeSolver(&OutbreakTeam::GetAttitude);
 }
 
 void AOutbreakGameMode::RestartPlayer(AController* NewPlayer)

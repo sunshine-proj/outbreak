@@ -27,6 +27,7 @@ public:
 
 	AOutbreakGameMode();
 
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
 
 protected:

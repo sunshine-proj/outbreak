@@ -12,6 +12,8 @@
 #include "Interaction/OutbreakInteractionComponent.h"
 #include "Outbreak.h"
 #include "Player/OutbreakInputConfig.h"
+#include "Player/OutbreakPlayerController.h"
+#include "Player/OutbreakSquadCommandComponent.h"
 #include "Weapons/OutbreakWeaponComponent.h"
 #include "Weapons/OutbreakWeaponDefinition.h"
 
@@ -141,6 +143,43 @@ void AOutbreakPlayerCharacter::SetupPlayerInputComponent(UInputComponent* Player
 	if (InputConfig->CycleAmmoTypeAction)
 	{
 		EnhancedInput->BindAction(InputConfig->CycleAmmoTypeAction, ETriggerEvent::Started, this, &ThisClass::HandleCycleAmmoType);
+	}
+
+	if (InputConfig->SquadFollowAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadFollowAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadFollow);
+	}
+	if (InputConfig->SquadHoldAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadHoldAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadHold);
+	}
+	if (InputConfig->SquadMoveAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadMoveAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadMove);
+	}
+	if (InputConfig->SquadRegroupAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadRegroupAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadRegroup);
+	}
+	if (InputConfig->SquadAttackAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadAttackAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadAttack);
+	}
+	if (InputConfig->SquadCancelAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadCancelAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadCancel);
+	}
+	if (InputConfig->SquadSelectAllAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadSelectAllAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadSelectAll);
+	}
+	if (InputConfig->SquadSelectMemberAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadSelectMemberAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadSelectMember);
+	}
+	if (InputConfig->SquadToggleMemberAction)
+	{
+		EnhancedInput->BindAction(InputConfig->SquadToggleMemberAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadToggleMember);
 	}
 }
 
@@ -276,4 +315,75 @@ void AOutbreakPlayerCharacter::HandleWeaponStateChanged(UOutbreakWeaponComponent
 	const UOutbreakWeaponDefinition* Weapon = WeaponComponent->GetActiveWeaponDefinition();
 	const bool bAiming = WeaponComponent->IsAiming() && Weapon;
 	FirstPersonCamera->SetFieldOfView(bAiming ? Weapon->AimFieldOfView : DefaultFieldOfView);
+}
+
+UOutbreakSquadCommandComponent* AOutbreakPlayerCharacter::GetSquadCommands() const
+{
+	const AOutbreakPlayerController* PlayerController = Cast<AOutbreakPlayerController>(Controller);
+	return PlayerController ? PlayerController->GetSquadCommandComponent() : nullptr;
+}
+
+void AOutbreakPlayerCharacter::IssueSquadCommand(EOutbreakSquadCommandType CommandType)
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->IssueCommand(CommandType);
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadFollow()
+{
+	IssueSquadCommand(EOutbreakSquadCommandType::Follow);
+}
+
+void AOutbreakPlayerCharacter::HandleSquadHold()
+{
+	IssueSquadCommand(EOutbreakSquadCommandType::Hold);
+}
+
+void AOutbreakPlayerCharacter::HandleSquadMove()
+{
+	IssueSquadCommand(EOutbreakSquadCommandType::Move);
+}
+
+void AOutbreakPlayerCharacter::HandleSquadRegroup()
+{
+	IssueSquadCommand(EOutbreakSquadCommandType::Regroup);
+}
+
+void AOutbreakPlayerCharacter::HandleSquadAttack()
+{
+	IssueSquadCommand(EOutbreakSquadCommandType::Attack);
+}
+
+void AOutbreakPlayerCharacter::HandleSquadCancel()
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->CancelCommands();
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadSelectAll()
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->SelectAll();
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadSelectMember(const FInputActionValue& Value)
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->SelectSlot(FMath::RoundToInt(Value.Get<float>()));
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleSquadToggleMember(const FInputActionValue& Value)
+{
+	if (UOutbreakSquadCommandComponent* SquadCommands = GetSquadCommands())
+	{
+		SquadCommands->ToggleSlot(FMath::RoundToInt(Value.Get<float>()));
+	}
 }

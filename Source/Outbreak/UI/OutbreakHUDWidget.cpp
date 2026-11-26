@@ -65,6 +65,9 @@ void UOutbreakHUDWidget::BuildDefaultLayout()
 	HealthText = AddText(TEXT("HealthText"), HealthPlaceholderText, BottomLeft, FVector2D(0.0f, 1.0f), FVector2D(40.0f, -40.0f));
 	AmmoText = AddText(TEXT("AmmoText"), AmmoPlaceholderText, BottomRight, FVector2D(1.0f, 1.0f), FVector2D(-40.0f, -40.0f));
 	WeaponText = AddText(TEXT("WeaponText"), FText::GetEmpty(), BottomRight, FVector2D(1.0f, 1.0f), FVector2D(-40.0f, -70.0f));
+
+	const FAnchors TopLeft(0.0f, 0.0f);
+	SquadStatusText = AddText(TEXT("SquadStatusText"), FText::GetEmpty(), TopLeft, FVector2D(0.0f, 0.0f), FVector2D(40.0f, 40.0f));
 }
 
 void UOutbreakHUDWidget::SetInteractionPrompt(const FText& Prompt)
@@ -119,6 +122,15 @@ void UOutbreakHUDWidget::SetWeaponDisplay(const FText& WeaponName, const FText& 
 
 	const FText Status = bReloading ? LOCTEXT("Reloading", "Reloading") : AmmoTypeName;
 	WeaponText->SetText(FText::Format(LOCTEXT("WeaponFormat", "{0} | {1} | {2}"), WeaponName, FireModeName, Status));
+}
+
+void UOutbreakHUDWidget::SetSquadStatus(const FText& SquadStatus)
+{
+	if (SquadStatusText)
+	{
+		SquadStatusText->SetText(SquadStatus);
+		SquadStatusText->SetVisibility(SquadStatus.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
 }
 
 void UOutbreakHUDWidget::HandleInteractionFocusChanged(AActor* FocusedActor, const FText& InteractionPrompt)

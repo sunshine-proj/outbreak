@@ -6,6 +6,7 @@
 #include "OutbreakPlayerController.generated.h"
 
 class UOutbreakHealthComponent;
+class UOutbreakSquadCommandComponent;
 class UOutbreakHUDWidget;
 class UOutbreakWeaponComponent;
 
@@ -28,9 +29,20 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HUD")
 	UOutbreakHUDWidget* GetHUDWidget() const { return HUDWidget; }
 
+	UFUNCTION(BlueprintPure, Category = "Squad")
+	UOutbreakSquadCommandComponent* GetSquadCommandComponent() const { return SquadCommandComponent; }
+
 protected:
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Squad")
+	TObjectPtr<UOutbreakSquadCommandComponent> SquadCommandComponent;
+
+	/** Seconds between squad panel refreshes (distances change continuously; no per-frame update). */
+	UPROPERTY(EditDefaultsOnly, Category = "HUD", meta = (ClampMin = "0.05", Units = "s"))
+	float SquadPanelRefreshInterval = 0.25f;
 
 public:
 
@@ -53,6 +65,10 @@ private:
 
 	UFUNCTION()
 	void HandlePawnWeaponStateChanged(UOutbreakWeaponComponent* WeaponComponent);
+
+	void RefreshSquadPanel();
+
+	FTimerHandle SquadPanelTimer;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UOutbreakHUDWidget> HUDWidget;

@@ -120,6 +120,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapons")
 	bool AreWeaponsEnabled() const { return bWeaponsEnabled; }
 
+	/** True while the trigger is held on this machine (between StartFire and StopFire). */
+	UFUNCTION(BlueprintPure, Category = "Weapons")
+	bool IsFiring() const { return bWantsToFire; }
+
 	/** True when the active weapon can fire a shot now (ignoring fire rate). */
 	UFUNCTION(BlueprintPure, Category = "Weapons")
 	bool CanFire() const;

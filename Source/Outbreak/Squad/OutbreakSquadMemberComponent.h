@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Combat/OutbreakHealthComponent.h"
 #include "Components/ActorComponent.h"
+#include "AI/OutbreakTeammateBehaviorTypes.h"
+#include "Squad/OutbreakSquadCommandTypes.h"
 #include "Squad/OutbreakSquadTypes.h"
 
 #include "OutbreakSquadMemberComponent.generated.h"
@@ -84,6 +86,39 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Squad")
 	UOutbreakWeaponComponent* GetWeaponComponent() const { return WeaponComponent; }
 
+	// --- Orders and activity ---
+
+	/** The member's latest order. Check GetCommandStatus: only an Active order is being carried out. */
+	UFUNCTION(BlueprintPure, Category = "Squad|Orders")
+	FOutbreakSquadCommand GetCurrentCommand() const { return CurrentCommand; }
+
+	UFUNCTION(BlueprintPure, Category = "Squad|Orders")
+	EOutbreakSquadCommandStatus GetCommandStatus() const { return CommandStatus; }
+
+	/** The order type if it is Active, otherwise None. */
+	UFUNCTION(BlueprintPure, Category = "Squad|Orders")
+	EOutbreakSquadCommandType GetActiveCommandType() const;
+
+	/** Gives the member a new Active order, replacing the current one. Authority; used by the squad. */
+	void AssignCommand(const FOutbreakSquadCommand& Command);
+
+	/** Marks the current order Completed (authority; used by the AI controller). */
+	void CompleteCommand();
+
+	/** Drops the current order with Reason (Cancelled or Failed). Authority. */
+	void ClearCommand(EOutbreakSquadCommandStatus Reason);
+
+	/** What the AI is doing (replicated for the squad HUD). The player member stays Idle. */
+	UFUNCTION(BlueprintPure, Category = "Squad|Orders")
+	EOutbreakTeammateBehavior GetCurrentBehavior() const { return CurrentBehavior; }
+
+	/** Authority; set by the AI controller. */
+	void SetCurrentBehavior(EOutbreakTeammateBehavior NewBehavior);
+
+	/** Fires on every machine when the order, its status or the behaviour changes. */
+	UPROPERTY(BlueprintAssignable, Category = "Squad|Orders")
+	FOutbreakSquadMemberChangedSignature OnCommandChanged;
+
 	/** Fires on every machine when the member's status changes. */
 	UPROPERTY(BlueprintAssignable, Category = "Squad")
 	FOutbreakSquadMemberStatusChangedSignature OnStatusChanged;
@@ -105,6 +140,11 @@ private:
 	UFUNCTION()
 	void OnRep_MemberInfo();
 
+	UFUNCTION()
+	void OnRep_CommandState();
+
+	bool HasOwnerAuthority() const;
+
 	static EOutbreakSquadMemberStatus ToMemberStatus(EOutbreakHealthState HealthState);
 
 	UPROPERTY(ReplicatedUsing = OnRep_MemberInfo)
@@ -118,6 +158,15 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_MemberInfo)
 	TObjectPtr<UOutbreakSquadRoleDefinition> Role;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CommandState)
+	FOutbreakSquadCommand CurrentCommand;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CommandState)
+	EOutbreakSquadCommandStatus CommandStatus = EOutbreakSquadCommandStatus::None;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CommandState)
+	EOutbreakTeammateBehavior CurrentBehavior = EOutbreakTeammateBehavior::Idle;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UOutbreakHealthComponent> HealthComponent;

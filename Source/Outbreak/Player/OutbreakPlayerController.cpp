@@ -4,6 +4,8 @@
 #include "Combat/OutbreakHealthComponent.h"
 #include "Interaction/OutbreakInteractionComponent.h"
 #include "Outbreak.h"
+#include "Player/OutbreakSquadCommandComponent.h"
+#include "TimerManager.h"
 #include "UI/OutbreakHUDWidget.h"
 #include "Weapons/OutbreakAmmoTypeDefinition.h"
 #include "Weapons/OutbreakWeaponComponent.h"
@@ -12,6 +14,7 @@
 AOutbreakPlayerController::AOutbreakPlayerController()
 {
 	HUDWidgetClass = UOutbreakHUDWidget::StaticClass();
+	SquadCommandComponent = CreateDefaultSubobject<UOutbreakSquadCommandComponent>(TEXT("SquadCommandComponent"));
 }
 
 void AOutbreakPlayerController::BeginPlay()
@@ -21,6 +24,25 @@ void AOutbreakPlayerController::BeginPlay()
 	// Possession can happen before or after BeginPlay depending on how the player was spawned.
 	CreateHUDWidget();
 	BindHUDToPawn(GetPawn());
+
+	if (IsLocalController())
+	{
+		GetWorldTimerManager().SetTimer(SquadPanelTimer, this, &ThisClass::RefreshSquadPanel, SquadPanelRefreshInterval, true);
+	}
+}
+
+void AOutbreakPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	GetWorldTimerManager().ClearTimer(SquadPanelTimer);
+	Super::EndPlay(EndPlayReason);
+}
+
+void AOutbreakPlayerController::RefreshSquadPanel()
+{
+	if (HUDWidget && SquadCommandComponent)
+	{
+		HUDWidget->SetSquadStatus(SquadCommandComponent->BuildSquadStatusText());
+	}
 }
 
 void AOutbreakPlayerController::SetPawn(APawn* InPawn)

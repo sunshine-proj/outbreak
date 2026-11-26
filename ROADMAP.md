@@ -269,7 +269,7 @@ Do not mark tasks complete unless their acceptance criteria are satisfied.
 - [-] Track member health. — C++ written, not compiled (engine not installed). `GetHealthFraction`
 - [-] Track member alive/dead status. — C++ written, not compiled (engine not installed)
 - [-] Track member incapacitation state (state defined in 2.5; gameplay in Phase 10). — C++ written, not compiled (engine not installed)
-- [ ] Track member current order. (Depends on 4.2 command types; implemented with them.)
+- [-] Track member current order. — C++ written, not compiled (engine not installed). Replicated order, status and activity on `UOutbreakSquadMemberComponent`
 - [-] Track member position. — C++ written, not compiled (engine not installed). `GetMemberLocation`, `GetDistanceToPlayer`
 - [-] Implement squad status events. — C++ written, not compiled (engine not installed). Member added/removed/status changed, on every machine
 
@@ -299,55 +299,55 @@ Additional verification:
 
 ### 4.1 AI Foundation
 
-- [ ] Create squad AI controller.
-- [ ] Configure AI navigation.
-- [ ] Configure AI perception.
-- [ ] Create AI behaviour framework.
-- [ ] Implement basic AI states.
-- [ ] Implement movement requests.
-- [ ] Implement target tracking.
-- [ ] Create squad test map (open area and narrow passage).
+- [-] Create squad AI controller. — C++ written, not compiled (engine not installed). `AOutbreakSquadAIController`
+- [-] Configure AI navigation. — C++ written, not compiled (engine not installed). Detour crowd path following; navmesh is an editor step
+- [-] Configure AI perception. — C++ written, not compiled (engine not installed). Sight, enemies only, values from `UOutbreakTeammateAIConfig`; team attitude solver
+- [-] Create AI behaviour framework. — C++ written, not compiled (engine not installed). Behavior Tree with C++ services (D-010); BT and Blackboard assets pending
+- [-] Implement basic AI states. — C++ written, not compiled (engine not installed). `EOutbreakTeammateBehavior`
+- [-] Implement movement requests. — C++ written, not compiled (engine not installed). Behaviour → blackboard `MoveLocation` → BT Move To
+- [-] Implement target tracking. — C++ written, not compiled (engine not installed). Nearest visible living hostile
+- [-] Create squad test map (open area and narrow passage). — editor asset pending (see `Docs/Phase4-EditorSetup.md`)
 
 ### 4.2 Basic Squad Commands
 
-- [ ] Define squad command types.
-- [ ] Implement command data structure.
-- [ ] Implement Follow command.
-- [ ] Implement Hold command.
-- [ ] Implement Move command.
-- [ ] Implement Regroup command.
-- [ ] Implement Attack command.
+- [-] Define squad command types. — C++ written, not compiled (engine not installed). `EOutbreakSquadCommandType`
+- [-] Implement command data structure. — C++ written, not compiled (engine not installed). `FOutbreakSquadCommand`, `FOutbreakCommandRecipients`
+- [-] Implement Follow command. — C++ written, not compiled (engine not installed)
+- [-] Implement Hold command. — C++ written, not compiled (engine not installed)
+- [-] Implement Move command. — C++ written, not compiled (engine not installed). Becomes Hold on arrival
+- [-] Implement Regroup command. — C++ written, not compiled (engine not installed). Completes near the player
+- [-] Implement Attack command. — C++ written, not compiled (engine not installed). Completes when the target dies
 
 > Defend, Cover and Retreat are in Phase 7. Stealth is in Phase 8. See D-003.
 
 ### 4.3 Command Distribution
 
-- [ ] Implement squad-wide commands.
-- [ ] Implement individual commands.
-- [ ] Implement selected-member commands.
-- [ ] Implement command validation.
-- [ ] Implement command priority.
-- [ ] Implement command cancellation.
-- [ ] Implement command status reporting.
+- [-] Implement squad-wide commands. — C++ written, not compiled (engine not installed)
+- [-] Implement individual commands. — C++ written, not compiled (engine not installed)
+- [-] Implement selected-member commands. — C++ written, not compiled (engine not installed)
+- [-] Implement command validation. — C++ written, not compiled (engine not installed). `ValidateCommandForMember`, server-side
+- [-] Implement command priority. — C++ written, not compiled (engine not installed). Configurable layer order in `UOutbreakTeammateAIConfig` (D-011)
+- [-] Implement command cancellation. — C++ written, not compiled (engine not installed)
+- [-] Implement command status reporting. — C++ written, not compiled (engine not installed). Active/Completed/Cancelled/Failed, replicated; per-member results and log
 
 ### 4.4 Autonomous Behaviour
 
-- [ ] Implement following behaviour.
-- [ ] Implement autonomous navigation.
-- [ ] Implement obstacle avoidance.
-- [ ] Implement basic threat response.
-- [ ] Implement automatic reloading.
-- [ ] Implement player distance management.
-- [ ] Prevent unnecessary teammate collisions.
+- [-] Implement following behaviour. — C++ written, not compiled (engine not installed). Distinct follow slots behind the player
+- [-] Implement autonomous navigation. — C++ written, not compiled (engine not installed)
+- [-] Implement obstacle avoidance. — C++ written, not compiled (engine not installed). Navmesh pathing plus detour crowd avoidance
+- [-] Implement basic threat response. — C++ written, not compiled (engine not installed)
+- [-] Implement automatic reloading. — C++ written, not compiled (engine not installed)
+- [-] Implement player distance management. — C++ written, not compiled (engine not installed). Follow start/stop distances
+- [-] Prevent unnecessary teammate collisions. — C++ written, not compiled (engine not installed). Crowd avoidance and distinct slots
 
 ### 4.5 Command Interface
 
-- [ ] Configure keyboard shortcuts for squad commands.
-- [ ] Create squad command widget.
-- [ ] Implement command selection.
-- [ ] Implement individual member selection.
-- [ ] Display current orders.
-- [ ] Display squad member status.
+- [-] Configure keyboard shortcuts for squad commands. — C++ written, not compiled (engine not installed); input action assets pending
+- [-] Create squad command widget. — C++ written, not compiled (engine not installed). Squad panel built into `UOutbreakHUDWidget`
+- [-] Implement command selection. — C++ written, not compiled (engine not installed). One key per command; the command wheel is Phase 7.4
+- [-] Implement individual member selection. — C++ written, not compiled (engine not installed). Select / toggle by slot, select all
+- [-] Display current orders. — C++ written, not compiled (engine not installed)
+- [-] Display squad member status. — C++ written, not compiled (engine not installed). Health, KIA/DOWN, activity, distance
 
 ### Phase 4 Acceptance Criteria
 
@@ -876,7 +876,7 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–3 C++ were written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–4 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
 **Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through the `Docs/Phase*-EditorSetup.md` guides in order.
 
@@ -902,6 +902,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 1 verification (all `[-]` tasks in Phase 1) | Same as above: Phase 1 C++ cannot be compiled or tested, and its editor assets (input actions, mapping context, Blueprints, test map) cannot be created until the engine is installed. Steps: `Docs/Phase1-EditorSetup.md`. | 2026-11-26 |
 | Phase 2 verification (all `[-]` tasks in Phase 2) | Same as above. Editor assets: weapon and ammunition data assets, new input actions, combat test map. Steps: `Docs/Phase2-EditorSetup.md`. | 2026-11-26 |
 | Phase 3 verification (all `[-]` tasks in Phase 3) | Same as above. Editor assets: teammate Blueprint, role and squad configuration data assets, squad test map. Steps: `Docs/Phase3-EditorSetup.md`. | 2026-11-26 |
+| Phase 4 verification (all `[-]` tasks in Phase 4) | Same as above. Editor assets: Blackboard, Behavior Tree, teammate AI config, squad input actions, navmesh test map. Steps: `Docs/Phase4-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -920,12 +921,13 @@ Record architectural and planning decisions here.
 | D-007 | 2026-11-26 | Weapons are data: `UOutbreakWeaponDefinition` holds fire modes; each fire mode holds an instanced, stateless `UOutbreakFireBehavior` (hitscan or projectile). `FireModes[0]` is primary and the rest are alternatives, cycled by input. Ammunition types are separate data assets; switching type reloads and returns loaded rounds to reserve. Reserves live in the weapon component until the Phase 10 inventory. Damage uses the engine damage pipeline with `UOutbreakDamageType` subclasses. | New firing behaviours and ammunition need no weapon-component changes; the engine pipeline lets any actor receive damage. |
 | D-008 | 2026-11-26 | Squad size limits (closes O-001): global min/default/max in `UOutbreakSquadSettings` (Project Settings, `DefaultGame.ini`). A `UOutbreakSquadConfiguration` sets the mission's size and may narrow the limits; overrides outside the global range are clamped into it. A size outside the resolved range is rejected with a logged error, leaving only the player in the squad. Dead members stay registered until removed. | Developer decision. PRD §5.1 asks for project-level configuration; missions still need their own composition. |
 | D-009 | 2026-11-26 | `UOutbreakSquadComponent` lives on `AOutbreakPlayerState` (one squad per player; survives pawn death; replicates to all clients). Player and teammates share a new `AOutbreakCharacter` base holding movement, health, weapons, squad membership, team and death handling; the player subclass keeps camera, input and interaction. | Avoids duplicating soldier logic between player and teammates (D-002 requires both to be squad members), and keeps co-op (D-006) possible. |
+| D-010 | 2026-11-26 | Behavior Trees for teammate and enemy AI (closes O-002). Decisions live in C++ (controller and priority rules) and are written to the blackboard; the Behavior Tree executes them with a Move To under two C++ services (behaviour update, combat). | Developer decision. Stable API across UE 5.x while the engine version is open (O-004); decision logic stays unit-testable without assets; EQS integration for Phase 7. |
+| D-011 | 2026-11-26 | Default behaviour priorities follow AGENTS.md §6.1 (survival > explicit order > threat > formation > default), configurable per AI config. Orders govern movement; firing at visible hostiles is concurrent with every behaviour. Move becomes Hold on arrival; Regroup completes near the player; Attack completes on target death; a downed member's order fails. Commands never target the player member. | Explicit orders must take precedence (AGENTS.md §6.1) without leaving teammates defenceless under a Hold or Move order. |
 
 ### Open
 
 | ID | Question | Needed by |
 | --- | --- | --- |
-| O-002 | AI framework: StateTree or Behavior Trees for teammates and enemies? | Phase 4 |
 | O-003 | Audio backend: Unreal Audio or FMOD? | Phase 8 (noise events) |
 | O-004 | Pinned Unreal Engine 5 minor version. | Phase 0 |
 | O-005 | Supported development platforms (the PRD targets Windows; Linux development is also in use). | Phase 0 |

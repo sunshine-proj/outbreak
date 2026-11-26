@@ -27,16 +27,20 @@ public class Outbreak : ModuleRules
 			// Public: FVector_NetQuantize and replication types in weapon headers.
 			"NetCore",
 			// Public: UOutbreakSquadSettings derives from UDeveloperSettings.
-			"DeveloperSettings"
+			"DeveloperSettings",
+			// Public: Behavior Tree services derive from AIModule nodes, which need GameplayTasks.
+			"GameplayTasks"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"Slate",
-			"SlateCore"
+			"SlateCore",
+			// Crowd path following and navigation queries for teammates.
+			"NavigationSystem"
 		});
 
-		// Add further modules (NavigationSystem, GameplayTags, ...)
+		// Add further modules (GameplayTags, ...)
 		// only when the code that needs them is added.
 	}
 }

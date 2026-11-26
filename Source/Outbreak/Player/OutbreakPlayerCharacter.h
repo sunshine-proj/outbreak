@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Characters/OutbreakCharacter.h"
+#include "Squad/OutbreakSquadCommandTypes.h"
 
 #include "OutbreakPlayerCharacter.generated.h"
 
@@ -83,6 +84,19 @@ private:
 	void HandlePreviousWeapon();
 	void HandleCycleFireMode();
 	void HandleCycleAmmoType();
+	void HandleSquadFollow();
+	void HandleSquadHold();
+	void HandleSquadMove();
+	void HandleSquadRegroup();
+	void HandleSquadAttack();
+	void HandleSquadCancel();
+	void HandleSquadSelectAll();
+	void HandleSquadSelectMember(const FInputActionValue& Value);
+	void HandleSquadToggleMember(const FInputActionValue& Value);
+
+	/** The squad command component of the controlling player controller, if any. */
+	class UOutbreakSquadCommandComponent* GetSquadCommands() const;
+	void IssueSquadCommand(EOutbreakSquadCommandType CommandType);
 
 	UFUNCTION()
 	void HandleWeaponStateChanged(UOutbreakWeaponComponent* InWeaponComponent);

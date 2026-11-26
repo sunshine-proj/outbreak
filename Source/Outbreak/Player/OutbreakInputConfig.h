@@ -82,6 +82,45 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Weapon")
 	TObjectPtr<UInputAction> CycleAmmoTypeAction;
 
+	/** Digital. Orders the selected teammates to follow the player. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadFollowAction;
+
+	/** Digital. Hold current positions. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadHoldAction;
+
+	/** Digital. Move to the point under the crosshair. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadMoveAction;
+
+	/** Digital. Return to the player. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadRegroupAction;
+
+	/** Digital. Attack the hostile under the crosshair. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadAttackAction;
+
+	/** Digital. Cancel the selected teammates' orders. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadCancelAction;
+
+	/** Digital. Select the whole squad. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadSelectAllAction;
+
+	/**
+	 * Axis1D. Selects only the teammate whose slot equals the action value. Map one key per slot
+	 * with a Scalar modifier (e.g. F1 = 1, F2 = 2, ...), so the number of slots is configuration.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadSelectMemberAction;
+
+	/** Axis1D. Like SquadSelectMemberAction, but adds or removes the teammate from the selection. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad")
+	TObjectPtr<UInputAction> SquadToggleMemberAction;
+
 	/** If true, the crouch input toggles crouching; otherwise crouch is held. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behaviour")
 	bool bToggleCrouch = true;

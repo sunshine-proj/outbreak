@@ -45,6 +45,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void SetWeaponDisplay(const FText& WeaponName, const FText& FireModeName, const FText& AmmoTypeName, bool bReloading);
 
+	/** Multi-line squad panel (members, orders, status). Empty hides it. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetSquadStatus(const FText& SquadStatus);
+
 	/** Matches UOutbreakInteractionComponent::OnFocusChanged so it can be bound directly. */
 	UFUNCTION()
 	void HandleInteractionFocusChanged(AActor* FocusedActor, const FText& InteractionPrompt);
@@ -71,6 +75,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> WeaponText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> SquadStatusText;
 
 	/** Shown until real health values are pushed. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HUD")

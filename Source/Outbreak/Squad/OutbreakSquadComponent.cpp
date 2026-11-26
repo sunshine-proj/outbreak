@@ -1,6 +1,8 @@
 #include "Squad/OutbreakSquadComponent.h"
 
 #include "Characters/OutbreakCharacter.h"
+#include "Combat/OutbreakHealthComponent.h"
+#include "Combat/OutbreakTeam.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
@@ -322,6 +324,185 @@ void UOutbreakSquadComponent::OnRep_Members()
 		}
 	}
 	PreviousMembers = Members;
+}
+
+// --- Commands ------------------------------------------------------------------------------------
+
+void UOutbreakSquadComponent::IssueCommand(const FOutbreakSquadCommand& Command, const FOutbreakCommandRecipients& Recipients)
+{
+	if (HasOwnerAuthority())
+	{
+		AuthIssueCommand(Command, Recipients);
+	}
+	else
+	{
+		ServerIssueCommand(Command, Recipients);
+	}
+}
+
+void UOutbreakSquadComponent::ServerIssueCommand_Implementation(const FOutbreakSquadCommand& Command, const FOutbreakCommandRecipients& Recipients)
+{
+	AuthIssueCommand(Command, Recipients);
+}
+
+void UOutbreakSquadComponent::CancelCommand(const FOutbreakCommandRecipients& Recipients)
+{
+	if (HasOwnerAuthority())
+	{
+		AuthCancelCommand(Recipients);
+	}
+	else
+	{
+		ServerCancelCommand(Recipients);
+	}
+}
+
+void UOutbreakSquadComponent::ServerCancelCommand_Implementation(const FOutbreakCommandRecipients& Recipients)
+{
+	AuthCancelCommand(Recipients);
+}
+
+TArray<UOutbreakSquadMemberComponent*> UOutbreakSquadComponent::ResolveRecipients(const FOutbreakCommandRecipients& Recipients) const
+{
+	TArray<UOutbreakSquadMemberComponent*> Result;
+	switch (Recipients.Scope)
+	{
+	case EOutbreakCommandScope::Squad:
+		return GetTeammates();
+
+	case EOutbreakCommandScope::Individual:
+		if (Recipients.MemberIds.Num() > 0)
+		{
+			if (UOutbreakSquadMemberComponent* Member = FindMemberById(Recipients.MemberIds[0]))
+			{
+				Result.Add(Member);
+			}
+		}
+		return Result;
+
+	case EOutbreakCommandScope::Selected:
+		for (const int32 MemberId : Recipients.MemberIds)
+		{
+			if (UOutbreakSquadMemberComponent* Member = FindMemberById(MemberId))
+			{
+				Result.AddUnique(Member);
+			}
+		}
+		return Result;
+
+	default:
+		return Result;
+	}
+}
+
+EOutbreakCommandRejection UOutbreakSquadComponent::ValidateCommandForMember(const FOutbreakSquadCommand& Command,
+	const UOutbreakSquadMemberComponent* Member) const
+{
+	if (Command.Type == EOutbreakSquadCommandType::None)
+	{
+		return EOutbreakCommandRejection::NoCommand;
+	}
+	if (!Member || !ContainsMember(Member))
+	{
+		return EOutbreakCommandRejection::NotInSquad;
+	}
+	if (Member == PlayerMember.Get())
+	{
+		return EOutbreakCommandRejection::PlayerMember;
+	}
+	if (Member->GetStatus() != EOutbreakSquadMemberStatus::Active)
+	{
+		return EOutbreakCommandRejection::Unavailable;
+	}
+	if (Command.RequiresLocation() && !Command.bHasTargetLocation)
+	{
+		return EOutbreakCommandRejection::MissingLocation;
+	}
+	if (Command.RequiresTarget())
+	{
+		const AActor* Target = Command.TargetActor;
+		if (!IsValid(Target))
+		{
+			return EOutbreakCommandRejection::InvalidTarget;
+		}
+		const UOutbreakHealthComponent* TargetHealth = Target->FindComponentByClass<UOutbreakHealthComponent>();
+		if (TargetHealth && !TargetHealth->IsAlive())
+		{
+			return EOutbreakCommandRejection::InvalidTarget;
+		}
+		if (!OutbreakTeam::IsHostile(Member->GetOwner(), Target))
+		{
+			return EOutbreakCommandRejection::TargetNotHostile;
+		}
+	}
+	return EOutbreakCommandRejection::None;
+}
+
+TArray<FOutbreakCommandResult> UOutbreakSquadComponent::AuthIssueCommand(const FOutbreakSquadCommand& Command,
+	const FOutbreakCommandRecipients& Recipients)
+{
+	TArray<FOutbreakCommandResult> Results;
+	if (!HasOwnerAuthority())
+	{
+		return Results;
+	}
+
+	for (UOutbreakSquadMemberComponent* Member : ResolveRecipients(Recipients))
+	{
+		FOutbreakCommandResult& Result = Results.AddDefaulted_GetRef();
+		Result.Member = Member;
+		Result.Rejection = ValidateCommandForMember(Command, Member);
+
+		if (Result.WasAccepted())
+		{
+			FOutbreakSquadCommand MemberCommand = Command;
+			// "Hold" without a position means "hold where you are".
+			if (MemberCommand.Type == EOutbreakSquadCommandType::Hold && !MemberCommand.bHasTargetLocation)
+			{
+				MemberCommand.TargetLocation = Member->GetMemberLocation();
+				MemberCommand.bHasTargetLocation = true;
+			}
+			Member->AssignCommand(MemberCommand);
+		}
+
+		UE_LOG(LogOutbreak, Log, TEXT("%s: %s order for %s: %s."), *GetNameSafe(GetOwner()),
+			*OutbreakSquadCommands::GetCommandDisplayName(Command.Type).ToString(),
+			*Member->GetDisplayName().ToString(),
+			*OutbreakSquadCommands::GetRejectionText(Result.Rejection).ToString());
+	}
+	return Results;
+}
+
+int32 UOutbreakSquadComponent::AuthCancelCommand(const FOutbreakCommandRecipients& Recipients)
+{
+	if (!HasOwnerAuthority())
+	{
+		return 0;
+	}
+
+	int32 Cancelled = 0;
+	for (UOutbreakSquadMemberComponent* Member : ResolveRecipients(Recipients))
+	{
+		if (Member != PlayerMember && Member->GetCommandStatus() == EOutbreakSquadCommandStatus::Active)
+		{
+			Member->ClearCommand(EOutbreakSquadCommandStatus::Cancelled);
+			++Cancelled;
+		}
+	}
+	return Cancelled;
+}
+
+TArray<UOutbreakSquadMemberComponent*> UOutbreakSquadComponent::GetTeammates() const
+{
+	TArray<UOutbreakSquadMemberComponent*> Result;
+	for (UOutbreakSquadMemberComponent* Member : Members)
+	{
+		if (Member && Member != PlayerMember)
+		{
+			Result.Add(Member);
+		}
+	}
+	return Result;
 }
 
 // --- Queries -------------------------------------------------------------------------------------

@@ -54,11 +54,67 @@ void UOutbreakSquadMemberComponent::GetLifetimeReplicatedProps(TArray<FLifetimeP
 	DOREPLIFETIME(UOutbreakSquadMemberComponent, MemberId);
 	DOREPLIFETIME(UOutbreakSquadMemberComponent, DisplayName);
 	DOREPLIFETIME(UOutbreakSquadMemberComponent, Role);
+	DOREPLIFETIME(UOutbreakSquadMemberComponent, CurrentCommand);
+	DOREPLIFETIME(UOutbreakSquadMemberComponent, CommandStatus);
+	DOREPLIFETIME(UOutbreakSquadMemberComponent, CurrentBehavior);
+}
+
+bool UOutbreakSquadMemberComponent::HasOwnerAuthority() const
+{
+	return GetOwner() && GetOwner()->HasAuthority();
+}
+
+EOutbreakSquadCommandType UOutbreakSquadMemberComponent::GetActiveCommandType() const
+{
+	return CommandStatus == EOutbreakSquadCommandStatus::Active ? CurrentCommand.Type : EOutbreakSquadCommandType::None;
+}
+
+void UOutbreakSquadMemberComponent::AssignCommand(const FOutbreakSquadCommand& Command)
+{
+	if (!HasOwnerAuthority())
+	{
+		return;
+	}
+	CurrentCommand = Command;
+	CommandStatus = Command.Type == EOutbreakSquadCommandType::None ? EOutbreakSquadCommandStatus::None : EOutbreakSquadCommandStatus::Active;
+	OnCommandChanged.Broadcast(this);
+}
+
+void UOutbreakSquadMemberComponent::CompleteCommand()
+{
+	if (HasOwnerAuthority() && CommandStatus == EOutbreakSquadCommandStatus::Active)
+	{
+		CommandStatus = EOutbreakSquadCommandStatus::Completed;
+		OnCommandChanged.Broadcast(this);
+	}
+}
+
+void UOutbreakSquadMemberComponent::ClearCommand(EOutbreakSquadCommandStatus Reason)
+{
+	if (HasOwnerAuthority() && CommandStatus == EOutbreakSquadCommandStatus::Active)
+	{
+		CommandStatus = Reason;
+		OnCommandChanged.Broadcast(this);
+	}
+}
+
+void UOutbreakSquadMemberComponent::SetCurrentBehavior(EOutbreakTeammateBehavior NewBehavior)
+{
+	if (HasOwnerAuthority() && CurrentBehavior != NewBehavior)
+	{
+		CurrentBehavior = NewBehavior;
+		OnCommandChanged.Broadcast(this);
+	}
+}
+
+void UOutbreakSquadMemberComponent::OnRep_CommandState()
+{
+	OnCommandChanged.Broadcast(this);
 }
 
 void UOutbreakSquadMemberComponent::SetDisplayName(const FText& NewDisplayName)
 {
-	if (GetOwner() && GetOwner()->HasAuthority())
+	if (HasOwnerAuthority())
 	{
 		DisplayName = NewDisplayName;
 		OnMemberInfoChanged.Broadcast(this);
@@ -67,7 +123,7 @@ void UOutbreakSquadMemberComponent::SetDisplayName(const FText& NewDisplayName)
 
 void UOutbreakSquadMemberComponent::SetRole(UOutbreakSquadRoleDefinition* NewRole)
 {
-	if (GetOwner() && GetOwner()->HasAuthority())
+	if (HasOwnerAuthority())
 	{
 		Role = NewRole;
 		OnMemberInfoChanged.Broadcast(this);
@@ -136,6 +192,11 @@ void UOutbreakSquadMemberComponent::HandleHealthStateChanged(UOutbreakHealthComp
 	const EOutbreakSquadMemberStatus OldStatus = ToMemberStatus(OldState);
 	if (NewStatus != OldStatus)
 	{
+		// A downed member can no longer carry out its order.
+		if (NewStatus != EOutbreakSquadMemberStatus::Active)
+		{
+			ClearCommand(EOutbreakSquadCommandStatus::Failed);
+		}
 		OnStatusChanged.Broadcast(this, NewStatus, OldStatus);
 	}
 }

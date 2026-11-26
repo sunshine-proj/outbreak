@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Squad/OutbreakSquadCommandTypes.h"
 #include "Squad/OutbreakSquadTypes.h"
 
 #include "OutbreakSquadComponent.generated.h"
@@ -78,6 +79,36 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Squad")
 	bool SetSizeLimits(const FOutbreakSquadSizeLimits& NewLimits);
 
+	// --- Commands (owning client or authority) ---
+
+	/**
+	 * Gives Command to Recipients. On a client this forwards to the server. The server validates
+	 * the command for each recipient (ValidateCommandForMember); accepted members replace their
+	 * current order. The player member never receives commands; Squad scope means every teammate.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Squad|Orders")
+	void IssueCommand(const FOutbreakSquadCommand& Command, const FOutbreakCommandRecipients& Recipients);
+
+	/** Cancels the Recipients' active orders; they return to autonomous behaviour. */
+	UFUNCTION(BlueprintCallable, Category = "Squad|Orders")
+	void CancelCommand(const FOutbreakCommandRecipients& Recipients);
+
+	/** Authority implementation of IssueCommand. Returns one result per resolved recipient. */
+	TArray<FOutbreakCommandResult> AuthIssueCommand(const FOutbreakSquadCommand& Command, const FOutbreakCommandRecipients& Recipients);
+
+	/** Authority implementation of CancelCommand. Returns the number of orders cancelled. */
+	int32 AuthCancelCommand(const FOutbreakCommandRecipients& Recipients);
+
+	/** Members a recipient set refers to. Squad scope excludes the player; unknown IDs are skipped. */
+	TArray<UOutbreakSquadMemberComponent*> ResolveRecipients(const FOutbreakCommandRecipients& Recipients) const;
+
+	/** Why Member would refuse Command, or None. Usable on clients for immediate feedback. */
+	EOutbreakCommandRejection ValidateCommandForMember(const FOutbreakSquadCommand& Command, const UOutbreakSquadMemberComponent* Member) const;
+
+	/** Teammates (non-player members) in squad order. Their 1-based position is their HUD slot. */
+	UFUNCTION(BlueprintPure, Category = "Squad")
+	TArray<UOutbreakSquadMemberComponent*> GetTeammates() const;
+
 	// --- Queries ---
 
 	UFUNCTION(BlueprintPure, Category = "Squad")
@@ -134,6 +165,12 @@ public:
 	FOutbreakSquadMemberStatusEventSignature OnMemberStatusChanged;
 
 private:
+
+	UFUNCTION(Server, Reliable)
+	void ServerIssueCommand(const FOutbreakSquadCommand& Command, const FOutbreakCommandRecipients& Recipients);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCancelCommand(const FOutbreakCommandRecipients& Recipients);
 
 	EOutbreakSquadRegistrationResult RegisterMemberInternal(UOutbreakSquadMemberComponent* Member, bool bIsPlayer);
 	AOutbreakCharacter* SpawnTeammate(const FOutbreakSquadMemberConfig& MemberConfig, const APawn* PlayerPawn, int32 TeammateIndex);
