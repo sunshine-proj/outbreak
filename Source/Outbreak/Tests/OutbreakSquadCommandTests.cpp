@@ -273,7 +273,10 @@ bool FOutbreakSquadPanelTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Shows health"), Line.Contains(TEXT("100%")));
 	TestTrue(TEXT("Shows distance"), Line.Contains(TEXT("12 m")));
 
+	// Squad soldiers are downed first (Phase 10), then killed by further damage.
 	Test.Teammates[0]->GetHealthComponent()->ApplyDamage(10000.0f, nullptr);
+	TestTrue(TEXT("Shows DOWN"), UOutbreakSquadCommandComponent::FormatMemberLine(1, Member, false, 0.0f).ToString().Contains(TEXT("DOWN")));
+	Test.Teammates[0]->GetHealthComponent()->ApplyDamage(1.0f, nullptr);
 	TestTrue(TEXT("Shows KIA"), UOutbreakSquadCommandComponent::FormatMemberLine(1, Member, false, 0.0f).ToString().Contains(TEXT("KIA")));
 	return true;
 }

@@ -8,6 +8,7 @@ namespace OutbreakTeammateBehavior
 	{
 		return {
 			EOutbreakBehaviorLayer::EmergencySurvival,
+			EOutbreakBehaviorLayer::MedicalAssistance,
 			EOutbreakBehaviorLayer::ExplicitOrder,
 			EOutbreakBehaviorLayer::ThreatResponse,
 			EOutbreakBehaviorLayer::FormationMaintenance,
@@ -40,6 +41,19 @@ namespace OutbreakTeammateBehavior
 			if (Context.bLowHealth && Context.bHasThreat && Context.bHasPlayer)
 			{
 				OutBehavior = EOutbreakTeammateBehavior::SeekSafety;
+				return true;
+			}
+			return false;
+
+		case EOutbreakBehaviorLayer::MedicalAssistance:
+			if (Context.bHasDownedSquadmate)
+			{
+				OutBehavior = EOutbreakTeammateBehavior::ReviveMember;
+				return true;
+			}
+			if (Context.bHasHurtSquadmate && Context.ActiveCommand == EOutbreakSquadCommandType::None)
+			{
+				OutBehavior = EOutbreakTeammateBehavior::HealMember;
 				return true;
 			}
 			return false;
@@ -155,6 +169,8 @@ namespace OutbreakTeammateBehavior
 		case EOutbreakTeammateBehavior::TakeCover:      return LOCTEXT("InCover", "In cover");
 		case EOutbreakTeammateBehavior::Retreat:        return LOCTEXT("Retreating", "Retreating");
 		case EOutbreakTeammateBehavior::Hiding:         return LOCTEXT("Hiding", "Hiding");
+		case EOutbreakTeammateBehavior::ReviveMember:   return LOCTEXT("Reviving", "Reviving");
+		case EOutbreakTeammateBehavior::HealMember:     return LOCTEXT("Healing", "Healing");
 		default:                                        return LOCTEXT("Idle", "Idle");
 		}
 	}

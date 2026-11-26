@@ -155,6 +155,24 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Squad Menu")
 	TObjectPtr<UInputAction> SquadMenuConfirmAction;
 
+	// --- Inventory and medical (Phase 10) ---
+
+	/** Use a medical item on yourself. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Inventory")
+	TObjectPtr<UInputAction> UseMedicalAction;
+
+	/** Use (throw) the selected utility item. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Inventory")
+	TObjectPtr<UInputAction> UseUtilityAction;
+
+	/** Select the next utility item. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Inventory")
+	TObjectPtr<UInputAction> CycleUtilityAction;
+
+	/** Open or close the inventory panel. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Inventory")
+	TObjectPtr<UInputAction> InventoryAction;
+
 	/**
 	 * Added while the squad menu is open, above the default context, so its keys (for example the
 	 * mouse wheel and left button) drive the menu instead of weapons.

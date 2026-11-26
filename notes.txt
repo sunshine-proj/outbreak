@@ -352,6 +352,46 @@ Phase 10 (inventory, equipment, medical) is next and no open decision blocks it.
 ================================
 
 
+Phase 10 is written, as far as it can go without Unreal Engine, but none of it has been compiled or run. The 11 new automation tests are written but not run. All 20 Phase 10 tasks are marked [-] in ROADMAP.md. Phase 9 is in your last commit; Phase 10 is not committed.
+
+I used both of your answers: carrying capacity is measured by weight, and the player and teammates can all be downed and revived.
+
+What's implemented
+
+Area	What it does
+Items	Weapons, ammunition and a new item asset (medical, utility, mission items) can all be carried. Each has a weight and a stack limit. Medkits heal, grenades are thrown.
+Inventory	Each soldier has a weight limit (25 kg by default; roles and loadouts can change it). There is one primary and one secondary weapon slot, plus a selected utility item. Ammunition stays in the existing weapon reserve but counts towards the weight, loaded rounds included.
+Pickups	Items lying in the world are picked up with Interact. You take what fits and the rest stays. A weapon whose slot is taken is swapped, leaving yours behind. Mission items can't be dropped.
+Loadouts	A loadout asset is a full equipment set, checked for slots, stack limits and weight. Roles, individual teammates and the player can each have one. Loadouts can also be picked from a list in the squad configuration; the selection screen comes with the Phase 11 briefing.
+Downed and revive	At zero health, the player and teammates go down and bleed out after 30 s unless revived; further damage kills. Reviving takes 4 s with the reviver staying nearby, and brings the soldier back at 30% health. Each soldier can be revived twice per mission. Medics heal more and revive faster.
+Teammate help	Teammates heal themselves when hurt and not under fire. The nearest one goes to revive a downed squadmate (including you), even under an order. Healing a hurt squadmate only happens when they have no order.
+Mission	A downed player no longer fails the mission while a teammate is still standing. It fails if you bleed out, or if the whole squad is down.
+HUD and input	An inventory summary, plus a full panel on Tab. Downed and revive status lines, and a bleed-out countdown in the squad panel. New keys: heal yourself, throw, cycle utility item, inventory panel.
+Changes to earlier behaviour
+
+Interaction now runs on the server: a client sends the request and the server checks range again. Pickups and revives need this. Anything that relied on the interaction happening only on the client, such as the Phase 1 test cube, now changes state only on the server.
+Squad soldiers are downed before they die: I updated the two existing tests this affected (the squad panel line and the custom priority-order test). Re-run all earlier tests, because any test that kills a soldier is affected.
+New teammate priority: "medical assistance" is now second in the default order, after the teammate's own survival. A teammate AI asset whose priority order was saved before Phase 10 will fall back to the default with a warning; the guide says to reset it.
+Docs/Phase10-EditorSetup.md covers:
+
+Editor work: the settings, four input actions, item, loadout and pickup assets, weapon weights and slots, and a test map.
+Checklist: the manual checklist for every Phase 10 acceptance item.
+The new tests are in OutbreakInventoryTests.cpp.
+
+Gaps and limitations
+
+Basic inventory UI: it is HUD text, with no grid, drag-and-drop or drop key. Dropping exists only as a function for scripts and later UI.
+Instant items: using a medkit or throwing has no use time or animation.
+Reviving while fighting: a reviver must stay within 2 m but can still shoot.
+Downed soldiers: enemies ignore them, but explosions can still finish them off.
+Also logged: decision D-018, the "Phase 10 verification" blocker row, the README stage line and links, and the medical settings in Config/DefaultGame.ini.
+
+Phase 11 (mission framework) is next, and no open decision blocks it. That's now ten phases of code that has never been compiled. Installing the engine and doing a first build before Phase 11 would keep the eventual round of fixes manageable.
+
+
+
+================================
+
 
 
 

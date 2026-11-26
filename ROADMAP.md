@@ -571,32 +571,32 @@ Additional verification:
 
 ### 10.1 Inventory
 
-- [ ] Create inventory component.
-- [ ] Define item interface.
-- [ ] Define item Data Asset.
-- [ ] Implement item collection.
-- [ ] Implement item removal.
-- [ ] Implement inventory capacity.
-- [ ] Implement equipment slots.
-- [ ] Implement inventory UI.
+- [-] Create inventory component. — C++ written, not compiled (engine not installed). `UOutbreakInventoryComponent` on every soldier
+- [-] Define item interface. — C++ written, not compiled (engine not installed). `IOutbreakItem`, implemented by weapon, ammunition and item definitions
+- [-] Define item Data Asset. — C++ written, not compiled (engine not installed). `UOutbreakItemDefinition` with instanced use actions (Heal, Throw)
+- [-] Implement item collection. — C++ written, not compiled (engine not installed). `AOutbreakPickup` via interaction; partial pickups, weapon swap
+- [-] Implement item removal. — C++ written, not compiled (engine not installed). `RemoveItem`, `DropItem` (spawns a pickup; mission items undroppable)
+- [-] Implement inventory capacity. — C++ written, not compiled (engine not installed). Weight-based (D-018), per character, role or loadout
+- [-] Implement equipment slots. — C++ written, not compiled (engine not installed). Primary and Secondary weapon slots; selected utility item
+- [-] Implement inventory UI. — C++ written, not compiled (engine not installed). HUD summary and Tab panel (text); interactive UI in Phases 11/14
 
 ### 10.2 Equipment
 
-- [ ] Implement primary weapon slot.
-- [ ] Implement secondary weapon slot.
-- [ ] Implement utility equipment.
-- [ ] Implement ammunition storage.
-- [ ] Implement equipment configuration.
-- [ ] Implement squad equipment selection.
+- [-] Implement primary weapon slot. — C++ written, not compiled (engine not installed). `EOutbreakEquipmentSlot::Primary`
+- [-] Implement secondary weapon slot. — C++ written, not compiled (engine not installed). `EOutbreakEquipmentSlot::Secondary`
+- [-] Implement utility equipment. — C++ written, not compiled (engine not installed). Utility items with Throw action, cycle and use input
+- [-] Implement ammunition storage. — C++ written, not compiled (engine not installed). Weapon component reserve, weighed by the inventory; ammo pickups
+- [-] Implement equipment configuration. — C++ written, not compiled (engine not installed). `UOutbreakLoadoutDefinition`; role and member loadouts; player loadout
+- [-] Implement squad equipment selection. — C++ written, not compiled (engine not installed). `SelectMemberLoadout` from the configuration's Available Loadouts; selection UI with the Phase 11 briefing
 
 ### 10.3 Medical System
 
-- [ ] Implement medical items.
-- [ ] Implement healing.
-- [ ] Implement teammate medical assistance.
-- [ ] Implement incapacitation gameplay (uses the state defined in 2.5).
-- [ ] Implement teammate recovery.
-- [ ] Implement medical resource limits.
+- [-] Implement medical items. — C++ written, not compiled (engine not installed). Medical item definitions with the Heal action
+- [-] Implement healing. — C++ written, not compiled (engine not installed). `UOutbreakHealthComponent::Heal`; self and squadmate (interaction), medic multiplier
+- [-] Implement teammate medical assistance. — C++ written, not compiled (engine not installed). Medical Assistance behaviour layer: revive downed (over orders), heal hurt (no order), self-heal
+- [-] Implement incapacitation gameplay (uses the state defined in 2.5). — C++ written, not compiled (engine not installed). Everyone downable (D-018), bleed-out, finish-off, mission fails when nobody can revive
+- [-] Implement teammate recovery. — C++ written, not compiled (engine not installed). Timed revive (`UOutbreakMedicalComponent`) by player or teammate; recovery restores movement and weapons
+- [-] Implement medical resource limits. — C++ written, not compiled (engine not installed). Medkit stack and weight limits, revive limit per soldier, bleed-out time
 
 ### Phase 10 Acceptance Criteria
 
@@ -908,6 +908,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 7 verification (all `[-]` tasks in Phase 7) | Same as above. Editor assets: EQS cover query, tactical order and menu input actions, menu mapping context, cover test map. Steps: `Docs/Phase7-EditorSetup.md`. | 2026-11-26 |
 | Phase 8 verification (all `[-]` tasks in Phase 8) | Same as above. Editor work: stealth input action, lighting volumes, stealth test map; enemy Blackboard enum refresh. Steps: `Docs/Phase8-EditorSetup.md`. | 2026-11-26 |
 | Phase 9 verification (all `[-]` tasks in Phase 9) | Same as above. Editor assets: enemy cover EQS query, stalker and brute weapons, definitions and Blueprints, tactics test map; enemy Blackboard enum refresh. Steps: `Docs/Phase9-EditorSetup.md`. | 2026-11-26 |
+| Phase 10 verification (all `[-]` tasks in Phase 10) | Same as above. Editor assets: item, loadout and pickup assets, weapon weights and slots, four input actions, Medical settings, teammate AI priority order refresh, medical test map. Steps: `Docs/Phase10-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -934,6 +935,7 @@ Record architectural and planning decisions here.
 | D-015 | 2026-11-26 | Stealth model. Gameplay noise (`FOutbreakNoiseEvent`) is separate from audio playback and delivered through engine AI hearing, so it does not depend on the audio backend (O-003 moves to Phase 13). Listeners attenuate noise by distance and by world-geometry obstacles. The gameplay light level is modelled from the level's lights (ambient, point/spot with shadow traces, directional) with designer volume overrides, not read back from rendering. Visibility multiplies light, exposure, movement, distance, field of view and stance, and drives per-target detection; suspicion drives Suspicious / Investigating; detection 1 = Combat (the roadmap's Alerted); losing a target starts Searching; entering Combat alerts nearby enemies. Character capsules block Visibility (the engine Pawn profile ignores it) until a weapon trace channel exists. | Data-driven, testable without rendering or audio; every factor in AGENTS.md §6.2 is represented; fixes shots passing through characters. |
 | D-016 | 2026-11-26 | Squad stealth is a replicated squad mode, not an order, so it combines with every order. In stealth, teammates crouch, soften footsteps, use the Stealth formation, hold fire, and freeze when an enemy is noticing them. Any shot from the squad, a teammate being fully detected or shot compromises the squad (weapons free) for a configurable time. | "Integrate squad commands with stealth" (8.4) needs stealth to apply to Move, Hold, Defend etc.; holding fire is what keeps teammates from exposing the squad. |
 | D-017 | 2026-11-26 | Enemy tactics are a per-archetype `FOutbreakEnemyTacticsSettings` on the enemy definition. In Combat, a pure decision picks one movement (Retreat > Charge > Flank > TakeCover > Engage); firing stays concurrent. Combat styles Ranged / Melee / Advance distinguish infantry, melee attackers and heavies. Coordination is a world subsystem of engagement reports (shared sightings, one pin plus flankers per target, target spreading), refreshed by each enemy and expiring otherwise. Retreating is a new enemy state appended to the enum. Disengagement is a leash around the home position. Melee attacks use the weapon system (a Melee fire behaviour, `bUnlimitedAmmo`) so the shared combat service drives them. | Phase 9 acceptance (behaviours differ, cover and flanking, configured without AI code); reuses the Phase 7 EQS contexts and the shared combat service; decision logic stays unit-testable without navmesh or perception. |
+| D-018 | 2026-11-26 | Inventory and medical model (developer decisions: weight-based capacity; everyone can be downed). Carryable things implement `IOutbreakItem`: weapon and ammunition definitions stay where they are (weapons in the weapon component, one per Primary/Secondary slot; ammunition in its reserve, loaded rounds weighed too), other items are `UOutbreakItemDefinition`s with instanced use actions in the inventory component. Capacity is carried weight. Loadouts are data assets applied without the weight check (validated as assets). Squad soldiers are incapacitated at zero health, bleed out after a configurable time, can be revived a configurable number of times by a timed revive without an item, and further damage kills. Interaction now runs on the server. Teammate AI gets a Medical Assistance layer, second by default: reviving overrides orders, healing does not. The mission fails when no player stands and no squadmate can revive one. | PRD §9 (simple medical), §10 (capacity, no unlimited loot); avoids duplicating the weapon and ammunition state; downing keeps squad play meaningful without a respawn system. |
 
 ### Open
 

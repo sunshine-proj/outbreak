@@ -134,4 +134,18 @@ public:
 	/** How far a retreat moves away from the threat. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cover", meta = (ClampMin = "100.0", Units = "cm"))
 	float RetreatDistance = 1500.0f;
+
+	// --- Medical (Phase 10) ---
+
+	/** Uses a medical item on itself at or below this health fraction, when not under fire. 0 = never. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Medical", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SelfHealHealthFraction = 0.35f;
+
+	/** Heals squadmates below this health fraction (with a medical item, without an order). 0 = never. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Medical", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float HealOthersHealthFraction = 0.5f;
+
+	/** Squadmates farther than this are left to others. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Medical", meta = (ClampMin = "0.0", Units = "cm"))
+	float MedicalAssistRadius = 3000.0f;
 };

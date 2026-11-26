@@ -84,6 +84,10 @@ private:
 	void HandlePreviousWeapon();
 	void HandleCycleFireMode();
 	void HandleCycleAmmoType();
+	void HandleUseMedical();
+	void HandleUseUtility();
+	void HandleCycleUtility();
+	void HandleToggleInventory();
 	void HandleSquadFollow();
 	void HandleSquadHold();
 	void HandleSquadMove();

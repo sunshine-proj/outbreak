@@ -10,6 +10,7 @@
 class APawn;
 class AOutbreakCharacter;
 class UOutbreakSquadComponent;
+class UOutbreakLoadoutDefinition;
 class UOutbreakSquadConfiguration;
 class UOutbreakSquadMemberComponent;
 class UOutbreakWeaponComponent;
@@ -63,6 +64,27 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Squad")
 	bool InitializeSquad(const UOutbreakSquadConfiguration* Configuration, APawn* PlayerPawn, int32 RequestedSizeOverride = 0);
+
+	// --- Equipment selection (Phase 10) ---
+
+	/**
+	 * Gives Member one of the configuration's AvailableLoadouts (squad equipment selection).
+	 * Owning client or authority; a client asks the server. Allowed while the selection is open and
+	 * the member is alive. Returns false when rejected (on a client: when it cannot be requested).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Squad|Equipment")
+	bool SelectMemberLoadout(UOutbreakSquadMemberComponent* Member, UOutbreakLoadoutDefinition* Loadout);
+
+	/** Loadouts SelectMemberLoadout accepts (from the squad configuration). */
+	UFUNCTION(BlueprintPure, Category = "Squad|Equipment")
+	TArray<UOutbreakLoadoutDefinition*> GetAvailableLoadouts() const;
+
+	/** Ends equipment selection (the Phase 11 briefing flow calls this at deployment). Authority. */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Squad|Equipment")
+	void CloseLoadoutSelection() { bLoadoutSelectionOpen = false; }
+
+	UFUNCTION(BlueprintPure, Category = "Squad|Equipment")
+	bool IsLoadoutSelectionOpen() const { return bLoadoutSelectionOpen; }
 
 	/** True once InitializeSquad has run. */
 	UFUNCTION(BlueprintPure, Category = "Squad")
@@ -225,6 +247,17 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerSetStealthMode(bool bEnabled);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSelectMemberLoadout(UOutbreakSquadMemberComponent* Member, UOutbreakLoadoutDefinition* Loadout);
+
+	bool AuthSelectMemberLoadout(UOutbreakSquadMemberComponent* Member, UOutbreakLoadoutDefinition* Loadout);
+
+	UPROPERTY(Replicated)
+	TArray<TObjectPtr<UOutbreakLoadoutDefinition>> AvailableLoadouts;
+
+	UPROPERTY(Replicated)
+	bool bLoadoutSelectionOpen = true;
 
 	void AuthSetStealthMode(bool bEnabled);
 	void ClearCompromised();

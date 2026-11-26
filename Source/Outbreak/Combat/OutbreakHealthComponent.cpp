@@ -2,6 +2,9 @@
 
 #include "GameFramework/Actor.h"
 #include "GameFramework/DamageType.h"
+#include "GameFramework/GameStateBase.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 #include "Outbreak.h"
 
@@ -32,6 +35,8 @@ void UOutbreakHealthComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	DOREPLIFETIME(UOutbreakHealthComponent, Health);
 	DOREPLIFETIME(UOutbreakHealthComponent, HealthState);
 	DOREPLIFETIME(UOutbreakHealthComponent, MaxHealth);
+	DOREPLIFETIME(UOutbreakHealthComponent, ReviveCount);
+	DOREPLIFETIME(UOutbreakHealthComponent, BleedOutServerTime);
 }
 
 void UOutbreakHealthComponent::SetMaxHealth(float NewMaxHealth, bool bRefillHealth)
@@ -85,6 +90,7 @@ float UOutbreakHealthComponent::ApplyDamage(float RawDamage, const UDamageType* 
 	if (HealthState == EOutbreakHealthState::Incapacitated)
 	{
 		// Health is already zero; any further damage finishes the owner.
+		StopBleedOut();
 		SetHealthState(EOutbreakHealthState::Dead);
 		return 0.0f;
 	}
@@ -94,7 +100,14 @@ float UOutbreakHealthComponent::ApplyDamage(float RawDamage, const UDamageType* 
 
 	if (Health <= 0.0f)
 	{
-		SetHealthState(bCanBeIncapacitated ? EOutbreakHealthState::Incapacitated : EOutbreakHealthState::Dead);
+		// Out of revives: no second chance.
+		const bool bRevivable = bCanBeIncapacitated && (MaxRevives <= 0 || ReviveCount < MaxRevives);
+		if (bRevivable)
+		{
+			// Set the bleed-out time first so state-change listeners can read it.
+			StartBleedOut();
+		}
+		SetHealthState(bRevivable ? EOutbreakHealthState::Incapacitated : EOutbreakHealthState::Dead);
 	}
 
 	return OldHealth - Health;
@@ -107,8 +120,95 @@ void UOutbreakHealthComponent::ResetHealth()
 		return;
 	}
 
+	StopBleedOut();
+	ReviveCount = 0;
 	SetHealth(MaxHealth);
 	SetHealthState(EOutbreakHealthState::Alive);
+}
+
+void UOutbreakHealthComponent::ConfigureIncapacitation(bool bInCanBeIncapacitated, float InBleedOutTime, int32 InMaxRevives)
+{
+	bCanBeIncapacitated = bInCanBeIncapacitated;
+	BleedOutTime = FMath::Max(0.0f, InBleedOutTime);
+	MaxRevives = FMath::Max(0, InMaxRevives);
+}
+
+float UOutbreakHealthComponent::Heal(float Amount)
+{
+	const AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority() || HealthState != EOutbreakHealthState::Alive || Amount <= 0.0f)
+	{
+		return 0.0f;
+	}
+	const float OldHealth = Health;
+	SetHealth(Health + Amount);
+	return Health - OldHealth;
+}
+
+bool UOutbreakHealthComponent::Revive(float HealthFraction)
+{
+	const AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority() || HealthState != EOutbreakHealthState::Incapacitated)
+	{
+		return false;
+	}
+	StopBleedOut();
+	++ReviveCount;
+	SetHealth(FMath::Max(1.0f, MaxHealth * FMath::Clamp(HealthFraction, 0.0f, 1.0f)));
+	SetHealthState(EOutbreakHealthState::Alive);
+	return true;
+}
+
+void UOutbreakHealthComponent::FinishBleedOut()
+{
+	const AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority() || HealthState != EOutbreakHealthState::Incapacitated)
+	{
+		return;
+	}
+	StopBleedOut();
+	SetHealthState(EOutbreakHealthState::Dead);
+}
+
+double UOutbreakHealthComponent::GetServerTimeSeconds() const
+{
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return 0.0;
+	}
+	const AGameStateBase* GameState = World->GetGameState();
+	return GameState ? GameState->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
+}
+
+float UOutbreakHealthComponent::GetBleedOutTimeRemaining() const
+{
+	if (HealthState != EOutbreakHealthState::Incapacitated || BleedOutServerTime < 0.0)
+	{
+		return -1.0f;
+	}
+	return static_cast<float>(FMath::Max(0.0, BleedOutServerTime - GetServerTimeSeconds()));
+}
+
+void UOutbreakHealthComponent::StartBleedOut()
+{
+	UWorld* World = GetWorld();
+	if (BleedOutTime <= 0.0f || !World)
+	{
+		BleedOutServerTime = -1.0;
+		return;
+	}
+	BleedOutServerTime = GetServerTimeSeconds() + BleedOutTime;
+	World->GetTimerManager().SetTimer(BleedOutTimer, this, &ThisClass::FinishBleedOut, BleedOutTime, /*bLoop=*/ false);
+}
+
+void UOutbreakHealthComponent::StopBleedOut()
+{
+	BleedOutServerTime = -1.0;
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(BleedOutTimer);
+	}
 }
 
 void UOutbreakHealthComponent::SetDamageMultiplier(TSubclassOf<UDamageType> DamageType, float Multiplier)

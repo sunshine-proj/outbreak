@@ -4,6 +4,7 @@
 #include "AI/OutbreakEnemyTypes.h"
 #include "AI/OutbreakTeammateBehaviorTypes.h"
 #include "Characters/OutbreakEnemyCharacter.h"
+#include "Combat/OutbreakHealthComponent.h"
 #include "EngineUtils.h"
 #include "CollisionQueryParams.h"
 #include "Combat/OutbreakTeam.h"
@@ -370,8 +371,16 @@ FText UOutbreakSquadCommandComponent::FormatMemberLine(int32 Slot, const UOutbre
 		Condition = LOCTEXT("Dead", "KIA");
 		break;
 	case EOutbreakSquadMemberStatus::Incapacitated:
-		Condition = LOCTEXT("Down", "DOWN");
+	{
+		// With the bleed-out countdown, so the player knows how long is left to revive them.
+		const AActor* Owner = Member->GetOwner();
+		const UOutbreakHealthComponent* Health = Owner ? Owner->FindComponentByClass<UOutbreakHealthComponent>() : nullptr;
+		const float Remaining = Health ? Health->GetBleedOutTimeRemaining() : -1.0f;
+		Condition = Remaining >= 0.0f
+			? FText::Format(LOCTEXT("DownTimed", "DOWN {0}s"), FMath::CeilToInt(Remaining))
+			: LOCTEXT("Down", "DOWN");
 		break;
+	}
 	default:
 		Condition = FText::Format(LOCTEXT("HealthPercent", "{0}%"), FMath::RoundToInt(Member->GetHealthFraction() * 100.0f));
 		break;

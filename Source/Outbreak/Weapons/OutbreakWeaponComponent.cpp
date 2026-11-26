@@ -115,6 +115,106 @@ void UOutbreakWeaponComponent::AddAmmo(UOutbreakAmmoTypeDefinition* AmmoType, in
 	BroadcastStateChanged();
 }
 
+bool UOutbreakWeaponComponent::RemoveWeapon(UOutbreakWeaponDefinition* Definition)
+{
+	if (!HasOwnerAuthority() || !Definition)
+	{
+		return false;
+	}
+	const int32 Index = Weapons.IndexOfByPredicate(
+		[Definition](const FOutbreakWeaponSlot& Slot) { return Slot.Definition == Definition; });
+	if (Index == INDEX_NONE)
+	{
+		return false;
+	}
+
+	if (Index == ActiveWeaponIndex)
+	{
+		StopFire();
+		AuthCancelReload();
+	}
+
+	const FOutbreakWeaponSlot& Slot = Weapons[Index];
+	if (Slot.LoadedAmmoType && Slot.AmmoInMagazine > 0 && !Definition->bUnlimitedAmmo)
+	{
+		AddReserve(Slot.LoadedAmmoType, Slot.AmmoInMagazine);
+	}
+	Weapons.RemoveAt(Index);
+
+	if (Weapons.IsEmpty())
+	{
+		ActiveWeaponIndex = INDEX_NONE;
+	}
+	else if (Index < ActiveWeaponIndex)
+	{
+		--ActiveWeaponIndex;
+	}
+	else if (Index == ActiveWeaponIndex)
+	{
+		ActiveWeaponIndex = FMath::Min(Index, Weapons.Num() - 1);
+		CurrentBloom = 0.0f;
+	}
+	BroadcastStateChanged();
+	return true;
+}
+
+int32 UOutbreakWeaponComponent::RemoveAmmo(UOutbreakAmmoTypeDefinition* AmmoType, int32 Count)
+{
+	FOutbreakAmmoAmount* Reserve = HasOwnerAuthority() && Count > 0 ? FindReserve(AmmoType) : nullptr;
+	if (!Reserve)
+	{
+		return 0;
+	}
+	const int32 Removed = FMath::Min(Count, Reserve->Count);
+	Reserve->Count -= Removed;
+	if (Removed > 0)
+	{
+		BroadcastStateChanged();
+	}
+	return Removed;
+}
+
+void UOutbreakWeaponComponent::ClearLoadout()
+{
+	if (!HasOwnerAuthority())
+	{
+		return;
+	}
+	StopFire();
+	AuthCancelReload();
+	Weapons.Reset();
+	AmmoReserves.Reset();
+	ActiveWeaponIndex = INDEX_NONE;
+	CurrentBloom = 0.0f;
+	BroadcastStateChanged();
+}
+
+int32 UOutbreakWeaponComponent::GetTotalAmmo(const UOutbreakAmmoTypeDefinition* AmmoType) const
+{
+	int32 Total = GetReserveAmmo(AmmoType);
+	for (const FOutbreakWeaponSlot& Slot : Weapons)
+	{
+		if (Slot.LoadedAmmoType.Get() == AmmoType && Slot.Definition && !Slot.Definition->bUnlimitedAmmo)
+		{
+			Total += Slot.AmmoInMagazine;
+		}
+	}
+	return Total;
+}
+
+TArray<UOutbreakWeaponDefinition*> UOutbreakWeaponComponent::GetWeaponDefinitions() const
+{
+	TArray<UOutbreakWeaponDefinition*> Result;
+	for (const FOutbreakWeaponSlot& Slot : Weapons)
+	{
+		if (Slot.Definition)
+		{
+			Result.Add(Slot.Definition);
+		}
+	}
+	return Result;
+}
+
 void UOutbreakWeaponComponent::SetWeaponsEnabled(bool bEnabled)
 {
 	if (!HasOwnerAuthority() || bWeaponsEnabled == bEnabled)

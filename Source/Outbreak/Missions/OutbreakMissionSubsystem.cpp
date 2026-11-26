@@ -1,11 +1,14 @@
 #include "Missions/OutbreakMissionSubsystem.h"
 
+#include "Combat/OutbreakHealthComponent.h"
 #include "Engine/World.h"
 #include "Game/OutbreakGameState.h"
 #include "GameFramework/Pawn.h"
 #include "Missions/OutbreakMissionDefinition.h"
 #include "Missions/OutbreakObjective.h"
 #include "Outbreak.h"
+#include "Squad/OutbreakSquadComponent.h"
+#include "Squad/OutbreakSquadMemberComponent.h"
 #include "TimerManager.h"
 
 #define LOCTEXT_NAMESPACE "OutbreakMission"
@@ -95,6 +98,13 @@ void UOutbreakMissionSubsystem::ActivateObjective(int32 Index)
 
 void UOutbreakMissionSubsystem::UpdateMission()
 {
+	if (MissionState != EOutbreakMissionState::InProgress)
+	{
+		return;
+	}
+
+	// The last standing teammate may have gone down while the player was waiting for a revive.
+	CheckSquadFailure();
 	if (MissionState != EOutbreakMissionState::InProgress)
 	{
 		return;
@@ -228,23 +238,55 @@ TArray<APawn*> UOutbreakMissionSubsystem::GetLivingPlayerPawns() const
 void UOutbreakMissionSubsystem::HandlePlayerHealthStateChanged(UOutbreakHealthComponent* HealthComponent,
 	EOutbreakHealthState NewState, EOutbreakHealthState OldState)
 {
-	if (NewState != EOutbreakHealthState::Dead || !Definition || !Definition->bFailOnPlayerDeath)
+	if (NewState != EOutbreakHealthState::Alive)
+	{
+		CheckSquadFailure();
+	}
+}
+
+void UOutbreakMissionSubsystem::CheckSquadFailure()
+{
+	if (MissionState != EOutbreakMissionState::InProgress || !Definition || !Definition->bFailOnPlayerDeath)
 	{
 		return;
 	}
 
-	// Fail only when no registered player is left alive (single-player: the player died).
-	// Incapacitated players can still be revived (Phase 10), so only death counts.
+	// While any registered player is standing, the mission goes on.
+	TArray<const APawn*> DownedPlayers;
 	for (const TWeakObjectPtr<APawn>& Entry : Players)
 	{
 		const APawn* Pawn = Entry.Get();
 		const UOutbreakHealthComponent* Health = Pawn ? Pawn->FindComponentByClass<UOutbreakHealthComponent>() : nullptr;
-		if (Health && Health->GetHealthState() != EOutbreakHealthState::Dead)
+		if (!Health)
+		{
+			continue;
+		}
+		if (Health->IsAlive())
+		{
+			return;
+		}
+		if (Health->IsIncapacitated())
+		{
+			DownedPlayers.Add(Pawn);
+		}
+	}
+
+	// Downed players can still be revived while a squadmate stands (Phase 10).
+	for (const APawn* Pawn : DownedPlayers)
+	{
+		const UOutbreakSquadMemberComponent* Member = Pawn->FindComponentByClass<UOutbreakSquadMemberComponent>();
+		const UOutbreakSquadComponent* Squad = Member ? Member->GetSquad() : nullptr;
+		if (Squad && Squad->GetAvailableTeammates().Num() > 0)
 		{
 			return;
 		}
 	}
 
+	if (!DownedPlayers.IsEmpty())
+	{
+		FailMission(LOCTEXT("SquadDown", "Your squad is down; nobody is left to revive you"));
+		return;
+	}
 	FailMission(Players.Num() > 1
 		? LOCTEXT("AllPlayersKilled", "All players were killed")
 		: LOCTEXT("PlayerKilled", "You were killed"));

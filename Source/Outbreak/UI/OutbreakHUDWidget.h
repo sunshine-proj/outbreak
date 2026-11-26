@@ -58,6 +58,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void SetMissionStatus(const FOutbreakMissionStatus& Status);
 
+	/** Inventory summary, or the full panel when open (Phase 10). */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetInventory(const FText& InventoryText);
+
+	/** Downed / revive status. Empty hides it. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetMedicalStatus(const FText& StatusText);
+
 	/** Matches UOutbreakInteractionComponent::OnFocusChanged so it can be bound directly. */
 	UFUNCTION()
 	void HandleInteractionFocusChanged(AActor* FocusedActor, const FText& InteractionPrompt);
@@ -96,6 +104,12 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> MissionResultText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> InventoryText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> MedicalStatusText;
 
 	/** Shown until real health values are pushed. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HUD")

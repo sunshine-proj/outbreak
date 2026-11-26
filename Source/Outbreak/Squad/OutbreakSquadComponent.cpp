@@ -4,6 +4,8 @@
 #include "Combat/OutbreakHealthComponent.h"
 #include "Combat/OutbreakTeam.h"
 #include "Engine/World.h"
+#include "Inventory/OutbreakInventoryComponent.h"
+#include "Inventory/OutbreakLoadout.h"
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 #include "Outbreak.h"
@@ -45,6 +47,9 @@ void UOutbreakSquadComponent::InitializeComponent()
 void UOutbreakSquadComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UOutbreakSquadComponent, AvailableLoadouts);
+	DOREPLIFETIME(UOutbreakSquadComponent, bLoadoutSelectionOpen);
 
 	DOREPLIFETIME(UOutbreakSquadComponent, Members);
 	DOREPLIFETIME(UOutbreakSquadComponent, PlayerMember);
@@ -112,9 +117,19 @@ bool UOutbreakSquadComponent::InitializeSquad(const UOutbreakSquadConfiguration*
 	if (Configuration)
 	{
 		AuthSetFormation(Configuration->InitialFormation);
+		AvailableLoadouts = Configuration->AvailableLoadouts;
 	}
 
 	RegisterPlayerMember(PlayerMemberComponent);
+
+	// The player's equipment from the mission, replacing the Blueprint defaults.
+	if (Configuration && Configuration->PlayerLoadout)
+	{
+		if (UOutbreakInventoryComponent* PlayerInventory = PlayerPawn->FindComponentByClass<UOutbreakInventoryComponent>())
+		{
+			PlayerInventory->ApplyLoadout(Configuration->PlayerLoadout->Loadout);
+		}
+	}
 
 	if (!bValid)
 	{
@@ -203,6 +218,20 @@ void UOutbreakSquadComponent::ApplyMemberConfig(AOutbreakCharacter* Teammate, co
 		? MemberConfig.DisplayName
 		: FText::Format(LOCTEXT("DefaultTeammateName", "Soldier {0}"), NextMemberId));
 
+	UOutbreakInventoryComponent* Inventory = Teammate->GetInventoryComponent();
+	if (Inventory && Role && Role->CarryCapacity > 0.0f)
+	{
+		Inventory->SetMaxCarryWeight(Role->CarryCapacity);
+	}
+
+	// A complete loadout (member's, else role's) replaces the individual equipment lists.
+	const UOutbreakLoadoutDefinition* Loadout = MemberConfig.Loadout ? MemberConfig.Loadout.Get() : (Role ? Role->DefaultLoadout.Get() : nullptr);
+	if (Loadout && Inventory)
+	{
+		Inventory->ApplyLoadout(Loadout->Loadout);
+		return;
+	}
+
 	// Member overrides win over role defaults; each list is replaced as a whole, not merged.
 	const TArray<FOutbreakAmmoAmount>& Ammo = !MemberConfig.AmmoReserves.IsEmpty() || !Role
 		? MemberConfig.AmmoReserves : Role->DefaultAmmoReserves;
@@ -217,6 +246,75 @@ void UOutbreakSquadComponent::ApplyMemberConfig(AOutbreakCharacter* Teammate, co
 	{
 		Weapons->AddWeapon(Weapon);
 	}
+
+	const TArray<FOutbreakItemAmount>& ItemList = !MemberConfig.Items.IsEmpty() || !Role ? MemberConfig.Items : Role->DefaultItems;
+	for (const FOutbreakItemAmount& Entry : ItemList)
+	{
+		if (Inventory && Inventory->AddItem(Entry.Item, Entry.Count) < Entry.Count)
+		{
+			UE_LOG(LogOutbreak, Warning, TEXT("%s: not all of %s fit into %s's carrying capacity."),
+				*GetNameSafe(GetOwner()), *GetNameSafe(Entry.Item.Get()), *Teammate->GetName());
+		}
+	}
+}
+
+// --- Equipment selection -------------------------------------------------------------------------
+
+TArray<UOutbreakLoadoutDefinition*> UOutbreakSquadComponent::GetAvailableLoadouts() const
+{
+	TArray<UOutbreakLoadoutDefinition*> Result;
+	for (UOutbreakLoadoutDefinition* Loadout : AvailableLoadouts)
+	{
+		if (Loadout)
+		{
+			Result.Add(Loadout);
+		}
+	}
+	return Result;
+}
+
+bool UOutbreakSquadComponent::SelectMemberLoadout(UOutbreakSquadMemberComponent* Member, UOutbreakLoadoutDefinition* Loadout)
+{
+	if (HasOwnerAuthority())
+	{
+		return AuthSelectMemberLoadout(Member, Loadout);
+	}
+	if (!bLoadoutSelectionOpen || !Member || !AvailableLoadouts.Contains(Loadout))
+	{
+		return false;
+	}
+	ServerSelectMemberLoadout(Member, Loadout);
+	return true;
+}
+
+void UOutbreakSquadComponent::ServerSelectMemberLoadout_Implementation(UOutbreakSquadMemberComponent* Member,
+	UOutbreakLoadoutDefinition* Loadout)
+{
+	AuthSelectMemberLoadout(Member, Loadout);
+}
+
+bool UOutbreakSquadComponent::AuthSelectMemberLoadout(UOutbreakSquadMemberComponent* Member, UOutbreakLoadoutDefinition* Loadout)
+{
+	if (!bLoadoutSelectionOpen || !Member || !Loadout || !Members.Contains(Member) || !AvailableLoadouts.Contains(Loadout)
+		|| Member->GetStatus() != EOutbreakSquadMemberStatus::Active)
+	{
+		return false;
+	}
+	UOutbreakInventoryComponent* Inventory = Member->GetOwner()->FindComponentByClass<UOutbreakInventoryComponent>();
+	if (!Inventory)
+	{
+		return false;
+	}
+
+	TArray<FText> Errors;
+	if (!OutbreakLoadout::Validate(Loadout->Loadout, Inventory->GetMaxCarryWeight(), Errors))
+	{
+		UE_LOG(LogOutbreak, Warning, TEXT("%s: loadout %s rejected for %s: %s"), *GetNameSafe(GetOwner()), *Loadout->GetName(),
+			*Member->GetDisplayName().ToString(), *FText::Join(FText::FromString(TEXT(" ")), Errors).ToString());
+		return false;
+	}
+	Inventory->ApplyLoadout(Loadout->Loadout);
+	return true;
 }
 
 // --- Membership ----------------------------------------------------------------------------------

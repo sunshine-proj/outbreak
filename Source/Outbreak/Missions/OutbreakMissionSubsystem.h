@@ -89,6 +89,9 @@ private:
 	UFUNCTION()
 	void HandlePlayerHealthStateChanged(UOutbreakHealthComponent* HealthComponent, EOutbreakHealthState NewState, EOutbreakHealthState OldState);
 
+	/** Fails the mission when no registered player stands and no squadmate can revive a downed one (Phase 10). */
+	void CheckSquadFailure();
+
 	/** Read-only at runtime; non-const only to be a UPROPERTY. */
 	UPROPERTY(Transient)
 	TObjectPtr<UOutbreakMissionDefinition> Definition;

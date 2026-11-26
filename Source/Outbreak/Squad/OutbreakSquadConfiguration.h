@@ -4,10 +4,12 @@
 #include "Engine/DataAsset.h"
 #include "Squad/OutbreakSquadTypes.h"
 #include "Weapons/OutbreakWeaponTypes.h"
+#include "Inventory/OutbreakInventoryComponent.h"
 
 #include "OutbreakSquadConfiguration.generated.h"
 
 class AOutbreakTeammateCharacter;
+class UOutbreakLoadoutDefinition;
 class UOutbreakSquadRoleDefinition;
 class UOutbreakWeaponDefinition;
 
@@ -34,6 +36,14 @@ struct OUTBREAK_API FOutbreakSquadMemberConfig
 	/** Overrides the role's DefaultAmmoReserves when not empty. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TArray<FOutbreakAmmoAmount> AmmoReserves;
+
+	/** Overrides the role's DefaultItems when not empty (Phase 10). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
+	TArray<FOutbreakItemAmount> Items;
+
+	/** A complete loadout; when set it overrides every other equipment field and the role's. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Equipment")
+	TObjectPtr<UOutbreakLoadoutDefinition> Loadout;
 };
 
 /**
@@ -75,6 +85,17 @@ public:
 	/** Used for teammate slots beyond the Teammates list. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Members")
 	FOutbreakSquadMemberConfig FillerTeammate;
+
+	/** The player's loadout. Empty = the player Blueprint's own weapons and items. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
+	TObjectPtr<UOutbreakLoadoutDefinition> PlayerLoadout;
+
+	/**
+	 * Loadouts squad equipment selection may assign to any member, including the player
+	 * (UOutbreakSquadComponent::SelectMemberLoadout). Empty = no selection.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
+	TArray<TObjectPtr<UOutbreakLoadoutDefinition>> AvailableLoadouts;
 
 	/** Formation at mission start. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Formation")

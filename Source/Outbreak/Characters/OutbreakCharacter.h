@@ -6,9 +6,12 @@
 #include "Combat/OutbreakTeam.h"
 #include "GameFramework/Character.h"
 #include "GenericTeamAgentInterface.h"
+#include "Interaction/OutbreakInteractable.h"
 
 #include "OutbreakCharacter.generated.h"
 
+class UOutbreakInventoryComponent;
+class UOutbreakMedicalComponent;
 class UOutbreakNoiseEmitterComponent;
 class UOutbreakSquadMemberComponent;
 class UOutbreakWeaponComponent;
@@ -18,11 +21,15 @@ class UOutbreakWeaponComponent;
  * (AOutbreakTeammateCharacter).
  *
  * Owns movement states (walk, sprint, crouch) and the components every soldier has: health,
- * weapons and squad membership. Reacts to its own health: when downed it stops moving and its
- * weapons are disabled. Player-only concerns (camera, input, interaction) live in the subclass.
+ * weapons, squad membership, inventory and medical skills. Reacts to its own health: when downed it
+ * stops moving and its weapons are disabled; when revived it recovers. Player-only concerns (camera,
+ * input, interaction) live in the subclass.
+ *
+ * Squad soldiers (team Player) are incapacitated at zero health per UOutbreakMedicalSettings and
+ * are interactable by squadmates: "Revive" while down, "Heal" with a medical item while hurt.
  */
 UCLASS(Abstract)
-class OUTBREAK_API AOutbreakCharacter : public ACharacter, public IGenericTeamAgentInterface
+class OUTBREAK_API AOutbreakCharacter : public ACharacter, public IGenericTeamAgentInterface, public IOutbreakInteractable
 {
 	GENERATED_BODY()
 
@@ -83,7 +90,26 @@ public:
 
 	UOutbreakNoiseEmitterComponent* GetNoiseEmitterComponent() const { return NoiseEmitterComponent; }
 
+	UOutbreakInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
+
+	UOutbreakMedicalComponent* GetMedicalComponent() const { return MedicalComponent; }
+
+	EOutbreakTeam GetTeam() const { return Team; }
+
 protected:
+
+	//~ Begin IOutbreakInteractable interface (squadmates reviving or healing this soldier)
+	virtual bool CanInteract_Implementation(AActor* InteractionInstigator) const override;
+	virtual FText GetInteractionPrompt_Implementation(AActor* InteractionInstigator) const override;
+	virtual void Interact_Implementation(AActor* InteractionInstigator) override;
+	//~ End IOutbreakInteractable interface
+
+	/** Called on every machine when the character is revived (Incapacitated -> Alive). */
+	virtual void HandleRevived();
+
+	/** Blueprint notification for HandleRevived (get-up animation). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Combat")
+	void OnRevived();
 
 	/** Called on every machine when health decreases. Delta is negative. */
 	virtual void HandleDamaged(float Delta) {}
@@ -110,6 +136,14 @@ protected:
 	/** Footsteps and other gameplay noise (Phase 8). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stealth")
 	TObjectPtr<UOutbreakNoiseEmitterComponent> NoiseEmitterComponent;
+
+	/** Weapons slots, ammunition weight, medical and utility items (Phase 10). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	TObjectPtr<UOutbreakInventoryComponent> InventoryComponent;
+
+	/** Reviving squadmates (Phase 10). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Medical")
+	TObjectPtr<UOutbreakMedicalComponent> MedicalComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Team")
 	EOutbreakTeam Team = EOutbreakTeam::Player;

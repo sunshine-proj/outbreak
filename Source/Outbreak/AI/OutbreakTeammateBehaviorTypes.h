@@ -25,7 +25,11 @@ enum class EOutbreakTeammateBehavior : uint8
 	/** Retreat order: moving away from the threat. */
 	Retreat,
 	/** Squad stealth: an enemy is noticing this teammate, so it freezes in place. */
-	Hiding
+	Hiding,
+	/** Going to an incapacitated squadmate and reviving them (Phase 10). */
+	ReviveMember,
+	/** Going to a hurt squadmate and using a medical item on them (Phase 10). */
+	HealMember
 };
 
 /**
@@ -44,7 +48,13 @@ enum class EOutbreakBehaviorLayer : uint8
 	/** Too far from the follow position. */
 	FormationMaintenance,
 	/** Nothing else applies. */
-	DefaultAutonomous
+	DefaultAutonomous,
+	/**
+	 * A squadmate needs help (Phase 10): revive a downed one (always), or heal a hurt one with a
+	 * medical item (only without an active order). Appended so saved orders keep their values; its
+	 * place in the default order is second.
+	 */
+	MedicalAssistance
 };
 
 /** Inputs to the behaviour decision. Gathered by the AI controller. */
@@ -66,6 +76,12 @@ struct FOutbreakBehaviorContext
 	/** Distance from the member to its follow position near the player. */
 	float DistanceToFollowLocation = 0.0f;
 
+	/** This teammate is the one assigned to revive a downed squadmate. */
+	bool bHasDownedSquadmate = false;
+
+	/** This teammate is the one assigned to heal a hurt squadmate, and carries a medical item. */
+	bool bHasHurtSquadmate = false;
+
 	/** Whether the member was following at the last decision (for hysteresis). */
 	bool bCurrentlyFollowing = false;
 
@@ -84,7 +100,11 @@ struct FOutbreakBehaviorDecision
 
 namespace OutbreakTeammateBehavior
 {
-	/** Emergency survival > explicit order > threat response > formation > default (AGENTS.md §6.1). */
+	/**
+	 * Emergency survival > medical assistance > explicit order > threat response > formation >
+	 * default (AGENTS.md §6.1; medical assistance added in Phase 10, ahead of orders because a downed
+	 * squadmate bleeds out; healing still yields to orders).
+	 */
 	OUTBREAK_API TArray<EOutbreakBehaviorLayer> GetDefaultPriorityOrder();
 
 	/** True when every layer appears exactly once. */

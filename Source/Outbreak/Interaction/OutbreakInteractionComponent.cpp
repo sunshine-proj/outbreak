@@ -9,6 +9,8 @@
 UOutbreakInteractionComponent::UOutbreakInteractionComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	// For the ServerInteract RPC.
+	SetIsReplicatedByDefault(true);
 }
 
 void UOutbreakInteractionComponent::BeginPlay()
@@ -110,9 +112,41 @@ bool UOutbreakInteractionComponent::TryInteract()
 	}
 
 	UE_LOG(LogOutbreak, Verbose, TEXT("%s interacts with %s."), *GetNameSafe(GetOwner()), *Target->GetName());
-	IOutbreakInteractable::Execute_Interact(Target, GetOwner());
+	if (GetOwner()->HasAuthority())
+	{
+		AuthInteract(Target);
+	}
+	else
+	{
+		ServerInteract(Target);
+	}
 
 	// The interaction may change the prompt (for example "Open" -> "Close").
 	UpdateFocus();
 	return true;
+}
+
+void UOutbreakInteractionComponent::ServerInteract_Implementation(AActor* Target)
+{
+	AuthInteract(Target);
+}
+
+void UOutbreakInteractionComponent::AuthInteract(AActor* Target)
+{
+	const AActor* Owner = GetOwner();
+	if (!Owner || !IsValid(Target) || !Target->Implements<UOutbreakInteractable>())
+	{
+		return;
+	}
+
+	FVector ViewLocation;
+	FRotator ViewRotation;
+	Owner->GetActorEyesViewPoint(ViewLocation, ViewRotation);
+	if (FVector::Dist(ViewLocation, Target->GetActorLocation()) > InteractionRange + ServerRangeTolerance
+		|| !IOutbreakInteractable::Execute_CanInteract(Target, GetOwner()))
+	{
+		UE_LOG(LogOutbreak, Verbose, TEXT("%s: interaction with %s rejected (range or state)."), *GetNameSafe(Owner), *Target->GetName());
+		return;
+	}
+	IOutbreakInteractable::Execute_Interact(Target, GetOwner());
 }

@@ -32,6 +32,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Squad")
 	UOutbreakSquadCommandComponent* GetSquadCommandComponent() const { return SquadCommandComponent; }
 
+	/** Opens or closes the full inventory panel (the compact summary is always shown). */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void ToggleInventoryPanel();
+
+	UFUNCTION(BlueprintPure, Category = "HUD")
+	bool IsInventoryPanelOpen() const { return bInventoryPanelOpen; }
+
 protected:
 
 	virtual void BeginPlay() override;
@@ -69,6 +76,7 @@ private:
 	void RefreshSquadPanel();
 
 	FTimerHandle SquadPanelTimer;
+	bool bInventoryPanelOpen = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UOutbreakHUDWidget> HUDWidget;

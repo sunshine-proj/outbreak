@@ -27,6 +27,8 @@ struct FEnvQueryResult;
  * - Navigation: the Behavior Tree moves to the blackboard MoveLocation; detour crowd avoidance
  *   keeps teammates from bumping into each other.
  * - Combat: UBTService_OutbreakCombat aims, fires and reloads using GetCombatTarget.
+ * - Medical (Phase 10): uses a medical item on itself when hurt and not under fire; goes to revive a
+ *   downed squadmate, or to heal a hurt one, when it is the nearest helper (OutbreakMedicalAssist).
  *
  * Decision and combat run from Behavior Tree services at their configured intervals, not every frame.
  */
@@ -76,6 +78,9 @@ public:
 	FVector GetCoverLocation() const { return CoverLocation; }
 
 	AActor* GetCurrentThreat() const { return CurrentThreat.Get(); }
+
+	/** The squadmate this teammate is reviving or healing, if any. */
+	AActor* GetAssistPatient() const { return AssistPatient.Get(); }
 
 	EOutbreakTeammateBehavior GetCurrentBehavior() const { return CurrentDecision.Behavior; }
 	EOutbreakBehaviorLayer GetCurrentLayer() const { return CurrentDecision.Layer; }
@@ -160,6 +165,12 @@ private:
 
 	FVector RetreatLocation = FVector::ZeroVector;
 	bool bHasRetreatLocation = false;
+
+	// Medical assistance (Phase 10).
+	void UpdateSelfHeal();
+	void UpdateAssistPatient(FOutbreakBehaviorContext& Context);
+	FVector ComputeAssistLocation(EOutbreakTeammateBehavior Behavior);
+	TWeakObjectPtr<AActor> AssistPatient;
 
 	// Squad stealth.
 	void UpdateStealth(bool& bOutShouldHide);

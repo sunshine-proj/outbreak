@@ -2,10 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Inventory/OutbreakInventoryComponent.h"
 #include "Weapons/OutbreakWeaponTypes.h"
 
 #include "OutbreakSquadRoleDefinition.generated.h"
 
+class UOutbreakLoadoutDefinition;
 class UOutbreakWeaponDefinition;
 
 /**
@@ -33,6 +35,26 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
 	TArray<FOutbreakAmmoAmount> DefaultAmmoReserves;
+
+	/** Medical, utility and mission items for members with this role (Phase 10). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
+	TArray<FOutbreakItemAmount> DefaultItems;
+
+	/** A complete loadout; when set it replaces DefaultWeapons, DefaultAmmoReserves and DefaultItems. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
+	TObjectPtr<UOutbreakLoadoutDefinition> DefaultLoadout;
+
+	/** Carrying capacity in kilograms. 0 = the character's own. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment", meta = (ClampMin = "0.0", Units = "kg"))
+	float CarryCapacity = 0.0f;
+
+	/** Scales health restored by medical items this member uses (a Medic heals more). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Medical", meta = (ClampMin = "0.0"))
+	float MedicalEffectMultiplier = 1.0f;
+
+	/** Scales revive speed (2 = revives in half the time). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Medical", meta = (ClampMin = "0.1"))
+	float ReviveSpeedMultiplier = 1.0f;
 
 	/** Distance this role prefers to fight at. Read by teammate AI (Phase 4). */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat Preferences", meta = (ClampMin = "0.0", Units = "cm"))

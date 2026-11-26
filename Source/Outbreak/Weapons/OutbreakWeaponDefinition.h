@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Inventory/OutbreakItem.h"
 
 #include "OutbreakWeaponDefinition.generated.h"
 
@@ -115,7 +116,7 @@ struct OUTBREAK_API FOutbreakFireModeDefinition
  * without changing code. The asset's primary asset ID serves as the weapon ID.
  */
 UCLASS(BlueprintType, Const)
-class OUTBREAK_API UOutbreakWeaponDefinition : public UPrimaryDataAsset
+class OUTBREAK_API UOutbreakWeaponDefinition : public UPrimaryDataAsset, public IOutbreakItem
 {
 	GENERATED_BODY()
 
@@ -133,8 +134,23 @@ public:
 	/** Null if FireModeIndex is out of range. */
 	const FOutbreakFireModeDefinition* GetFireMode(int32 FireModeIndex) const;
 
+	//~ Begin IOutbreakItem interface
+	virtual FText GetItemDisplayName() const override { return DisplayName; }
+	virtual EOutbreakItemCategory GetItemCategory() const override { return EOutbreakItemCategory::Weapon; }
+	virtual float GetItemUnitWeight() const override { return Weight; }
+	virtual int32 GetItemMaxStack() const override { return 1; }
+	//~ End IOutbreakItem interface
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	FText DisplayName;
+
+	/** Equipment slot (Phase 10): a soldier carries one primary and one secondary weapon. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
+	EOutbreakEquipmentSlot EquipmentSlot = EOutbreakEquipmentSlot::Primary;
+
+	/** Carried weight, in kilograms, without ammunition. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment", meta = (ClampMin = "0.0", Units = "kg"))
+	float Weight = 3.5f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon", meta = (ClampMin = "1"))
 	int32 MagazineCapacity = 30;

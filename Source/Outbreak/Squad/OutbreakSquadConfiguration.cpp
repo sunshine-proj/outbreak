@@ -1,5 +1,6 @@
 #include "Squad/OutbreakSquadConfiguration.h"
 
+#include "Inventory/OutbreakLoadout.h"
 #include "Squad/OutbreakTeammateCharacter.h"
 
 #if WITH_EDITOR
@@ -27,6 +28,26 @@ bool UOutbreakSquadConfiguration::Validate(TArray<FText>& OutErrors) const
 	if (SquadSize > 0 && MaxSquadSizeOverride > 0 && SquadSize > MaxSquadSizeOverride)
 	{
 		OutErrors.Add(LOCTEXT("AboveMax", "SquadSize is above MaxSquadSizeOverride."));
+	}
+
+	// Loadouts (Phase 10): each must be valid on its own.
+	TArray<const UOutbreakLoadoutDefinition*> Loadouts;
+	Loadouts.Add(PlayerLoadout.Get());
+	for (const TObjectPtr<UOutbreakLoadoutDefinition>& Loadout : AvailableLoadouts)
+	{
+		Loadouts.Add(Loadout.Get());
+	}
+	for (const FOutbreakSquadMemberConfig& Member : Teammates)
+	{
+		Loadouts.Add(Member.Loadout.Get());
+	}
+	Loadouts.Add(FillerTeammate.Loadout.Get());
+	for (const UOutbreakLoadoutDefinition* Loadout : Loadouts)
+	{
+		if (Loadout)
+		{
+			Loadout->Validate(OutErrors);
+		}
 	}
 
 	return OutErrors.Num() == InitialErrorCount;

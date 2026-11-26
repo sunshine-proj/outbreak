@@ -15,6 +15,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOutbreakInteractionFocusChangedSig
  * Detection is a line trace from the owner's eyes view point (the camera for a player-controlled
  * pawn). It runs on a timer at FocusUpdateInterval, not every frame. The focus is only tracked
  * while the owning pawn is locally controlled.
+ *
+ * Interactions run on the authority (Phase 10: pickups and revives change gameplay state). A client
+ * sends the focused actor to the server, which checks the range and CanInteract again.
  */
 UCLASS(ClassGroup = (Outbreak), meta = (BlueprintSpawnableComponent))
 class OUTBREAK_API UOutbreakInteractionComponent : public UActorComponent
@@ -70,9 +73,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 
+	/** Extra distance the server allows over InteractionRange (actor origin vs. trace hit, latency). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction", meta = (ClampMin = "0.0", Units = "cm"))
+	float ServerRangeTolerance = 150.0f;
+
 private:
 
 	AActor* FindFocusCandidate() const;
+
+	/** Range and CanInteract check, then the interaction (authority). */
+	void AuthInteract(AActor* Target);
+
+	UFUNCTION(Server, Reliable)
+	void ServerInteract(AActor* Target);
 	void SetFocus(AActor* NewFocus);
 
 	UPROPERTY(Transient)

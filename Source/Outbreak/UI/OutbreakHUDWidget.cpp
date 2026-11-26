@@ -38,6 +38,8 @@ void UOutbreakHUDWidget::NativeOnInitialized()
 	SetInteractionPrompt(FText::GetEmpty());
 	SetMissionStatus(FOutbreakMissionStatus());
 	SetSquadMenu(FText::GetEmpty());
+	SetInventory(FText::GetEmpty());
+	SetMedicalStatus(FText::GetEmpty());
 }
 
 void UOutbreakHUDWidget::BuildDefaultLayout()
@@ -78,6 +80,10 @@ void UOutbreakHUDWidget::BuildDefaultLayout()
 	const FAnchors TopCentre(0.5f, 0.0f);
 	ObjectiveText = AddText(TEXT("ObjectiveText"), FText::GetEmpty(), TopCentre, FVector2D(0.5f, 0.0f), FVector2D(0.0f, 40.0f));
 	MissionResultText = AddText(TEXT("MissionResultText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 1.0f), FVector2D(0.0f, -60.0f));
+
+	const FAnchors RightCentre(1.0f, 0.5f);
+	InventoryText = AddText(TEXT("InventoryText"), FText::GetEmpty(), RightCentre, FVector2D(1.0f, 0.5f), FVector2D(-40.0f, 0.0f));
+	MedicalStatusText = AddText(TEXT("MedicalStatusText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 0.0f), FVector2D(0.0f, 90.0f));
 }
 
 void UOutbreakHUDWidget::SetInteractionPrompt(const FText& Prompt)
@@ -140,6 +146,24 @@ void UOutbreakHUDWidget::SetSquadStatus(const FText& SquadStatus)
 	{
 		SquadStatusText->SetText(SquadStatus);
 		SquadStatusText->SetVisibility(SquadStatus.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UOutbreakHUDWidget::SetInventory(const FText& InInventoryText)
+{
+	if (InventoryText)
+	{
+		InventoryText->SetText(InInventoryText);
+		InventoryText->SetVisibility(InInventoryText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UOutbreakHUDWidget::SetMedicalStatus(const FText& StatusText)
+{
+	if (MedicalStatusText)
+	{
+		MedicalStatusText->SetText(StatusText);
+		MedicalStatusText->SetVisibility(StatusText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
 }
 

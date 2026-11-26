@@ -10,6 +10,7 @@
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
 #include "Interaction/OutbreakInteractionComponent.h"
+#include "Inventory/OutbreakInventoryComponent.h"
 #include "Outbreak.h"
 #include "Player/OutbreakInputConfig.h"
 #include "Player/OutbreakPlayerController.h"
@@ -217,6 +218,24 @@ void AOutbreakPlayerCharacter::SetupPlayerInputComponent(UInputComponent* Player
 	{
 		EnhancedInput->BindAction(InputConfig->SquadMenuConfirmAction, ETriggerEvent::Started, this, &ThisClass::HandleSquadMenuConfirm);
 	}
+
+	// Inventory and medical (Phase 10).
+	if (InputConfig->UseMedicalAction)
+	{
+		EnhancedInput->BindAction(InputConfig->UseMedicalAction, ETriggerEvent::Started, this, &ThisClass::HandleUseMedical);
+	}
+	if (InputConfig->UseUtilityAction)
+	{
+		EnhancedInput->BindAction(InputConfig->UseUtilityAction, ETriggerEvent::Started, this, &ThisClass::HandleUseUtility);
+	}
+	if (InputConfig->CycleUtilityAction)
+	{
+		EnhancedInput->BindAction(InputConfig->CycleUtilityAction, ETriggerEvent::Started, this, &ThisClass::HandleCycleUtility);
+	}
+	if (InputConfig->InventoryAction)
+	{
+		EnhancedInput->BindAction(InputConfig->InventoryAction, ETriggerEvent::Started, this, &ThisClass::HandleToggleInventory);
+	}
 }
 
 void AOutbreakPlayerCharacter::HandleMove(const FInputActionValue& Value)
@@ -321,6 +340,30 @@ void AOutbreakPlayerCharacter::HandleCycleFireMode()
 void AOutbreakPlayerCharacter::HandleCycleAmmoType()
 {
 	WeaponComponent->CycleAmmoType();
+}
+
+void AOutbreakPlayerCharacter::HandleUseMedical()
+{
+	// On yourself; healing a squadmate is the interaction ("Heal <name>").
+	InventoryComponent->UseMedicalOn(this);
+}
+
+void AOutbreakPlayerCharacter::HandleUseUtility()
+{
+	InventoryComponent->UseSelectedUtility();
+}
+
+void AOutbreakPlayerCharacter::HandleCycleUtility()
+{
+	InventoryComponent->CycleUtility();
+}
+
+void AOutbreakPlayerCharacter::HandleToggleInventory()
+{
+	if (AOutbreakPlayerController* PlayerController = Cast<AOutbreakPlayerController>(Controller))
+	{
+		PlayerController->ToggleInventoryPanel();
+	}
 }
 
 void AOutbreakPlayerCharacter::HandleDamaged(float Delta)

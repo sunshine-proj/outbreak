@@ -2,6 +2,11 @@
 
 #include "AI/OutbreakBlackboardKeys.h"
 #include "AI/OutbreakEnemyAIController.h"
+#include "AI/OutbreakMedicalAssist.h"
+#include "Combat/OutbreakMedicalComponent.h"
+#include "Combat/OutbreakMedicalSettings.h"
+#include "Inventory/OutbreakInventoryComponent.h"
+#include "Inventory/OutbreakItemDefinition.h"
 #include "Characters/OutbreakCharacter.h"
 #include "Stealth/OutbreakNoiseEmitterComponent.h"
 #include "AI/OutbreakSquadPositioning.h"
@@ -424,9 +429,10 @@ void AOutbreakSquadAIController::UpdateBehavior()
 		return;
 	}
 
-	// A downed teammate does nothing (recovery is Phase 10).
+	// A downed teammate does nothing until revived.
 	if (HealthComponent && !HealthComponent->IsAlive())
 	{
+		AssistPatient = nullptr;
 		CurrentDecision = FOutbreakBehaviorDecision();
 		MoveLocation = ControlledPawn->GetActorLocation();
 		VisibleHostiles.Reset();
@@ -463,6 +469,9 @@ void AOutbreakSquadAIController::UpdateBehavior()
 	Context.FollowStartDistance = Config->FollowStartDistance;
 	Context.FollowStopDistance = Config->FollowStopDistance;
 
+	UpdateSelfHeal();
+	UpdateAssistPatient(Context);
+
 	bool bShouldHide = false;
 	UpdateStealth(bShouldHide);
 
@@ -470,6 +479,14 @@ void AOutbreakSquadAIController::UpdateBehavior()
 	NewDecision.Behavior = OutbreakTeammateBehavior::ApplyStealthOverride(NewDecision.Behavior, bShouldHide);
 	const bool bBehaviorChanged = NewDecision.Behavior != CurrentDecision.Behavior;
 	CurrentDecision = NewDecision;
+
+	// Stop a revive this teammate started if it is now doing something else.
+	UOutbreakMedicalComponent* Medical = ControlledPawn->FindComponentByClass<UOutbreakMedicalComponent>();
+	if (Medical && Medical->IsReviving() && NewDecision.Behavior != EOutbreakTeammateBehavior::ReviveMember)
+	{
+		Medical->CancelRevive();
+	}
+
 	MoveLocation = ComputeMoveLocation(NewDecision.Behavior, bBehaviorChanged);
 
 	if (SquadMember)
@@ -477,6 +494,120 @@ void AOutbreakSquadAIController::UpdateBehavior()
 		SquadMember->SetCurrentBehavior(NewDecision.Behavior);
 	}
 	WriteBlackboard();
+}
+
+// --- Medical assistance --------------------------------------------------------------------------
+
+void AOutbreakSquadAIController::UpdateSelfHeal()
+{
+	const UOutbreakTeammateAIConfig* Config = GetAIConfig();
+	APawn* ControlledPawn = GetPawn();
+	UOutbreakInventoryComponent* Inventory = ControlledPawn ? ControlledPawn->FindComponentByClass<UOutbreakInventoryComponent>() : nullptr;
+	if (!Inventory || !HealthComponent || Config->SelfHealHealthFraction <= 0.0f || IsUnderFire()
+		|| HealthComponent->GetHealthFraction() > Config->SelfHealHealthFraction)
+	{
+		return;
+	}
+	Inventory->UseMedicalOn(ControlledPawn);
+}
+
+void AOutbreakSquadAIController::UpdateAssistPatient(FOutbreakBehaviorContext& Context)
+{
+	AssistPatient = nullptr;
+	const UOutbreakTeammateAIConfig* Config = GetAIConfig();
+	const UOutbreakSquadComponent* Squad = GetSquad();
+	const APawn* ControlledPawn = GetPawn();
+	if (!Squad || !ControlledPawn || Config->MedicalAssistRadius <= 0.0f)
+	{
+		return;
+	}
+
+	const UOutbreakInventoryComponent* Inventory = ControlledPawn->FindComponentByClass<UOutbreakInventoryComponent>();
+	const UOutbreakMedicalComponent* OwnMedical = ControlledPawn->FindComponentByClass<UOutbreakMedicalComponent>();
+
+	// Other teammates who could help: alive AI teammates (the player decides for themself).
+	TArray<const AActor*> OtherHelpers;
+	for (const UOutbreakSquadMemberComponent* Member : Squad->GetTeammates())
+	{
+		const AActor* Owner = Member ? Member->GetOwner() : nullptr;
+		if (Owner && Owner != ControlledPawn && Member->GetStatus() == EOutbreakSquadMemberStatus::Active)
+		{
+			OtherHelpers.Add(Owner);
+		}
+	}
+
+	TArray<AActor*> PatientActors;
+	TArray<FOutbreakAssistPatient> Patients;
+	for (const UOutbreakSquadMemberComponent* Member : Squad->GetMembers())
+	{
+		AActor* Owner = Member ? Member->GetOwner() : nullptr;
+		const UOutbreakHealthComponent* Health = Owner ? Owner->FindComponentByClass<UOutbreakHealthComponent>() : nullptr;
+		if (!Owner || Owner == ControlledPawn || !Health || Health->GetHealthState() == EOutbreakHealthState::Dead)
+		{
+			continue;
+		}
+
+		FOutbreakAssistPatient& Patient = Patients.AddDefaulted_GetRef();
+		Patient.Location = Owner->GetActorLocation();
+		Patient.bDowned = Health->IsIncapacitated();
+		Patient.HealthFraction = Health->GetHealthFraction();
+		const UOutbreakMedicalComponent* Reviver = UOutbreakMedicalComponent::FindReviverOf(GetWorld(), Owner);
+		Patient.bBeingRevivedByOther = Reviver && Reviver != OwnMedical;
+		for (const AActor* Helper : OtherHelpers)
+		{
+			Patient.NearestOtherHelperDistance = FMath::Min(Patient.NearestOtherHelperDistance,
+				static_cast<float>(FVector::Dist(Helper->GetActorLocation(), Patient.Location)));
+		}
+		PatientActors.Add(Owner);
+	}
+
+	// Healing needs a medical item; whether one works on a given patient is checked on arrival.
+	const bool bCarriesMedical = Inventory && Inventory->GetItems().ContainsByPredicate([](const FOutbreakItemAmount& Entry)
+	{
+		return Entry.Item && Entry.Count > 0 && Entry.Item->Category == EOutbreakItemCategory::Medical;
+	});
+
+	const int32 Chosen = OutbreakMedicalAssist::ChoosePatient(ControlledPawn->GetActorLocation(), Patients,
+		Config->MedicalAssistRadius, bCarriesMedical && Config->HealOthersHealthFraction > 0.0f, Config->HealOthersHealthFraction);
+	if (Chosen == INDEX_NONE)
+	{
+		return;
+	}
+	AssistPatient = PatientActors[Chosen];
+	Context.bHasDownedSquadmate = Patients[Chosen].bDowned;
+	Context.bHasHurtSquadmate = !Patients[Chosen].bDowned;
+}
+
+FVector AOutbreakSquadAIController::ComputeAssistLocation(EOutbreakTeammateBehavior Behavior)
+{
+	APawn* ControlledPawn = GetPawn();
+	AActor* Patient = AssistPatient.Get();
+	if (!Patient)
+	{
+		return ControlledPawn->GetActorLocation();
+	}
+
+	const UOutbreakMedicalSettings* Settings = GetDefault<UOutbreakMedicalSettings>();
+	const float Range = Behavior == EOutbreakTeammateBehavior::ReviveMember ? Settings->ReviveRange : Settings->MedicalUseRange;
+	if (FVector::Dist(ControlledPawn->GetActorLocation(), Patient->GetActorLocation()) > Range * 0.8f)
+	{
+		return Patient->GetActorLocation();
+	}
+
+	// Arrived: work on the patient and stay put.
+	if (Behavior == EOutbreakTeammateBehavior::ReviveMember)
+	{
+		UOutbreakMedicalComponent* Medical = ControlledPawn->FindComponentByClass<UOutbreakMedicalComponent>();
+		if (Medical && !Medical->IsReviving())
+		{
+			Medical->StartRevive(Patient);
+		}
+	}
+	else if (UOutbreakInventoryComponent* Inventory = ControlledPawn->FindComponentByClass<UOutbreakInventoryComponent>())
+	{
+		Inventory->UseMedicalOn(Patient);
+	}
+	return ControlledPawn->GetActorLocation();
 }
 
 // --- Positioning ---------------------------------------------------------------------------------
@@ -623,6 +754,10 @@ FVector AOutbreakSquadAIController::ComputeMoveLocation(EOutbreakTeammateBehavio
 	case EOutbreakTeammateBehavior::FollowPlayer:
 	case EOutbreakTeammateBehavior::Regroup:
 		return ComputeFollowLocation();
+
+	case EOutbreakTeammateBehavior::ReviveMember:
+	case EOutbreakTeammateBehavior::HealMember:
+		return ComputeAssistLocation(Behavior);
 
 	case EOutbreakTeammateBehavior::SeekSafety:
 		return bHasCover ? CoverLocation : ComputeFollowLocation();

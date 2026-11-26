@@ -3,6 +3,8 @@
 #include "GameFramework/Pawn.h"
 #include "Combat/OutbreakHealthComponent.h"
 #include "Interaction/OutbreakInteractionComponent.h"
+#include "Inventory/OutbreakInventoryComponent.h"
+#include "Inventory/OutbreakInventoryText.h"
 #include "Engine/World.h"
 #include "Game/OutbreakGameState.h"
 #include "Outbreak.h"
@@ -50,11 +52,25 @@ void AOutbreakPlayerController::RefreshSquadPanel()
 		HUDWidget->SetSquadStatus(SquadCommandComponent->BuildSquadStatusText());
 		HUDWidget->SetSquadMenu(SquadCommandComponent->BuildMenuText());
 	}
+	// Inventory and medical status (Phase 10): bleed-out and revive timers change continuously.
+	if (const APawn* ControlledPawn = GetPawn())
+	{
+		HUDWidget->SetInventory(OutbreakInventoryText::BuildInventoryText(
+			ControlledPawn->FindComponentByClass<UOutbreakInventoryComponent>(), bInventoryPanelOpen));
+		HUDWidget->SetMedicalStatus(OutbreakInventoryText::BuildMedicalStatusText(ControlledPawn));
+	}
+
 	// The game state replicates the mission status; reading it here also covers late replication.
 	if (const AOutbreakGameState* GameState = GetWorld()->GetGameState<AOutbreakGameState>())
 	{
 		HUDWidget->SetMissionStatus(GameState->GetMissionStatus());
 	}
+}
+
+void AOutbreakPlayerController::ToggleInventoryPanel()
+{
+	bInventoryPanelOpen = !bInventoryPanelOpen;
+	RefreshSquadPanel();
 }
 
 void AOutbreakPlayerController::SetPawn(APawn* InPawn)

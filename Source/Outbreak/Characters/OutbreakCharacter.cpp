@@ -1,12 +1,17 @@
 #include "Characters/OutbreakCharacter.h"
 
+#include "Combat/OutbreakMedicalComponent.h"
+#include "Combat/OutbreakMedicalSettings.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Inventory/OutbreakInventoryComponent.h"
 #include "Outbreak.h"
 #include "Squad/OutbreakSquadMemberComponent.h"
 #include "Stealth/OutbreakNoiseEmitterComponent.h"
 #include "Weapons/OutbreakWeaponComponent.h"
+
+#define LOCTEXT_NAMESPACE "OutbreakCharacter"
 
 AOutbreakCharacter::AOutbreakCharacter()
 {
@@ -23,6 +28,8 @@ AOutbreakCharacter::AOutbreakCharacter()
 	WeaponComponent = CreateDefaultSubobject<UOutbreakWeaponComponent>(TEXT("WeaponComponent"));
 	SquadMemberComponent = CreateDefaultSubobject<UOutbreakSquadMemberComponent>(TEXT("SquadMemberComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UOutbreakNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
+	InventoryComponent = CreateDefaultSubobject<UOutbreakInventoryComponent>(TEXT("InventoryComponent"));
+	MedicalComponent = CreateDefaultSubobject<UOutbreakMedicalComponent>(TEXT("MedicalComponent"));
 
 	// The body turns with the controller's yaw.
 	bUseControllerRotationYaw = true;
@@ -42,6 +49,16 @@ void AOutbreakCharacter::PostInitializeComponents()
 
 	HealthComponent->OnHealthChanged.AddUniqueDynamic(this, &ThisClass::OnHealthChanged);
 	HealthComponent->OnHealthStateChanged.AddUniqueDynamic(this, &ThisClass::OnHealthStateChanged);
+
+	// Squad soldiers go down and can be revived instead of dying outright (Phase 10).
+	if (HasAuthority() && Team == EOutbreakTeam::Player)
+	{
+		const UOutbreakMedicalSettings* Medical = GetDefault<UOutbreakMedicalSettings>();
+		if (Medical->bSquadCanBeIncapacitated)
+		{
+			HealthComponent->ConfigureIncapacitation(true, Medical->BleedOutTime, Medical->MaxRevivesPerSoldier);
+		}
+	}
 }
 
 FGenericTeamId AOutbreakCharacter::GetGenericTeamId() const
@@ -152,11 +169,71 @@ void AOutbreakCharacter::OnHealthStateChanged(UOutbreakHealthComponent* InHealth
 	{
 		HandleDowned(NewState);
 	}
+	else if (OldState == EOutbreakHealthState::Incapacitated)
+	{
+		HandleRevived();
+	}
+}
+
+void AOutbreakCharacter::HandleRevived()
+{
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	if (HasAuthority())
+	{
+		WeaponComponent->SetWeaponsEnabled(true);
+	}
+	OnRevived();
+}
+
+// --- Squadmate interaction (revive, heal) --------------------------------------------------------
+
+bool AOutbreakCharacter::CanInteract_Implementation(AActor* InteractionInstigator) const
+{
+	const AOutbreakCharacter* Helper = Cast<AOutbreakCharacter>(InteractionInstigator);
+	if (!Helper || Helper == this || OutbreakTeam::IsHostile(Helper, this))
+	{
+		return false;
+	}
+	if (HealthComponent->IsIncapacitated())
+	{
+		return Helper->GetMedicalComponent() && Helper->GetMedicalComponent()->CanRevive(this);
+	}
+	return Helper->GetInventoryComponent()
+		&& Helper->GetInventoryComponent()->FindUsableItem(EOutbreakItemCategory::Medical, this) != nullptr;
+}
+
+FText AOutbreakCharacter::GetInteractionPrompt_Implementation(AActor* InteractionInstigator) const
+{
+	const FText Name = SquadMemberComponent && !SquadMemberComponent->GetDisplayName().IsEmpty()
+		? SquadMemberComponent->GetDisplayName()
+		: FText::FromString(GetName());
+	if (HealthComponent->IsIncapacitated())
+	{
+		return FText::Format(LOCTEXT("Revive", "Revive {0}"), Name);
+	}
+	return FText::Format(LOCTEXT("Heal", "Heal {0}"), Name);
+}
+
+void AOutbreakCharacter::Interact_Implementation(AActor* InteractionInstigator)
+{
+	AOutbreakCharacter* Helper = Cast<AOutbreakCharacter>(InteractionInstigator);
+	if (!Helper || !CanInteract_Implementation(InteractionInstigator))
+	{
+		return;
+	}
+	if (HealthComponent->IsIncapacitated())
+	{
+		Helper->GetMedicalComponent()->StartRevive(this);
+	}
+	else
+	{
+		Helper->GetInventoryComponent()->UseMedicalOn(this);
+	}
 }
 
 void AOutbreakCharacter::HandleDowned(EOutbreakHealthState NewState)
 {
-	// Incapacitated or dead: the character can no longer act. Recovery is Phase 10.
+	// Incapacitated or dead: the character can no longer act until revived (HandleRevived).
 	StopSprinting();
 	WeaponComponent->StopFire();
 	WeaponComponent->SetAiming(false);
@@ -169,3 +246,5 @@ void AOutbreakCharacter::HandleDowned(EOutbreakHealthState NewState)
 
 	OnDowned(NewState);
 }
+
+#undef LOCTEXT_NAMESPACE

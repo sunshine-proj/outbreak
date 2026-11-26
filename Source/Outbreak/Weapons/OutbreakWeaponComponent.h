@@ -55,6 +55,21 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Weapons")
 	void AddAmmo(UOutbreakAmmoTypeDefinition* AmmoType, int32 Count);
 
+	/**
+	 * Removes Definition (Phase 10: dropping or swapping a weapon). Its loaded rounds go back to the
+	 * reserve. Returns false if it is not carried.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Weapons")
+	bool RemoveWeapon(UOutbreakWeaponDefinition* Definition);
+
+	/** Removes up to Count reserve rounds of AmmoType. Returns the number removed. */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Weapons")
+	int32 RemoveAmmo(UOutbreakAmmoTypeDefinition* AmmoType, int32 Count);
+
+	/** Removes every weapon and all ammunition (before applying a new loadout). */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Weapons")
+	void ClearLoadout();
+
 	/** Disabled weapons refuse every request (for example when the owner dies). */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Weapons")
 	void SetWeaponsEnabled(bool bEnabled);
@@ -113,6 +128,16 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Weapons")
 	int32 GetReserveAmmo(const UOutbreakAmmoTypeDefinition* AmmoType) const;
+
+	/** Reserve plus the rounds loaded in carried weapons, of AmmoType (carried weight, Phase 10). */
+	UFUNCTION(BlueprintPure, Category = "Weapons")
+	int32 GetTotalAmmo(const UOutbreakAmmoTypeDefinition* AmmoType) const;
+
+	/** The carried weapons, in slot order. */
+	UFUNCTION(BlueprintPure, Category = "Weapons")
+	TArray<UOutbreakWeaponDefinition*> GetWeaponDefinitions() const;
+
+	const TArray<FOutbreakAmmoAmount>& GetAmmoReserves() const { return AmmoReserves; }
 
 	UFUNCTION(BlueprintPure, Category = "Weapons")
 	bool IsReloading() const { return bIsReloading; }

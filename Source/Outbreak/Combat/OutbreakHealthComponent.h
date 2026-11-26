@@ -13,7 +13,7 @@ UENUM(BlueprintType)
 enum class EOutbreakHealthState : uint8
 {
 	Alive,
-	/** Down but recoverable. Entered only when bCanBeIncapacitated; recovery gameplay is Phase 10. */
+	/** Down but recoverable: bleeds out unless revived (Phase 10). Entered only when bCanBeIncapacitated. */
 	Incapacitated,
 	Dead
 };
@@ -93,6 +93,42 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
 	void SetCanBeIncapacitated(bool bInCanBeIncapacitated) { bCanBeIncapacitated = bInCanBeIncapacitated; }
 
+	/**
+	 * Incapacitation rules (Phase 10, normally from UOutbreakMedicalSettings): bleed-out time
+	 * (0 = never) and how many revives this owner can receive (0 = unlimited).
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
+	void ConfigureIncapacitation(bool bInCanBeIncapacitated, float InBleedOutTime, int32 InMaxRevives);
+
+	/** Restores up to Amount health while alive. Returns the health actually restored. */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
+	float Heal(float Amount);
+
+	/** Incapacitated -> Alive with HealthFraction of maximum health. Returns false if not incapacitated. */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
+	bool Revive(float HealthFraction);
+
+	/** Ends an incapacitation in death (the bleed-out timer calls this). */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
+	void FinishBleedOut();
+
+	UFUNCTION(BlueprintPure, Category = "Health")
+	bool IsIncapacitated() const { return HealthState == EOutbreakHealthState::Incapacitated; }
+
+	UFUNCTION(BlueprintPure, Category = "Health")
+	float GetHealthFraction() const { return MaxHealth > 0.0f ? Health / MaxHealth : 0.0f; }
+
+	UFUNCTION(BlueprintPure, Category = "Health")
+	int32 GetReviveCount() const { return ReviveCount; }
+
+	/** Revives left before zero health kills. -1 = unlimited. */
+	UFUNCTION(BlueprintPure, Category = "Health")
+	int32 GetRevivesRemaining() const { return MaxRevives > 0 ? FMath::Max(0, MaxRevives - ReviveCount) : -1; }
+
+	/** Seconds until an incapacitated owner bleeds out. -1 when not bleeding out. Valid on every machine. */
+	UFUNCTION(BlueprintPure, Category = "Health")
+	float GetBleedOutTimeRemaining() const;
+
 	/** Changes MaxHealth (for example from an enemy definition). Optionally refills health. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
 	void SetMaxHealth(float NewMaxHealth, bool bRefillHealth);
@@ -111,6 +147,14 @@ protected:
 	/** If true, reaching zero health incapacitates instead of killing; further damage kills. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
 	bool bCanBeIncapacitated = false;
+
+	/** Seconds an incapacitated owner lasts. 0 = until revived or finished off. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health", meta = (ClampMin = "0.0", Units = "s"))
+	float BleedOutTime = 0.0f;
+
+	/** Revives this owner can receive; once used up, zero health kills. 0 = unlimited. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health", meta = (ClampMin = "0"))
+	int32 MaxRevives = 0;
 
 	/**
 	 * Damage multipliers by damage type. Every entry whose DamageType matches the incoming damage
@@ -139,4 +183,17 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_HealthState)
 	EOutbreakHealthState HealthState = EOutbreakHealthState::Alive;
+
+	UPROPERTY(Replicated)
+	int32 ReviveCount = 0;
+
+	/** Server world time of the bleed-out; < 0 when not bleeding out. */
+	UPROPERTY(Replicated)
+	double BleedOutServerTime = -1.0;
+
+	FTimerHandle BleedOutTimer;
+
+	double GetServerTimeSeconds() const;
+	void StartBleedOut();
+	void StopBleedOut();
 };

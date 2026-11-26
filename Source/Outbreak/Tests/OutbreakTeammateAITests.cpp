@@ -86,6 +86,7 @@ bool FOutbreakBehaviorConfigurableOrderTest::RunTest(const FString& Parameters)
 	const TArray<EOutbreakBehaviorLayer> ThreatFirst = {
 		EOutbreakBehaviorLayer::EmergencySurvival,
 		EOutbreakBehaviorLayer::ThreatResponse,
+		EOutbreakBehaviorLayer::MedicalAssistance,
 		EOutbreakBehaviorLayer::ExplicitOrder,
 		EOutbreakBehaviorLayer::FormationMaintenance,
 		EOutbreakBehaviorLayer::DefaultAutonomous
@@ -103,7 +104,7 @@ bool FOutbreakBehaviorConfigurableOrderTest::RunTest(const FString& Parameters)
 		EOutbreakBehaviorLayer::ExplicitOrder, EOutbreakBehaviorLayer::DefaultAutonomous }));
 	TestFalse(TEXT("Duplicate layer invalid"), OutbreakTeammateBehavior::IsValidPriorityOrder({
 		EOutbreakBehaviorLayer::ExplicitOrder, EOutbreakBehaviorLayer::ExplicitOrder, EOutbreakBehaviorLayer::ThreatResponse,
-		EOutbreakBehaviorLayer::FormationMaintenance, EOutbreakBehaviorLayer::DefaultAutonomous }));
+		EOutbreakBehaviorLayer::MedicalAssistance, EOutbreakBehaviorLayer::FormationMaintenance, EOutbreakBehaviorLayer::DefaultAutonomous }));
 	return true;
 }
 
