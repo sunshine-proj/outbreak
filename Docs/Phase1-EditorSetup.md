@@ -55,7 +55,7 @@ Suggested mappings in `IMC_Default`:
 | `IA_Aim` | Right Mouse Button | — |
 | `IA_Reload` | R | — |
 
-`IA_Fire`, `IA_Aim` and `IA_Reload` aren't bound to anything until Phase 2.
+`IA_Fire`, `IA_Aim` and `IA_Reload` are bound by the weapon system; see [Phase2-EditorSetup.md](Phase2-EditorSetup.md) for the remaining weapon actions.
 
 Then create `DA_OutbreakInputConfig` (right-click → **Miscellaneous → Data Asset → OutbreakInputConfig**), set **Default Mapping Context** to `IMC_Default`, and assign each action. **Toggle Crouch** is on by default.
 
@@ -102,7 +102,7 @@ Run in PIE (Play In Editor). Record the results in `ROADMAP.md`.
 **HUD**
 
 - [ ] The crosshair is centred.
-- [ ] Health and ammunition placeholders are visible at the bottom corners.
+- [ ] Health is visible at the bottom left. Ammunition shows a placeholder at the bottom right until a weapon is equipped (Phase 2).
 - [ ] The HUD doesn't capture the mouse.
 
 **Input configuration**
@@ -115,4 +115,3 @@ Run in PIE (Play In Editor). Record the results in `ROADMAP.md`.
 - The camera snaps when crouching instead of interpolating. This is polish, not Phase 1 scope.
 - There are no first-person arms or body mesh yet (Phase 2 weapons / Phase 13 presentation).
 - Sprint works in any direction, including backwards. Restricting it to forward movement is a tuning decision for Phase 15.
-- HUD binding assumes single-player (see ROADMAP O-006).

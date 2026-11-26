@@ -160,57 +160,57 @@ Do not mark tasks complete unless their acceptance criteria are satisfied.
 
 ### 2.1 Weapon Architecture
 
-- [ ] Define weapon configuration structure.
-- [ ] Create weapon Data Asset base class.
-- [ ] Create weapon component.
-- [ ] Implement weapon equipping.
-- [ ] Implement weapon switching.
-- [ ] Implement weapon firing interface.
+- [-] Define weapon configuration structure. — C++ written, not compiled (engine not installed). `FOutbreakFireModeDefinition`, spread and recoil structs
+- [-] Create weapon Data Asset base class. — C++ written, not compiled (engine not installed). `UOutbreakWeaponDefinition`
+- [-] Create weapon component. — C++ written, not compiled (engine not installed). `UOutbreakWeaponComponent`, server-authoritative
+- [-] Implement weapon equipping. — C++ written, not compiled (engine not installed)
+- [-] Implement weapon switching. — C++ written, not compiled (engine not installed)
+- [-] Implement weapon firing interface. — C++ written, not compiled (engine not installed). `UOutbreakFireBehavior`, instanced per fire mode
 
 ### 2.2 Shooting
 
-- [ ] Implement initial hitscan firing.
-- [ ] Implement projectile firing interface.
-- [ ] Implement fire rate.
-- [ ] Implement weapon recoil.
-- [ ] Implement aiming.
-- [ ] Implement weapon accuracy.
-- [ ] Implement muzzle flash.
-- [ ] Implement impact effects.
+- [-] Implement initial hitscan firing. — C++ written, not compiled (engine not installed). `UOutbreakHitscanFireBehavior`
+- [-] Implement projectile firing interface. — C++ written, not compiled (engine not installed). `UOutbreakProjectileFireBehavior`, `AOutbreakProjectile`
+- [-] Implement fire rate. — C++ written, not compiled (engine not installed). Enforced locally and on the server
+- [-] Implement weapon recoil. — C++ written, not compiled (engine not installed). Control-rotation kick on the owning client
+- [-] Implement aiming. — C++ written, not compiled (engine not installed). Aim spread and FOV
+- [-] Implement weapon accuracy. — C++ written, not compiled (engine not installed). Cone spread with bloom and recovery
+- [-] Implement muzzle flash. — C++ written, not compiled (engine not installed). Niagara and sound, multicast; no assets yet
+- [-] Implement impact effects. — C++ written, not compiled (engine not installed). Niagara and sound per ammunition type; no assets yet
 
 ### 2.3 Ammunition
 
-- [ ] Create ammunition data structure.
-- [ ] Implement magazine capacity.
-- [ ] Implement ammunition reserves.
-- [ ] Implement reload.
-- [ ] Implement ammunition consumption.
-- [ ] Implement ammunition validation.
-- [ ] Add ammunition display to HUD.
+- [-] Create ammunition data structure. — C++ written, not compiled (engine not installed). `UOutbreakAmmoTypeDefinition`, `FOutbreakAmmoAmount`
+- [-] Implement magazine capacity. — C++ written, not compiled (engine not installed)
+- [-] Implement ammunition reserves. — C++ written, not compiled (engine not installed). In the weapon component until Phase 10 inventory
+- [-] Implement reload. — C++ written, not compiled (engine not installed)
+- [-] Implement ammunition consumption. — C++ written, not compiled (engine not installed)
+- [-] Implement ammunition validation. — C++ written, not compiled (engine not installed). Definition validation, compatibility checks, server-side request validation
+- [-] Add ammunition display to HUD. — C++ written, not compiled (engine not installed)
 
 ### 2.4 Weapon Modes
 
-- [ ] Implement firing mode interface.
-- [ ] Implement primary firing mode.
-- [ ] Implement alternative firing mode.
-- [ ] Implement ammunition type selection.
-- [ ] Implement configurable damage.
-- [ ] Test switching firing modes.
+- [-] Implement firing mode interface. — C++ written, not compiled (engine not installed)
+- [-] Implement primary firing mode. — C++ written, not compiled (engine not installed). `FireModes[0]`
+- [-] Implement alternative firing mode. — C++ written, not compiled (engine not installed). Further fire modes, cycled with `IA_CycleFireMode`
+- [-] Implement ammunition type selection. — C++ written, not compiled (engine not installed). Cycling reloads with the new type
+- [-] Implement configurable damage. — C++ written, not compiled (engine not installed). Fire mode base damage × ammunition multiplier × target multipliers
+- [-] Test switching firing modes. — automation test written (`Outbreak.Weapons.Component.FireModeSwitching`), not run; in-editor check pending
 
 ### 2.5 Damage System
 
-- [ ] Create reusable health component.
-- [ ] Define health states: Alive, Incapacitated, Dead.
-- [ ] Implement damage reception.
-- [ ] Implement damage types.
-- [ ] Implement death handling.
-- [ ] Implement basic hit reactions.
-- [ ] Create test damageable target.
+- [-] Create reusable health component. — C++ written, not compiled (engine not installed). `UOutbreakHealthComponent`, replicated
+- [-] Define health states: Alive, Incapacitated, Dead. — C++ written, not compiled (engine not installed)
+- [-] Implement damage reception. — C++ written, not compiled (engine not installed). Engine damage pipeline (`OnTakeAnyDamage`)
+- [-] Implement damage types. — C++ written, not compiled (engine not installed). `UOutbreakDamageType` subclasses and per-type multipliers
+- [-] Implement death handling. — C++ written, not compiled (engine not installed). Player loses movement, input and weapons; test target hides and respawns
+- [-] Implement basic hit reactions. — C++ written, not compiled (engine not installed). Player view kick; test target scale pulse
+- [-] Create test damageable target. — C++ written, not compiled (engine not installed). `AOutbreakCombatTestTarget` with Team = Neutral
 
 ### 2.6 Combat Test Setup
 
-- [ ] Create hostile test target: damageable, assigned to a hostile team, registered as an AI perception stimulus source.
-- [ ] Create combat test map.
+- [-] Create hostile test target: damageable, assigned to a hostile team, registered as an AI perception stimulus source. — C++ written, not compiled (engine not installed). `AOutbreakCombatTestTarget` (default Team = Hostile)
+- [-] Create combat test map. — editor asset pending (see `Docs/Phase2-EditorSetup.md`)
 
 > The hostile test target lets Phase 4 verify Attack orders and threat response before enemy AI exists in Phase 5.
 
@@ -876,9 +876,9 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phase 1 C++ was written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phase 1 and Phase 2 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
-**Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through [Docs/Phase1-EditorSetup.md](Docs/Phase1-EditorSetup.md).
+**Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through [Docs/Phase1-EditorSetup.md](Docs/Phase1-EditorSetup.md) and [Docs/Phase2-EditorSetup.md](Docs/Phase2-EditorSetup.md).
 
 **Current milestone:** M6 — First playable prototype (end of Phase 6).
 
@@ -900,6 +900,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | --- | --- | --- |
 | 0.1 Install Unreal Engine 5 | Not installed on the development machine (Ubuntu 24.04). The download requires the developer's Epic Games account, so an agent cannot install it. All later tasks depend on it. | 2026-11-23 |
 | Phase 1 verification (all `[-]` tasks in Phase 1) | Same as above: Phase 1 C++ cannot be compiled or tested, and its editor assets (input actions, mapping context, Blueprints, test map) cannot be created until the engine is installed. Steps: `Docs/Phase1-EditorSetup.md`. | 2026-11-26 |
+| Phase 2 verification (all `[-]` tasks in Phase 2) | Same as above. Editor assets: weapon and ammunition data assets, new input actions, combat test map. Steps: `Docs/Phase2-EditorSetup.md`. | 2026-11-26 |
 
 ## Decision Log
 
@@ -914,6 +915,8 @@ Record architectural and planning decisions here.
 | D-003 | 2026-11-23 | P0 "basic squad commands" are Follow, Hold, Move, Regroup and Attack. Defend, Cover and Retreat move to Phase 7; Stealth moves to Phase 8. | Defend, Cover and Retreat need cover positions (P1 "Tactical cover"); Stealth needs the noise and detection system (P1). Developer confirmation requested. |
 | D-004 | 2026-11-26 | Phase 1 C++ is written before Phase 0 is verified, while the engine is not installed. All Phase 1 tasks stay `[-]` until the code compiles, the tests pass and the editor checks are done. | Developer request: make progress while the engine install is blocked. Risk: compile fixes may be needed once the engine version (O-004) is known. |
 | D-005 | 2026-11-26 | Input assets are grouped in a `UOutbreakInputConfig` data asset assigned to the player character Blueprint. The HUD (`UOutbreakHUDWidget`) builds a default layout in C++ when no Widget Blueprint subclass is used. | Key bindings stay in assets, so they can be changed without code. The HUD works before UI assets exist, and designers can still replace the layout. |
+| D-006 | 2026-11-26 | Server-authoritative gameplay from Phase 2 (closes O-006). Clients send requests through Server RPCs; the server validates fire rate, ammunition, reload state and shot origin, applies damage and multicasts cosmetics. Health and weapon state replicate and fire change events on every machine. Recoil is applied locally; ammunition is not predicted. | Developer decision: keeps P3 co-op possible without rewriting weapons and health. |
+| D-007 | 2026-11-26 | Weapons are data: `UOutbreakWeaponDefinition` holds fire modes; each fire mode holds an instanced, stateless `UOutbreakFireBehavior` (hitscan or projectile). `FireModes[0]` is primary and the rest are alternatives, cycled by input. Ammunition types are separate data assets; switching type reloads and returns loaded rounds to reserve. Reserves live in the weapon component until the Phase 10 inventory. Damage uses the engine damage pipeline with `UOutbreakDamageType` subclasses. | New firing behaviours and ammunition need no weapon-component changes; the engine pipeline lets any actor receive damage. |
 
 ### Open
 
@@ -924,7 +927,6 @@ Record architectural and planning decisions here.
 | O-003 | Audio backend: Unreal Audio or FMOD? | Phase 8 (noise events) |
 | O-004 | Pinned Unreal Engine 5 minor version. | Phase 0 |
 | O-005 | Supported development platforms (the PRD targets Windows; Linux development is also in use). | Phase 0 |
-| O-006 | Replication stance: explicitly single-player only, or server-authoritative patterns from the start to keep P3 co-op possible? | Phase 2 |
 | O-007 | Development hardware: the current machine has only integrated Intel UHD 770 graphics. Is that acceptable for editor work, or will a dedicated GPU be used? | Phase 0 |
 
 ## Agent Execution Instructions

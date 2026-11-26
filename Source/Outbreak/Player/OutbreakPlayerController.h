@@ -5,13 +5,16 @@
 
 #include "OutbreakPlayerController.generated.h"
 
+class UOutbreakHealthComponent;
 class UOutbreakHUDWidget;
+class UOutbreakWeaponComponent;
 
 /**
- * Player controller. Owns the local HUD and connects it to the possessed pawn's components.
+ * Player controller. Owns the local HUD and connects it to the possessed pawn's components
+ * (interaction, health, weapons).
  *
- * Single-player assumption: HUD binding happens in OnPossess, which runs on the authority.
- * Revisit when the replication stance (ROADMAP O-006) is decided.
+ * Binding happens in SetPawn, which runs on the server when possessing and on the owning client
+ * when the pawn replicates, so the HUD works for listen-server and remote players (D-006).
  */
 UCLASS()
 class OUTBREAK_API AOutbreakPlayerController : public APlayerController
@@ -28,8 +31,12 @@ public:
 protected:
 
 	virtual void BeginPlay() override;
-	virtual void OnPossess(APawn* InPawn) override;
-	virtual void OnUnPossess() override;
+
+public:
+
+	virtual void SetPawn(APawn* InPawn) override;
+
+protected:
 
 	/** HUD class to create. Defaults to the C++ HUD with its built-in layout. */
 	UPROPERTY(EditDefaultsOnly, Category = "HUD")
@@ -40,6 +47,12 @@ private:
 	void CreateHUDWidget();
 	void BindHUDToPawn(APawn* InPawn);
 	void UnbindHUDFromPawn(APawn* InPawn);
+
+	UFUNCTION()
+	void HandlePawnHealthChanged(UOutbreakHealthComponent* HealthComponent, float NewHealth, float Delta);
+
+	UFUNCTION()
+	void HandlePawnWeaponStateChanged(UOutbreakWeaponComponent* WeaponComponent);
 
 	UPROPERTY(Transient)
 	TObjectPtr<UOutbreakHUDWidget> HUDWidget;

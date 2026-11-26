@@ -1,9 +1,13 @@
 #include "Player/OutbreakPlayerController.h"
 
 #include "GameFramework/Pawn.h"
+#include "Combat/OutbreakHealthComponent.h"
 #include "Interaction/OutbreakInteractionComponent.h"
 #include "Outbreak.h"
 #include "UI/OutbreakHUDWidget.h"
+#include "Weapons/OutbreakAmmoTypeDefinition.h"
+#include "Weapons/OutbreakWeaponComponent.h"
+#include "Weapons/OutbreakWeaponDefinition.h"
 
 AOutbreakPlayerController::AOutbreakPlayerController()
 {
@@ -19,19 +23,23 @@ void AOutbreakPlayerController::BeginPlay()
 	BindHUDToPawn(GetPawn());
 }
 
-void AOutbreakPlayerController::OnPossess(APawn* InPawn)
+void AOutbreakPlayerController::SetPawn(APawn* InPawn)
 {
-	Super::OnPossess(InPawn);
+	APawn* OldPawn = GetPawn();
+	if (OldPawn == InPawn)
+	{
+		Super::SetPawn(InPawn);
+		return;
+	}
 
-	CreateHUDWidget();
-	BindHUDToPawn(InPawn);
-}
+	UnbindHUDFromPawn(OldPawn);
+	Super::SetPawn(InPawn);
 
-void AOutbreakPlayerController::OnUnPossess()
-{
-	UnbindHUDFromPawn(GetPawn());
-
-	Super::OnUnPossess();
+	if (InPawn)
+	{
+		CreateHUDWidget();
+		BindHUDToPawn(InPawn);
+	}
 }
 
 void AOutbreakPlayerController::CreateHUDWidget()
@@ -66,6 +74,18 @@ void AOutbreakPlayerController::BindHUDToPawn(APawn* InPawn)
 		Interaction->OnFocusChanged.AddUniqueDynamic(HUDWidget.Get(), &UOutbreakHUDWidget::HandleInteractionFocusChanged);
 		HUDWidget->SetInteractionPrompt(Interaction->GetFocusedPrompt());
 	}
+
+	if (UOutbreakHealthComponent* Health = InPawn->FindComponentByClass<UOutbreakHealthComponent>())
+	{
+		Health->OnHealthChanged.AddUniqueDynamic(this, &ThisClass::HandlePawnHealthChanged);
+		HandlePawnHealthChanged(Health, Health->GetHealth(), 0.0f);
+	}
+
+	if (UOutbreakWeaponComponent* Weapons = InPawn->FindComponentByClass<UOutbreakWeaponComponent>())
+	{
+		Weapons->OnWeaponStateChanged.AddUniqueDynamic(this, &ThisClass::HandlePawnWeaponStateChanged);
+		HandlePawnWeaponStateChanged(Weapons);
+	}
 }
 
 void AOutbreakPlayerController::UnbindHUDFromPawn(APawn* InPawn)
@@ -79,6 +99,49 @@ void AOutbreakPlayerController::UnbindHUDFromPawn(APawn* InPawn)
 	{
 		Interaction->OnFocusChanged.RemoveDynamic(HUDWidget.Get(), &UOutbreakHUDWidget::HandleInteractionFocusChanged);
 	}
+	if (UOutbreakHealthComponent* Health = InPawn->FindComponentByClass<UOutbreakHealthComponent>())
+	{
+		Health->OnHealthChanged.RemoveDynamic(this, &ThisClass::HandlePawnHealthChanged);
+	}
+	if (UOutbreakWeaponComponent* Weapons = InPawn->FindComponentByClass<UOutbreakWeaponComponent>())
+	{
+		Weapons->OnWeaponStateChanged.RemoveDynamic(this, &ThisClass::HandlePawnWeaponStateChanged);
+	}
+	HUDWidget->ClearAmmoDisplay();
 
 	HUDWidget->SetInteractionPrompt(FText::GetEmpty());
+}
+
+void AOutbreakPlayerController::HandlePawnHealthChanged(UOutbreakHealthComponent* HealthComponent, float NewHealth, float Delta)
+{
+	if (HUDWidget && HealthComponent)
+	{
+		HUDWidget->SetHealthDisplay(NewHealth, HealthComponent->GetMaxHealth());
+	}
+}
+
+void AOutbreakPlayerController::HandlePawnWeaponStateChanged(UOutbreakWeaponComponent* WeaponComponent)
+{
+	if (!HUDWidget || !WeaponComponent)
+	{
+		return;
+	}
+
+	FOutbreakWeaponSlot Slot;
+	if (!WeaponComponent->GetActiveWeaponSlot(Slot) || !Slot.Definition)
+	{
+		HUDWidget->ClearAmmoDisplay();
+		return;
+	}
+
+	const FOutbreakFireModeDefinition* FireMode = WeaponComponent->GetActiveFireMode();
+	// The HUD shows the ammunition the next reload will use, so a pending type switch is visible.
+	const UOutbreakAmmoTypeDefinition* ShownAmmo = Slot.SelectedAmmoType ? Slot.SelectedAmmoType.Get() : Slot.LoadedAmmoType.Get();
+
+	HUDWidget->SetAmmoDisplay(Slot.AmmoInMagazine, WeaponComponent->GetReserveAmmo(ShownAmmo));
+	HUDWidget->SetWeaponDisplay(
+		Slot.Definition->DisplayName,
+		FireMode ? FireMode->DisplayName : FText::GetEmpty(),
+		ShownAmmo ? ShownAmmo->DisplayName : FText::GetEmpty(),
+		WeaponComponent->IsReloading());
 }

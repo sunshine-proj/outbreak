@@ -9,14 +9,14 @@ class UTextBlock;
 class UWidget;
 
 /**
- * Main in-game HUD: crosshair, health, ammunition and interaction prompt.
+ * Main in-game HUD: crosshair, health, ammunition, current weapon and interaction prompt.
  *
  * Designers subclass it as a Widget Blueprint and add widgets with the bound names below
  * (all optional). When used directly from C++ with no designer layout, it builds a minimal
  * default layout so the HUD works before any UI assets exist.
  *
- * Health and ammunition show placeholders until the health (Phase 2.5) and weapon (Phase 2.3)
- * systems push real values through SetHealthDisplay and SetAmmoDisplay.
+ * The widget only displays what it is given. AOutbreakPlayerController pushes values from the
+ * pawn's health and weapon components. Placeholders show until the first values arrive.
  */
 UCLASS(Blueprintable)
 class OUTBREAK_API UOutbreakHUDWidget : public UUserWidget
@@ -36,6 +36,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	void SetAmmoDisplay(int32 MagazineAmmo, int32 ReserveAmmo);
+
+	/** Shows the placeholder ammunition text, for example when no weapon is equipped. */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void ClearAmmoDisplay();
+
+	/** Weapon line, for example "Rifle | Automatic | Standard" or "... | Reloading". */
+	UFUNCTION(BlueprintCallable, Category = "HUD")
+	void SetWeaponDisplay(const FText& WeaponName, const FText& FireModeName, const FText& AmmoTypeName, bool bReloading);
 
 	/** Matches UOutbreakInteractionComponent::OnFocusChanged so it can be bound directly. */
 	UFUNCTION()
@@ -60,6 +68,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> InteractionPromptText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> WeaponText;
 
 	/** Shown until real health values are pushed. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HUD")

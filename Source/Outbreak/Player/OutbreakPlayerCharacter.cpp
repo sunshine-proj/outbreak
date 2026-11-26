@@ -13,6 +13,8 @@
 #include "Interaction/OutbreakInteractionComponent.h"
 #include "Outbreak.h"
 #include "Player/OutbreakInputConfig.h"
+#include "Weapons/OutbreakWeaponComponent.h"
+#include "Weapons/OutbreakWeaponDefinition.h"
 
 AOutbreakPlayerCharacter::AOutbreakPlayerCharacter()
 {
@@ -27,7 +29,11 @@ AOutbreakPlayerCharacter::AOutbreakPlayerCharacter()
 	FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, MovementSettings.StandingEyeHeight));
 	FirstPersonCamera->bUsePawnControlRotation = true;
 
+	FirstPersonCamera->SetFieldOfView(DefaultFieldOfView);
+
 	InteractionComponent = CreateDefaultSubobject<UOutbreakInteractionComponent>(TEXT("InteractionComponent"));
+	HealthComponent = CreateDefaultSubobject<UOutbreakHealthComponent>(TEXT("HealthComponent"));
+	WeaponComponent = CreateDefaultSubobject<UOutbreakWeaponComponent>(TEXT("WeaponComponent"));
 
 	// The body turns with the controller's yaw; pitch only affects the camera.
 	bUseControllerRotationYaw = true;
@@ -47,6 +53,16 @@ void AOutbreakPlayerCharacter::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	ApplyMovementSettings();
+	FirstPersonCamera->SetFieldOfView(DefaultFieldOfView);
+
+	HealthComponent->OnHealthChanged.AddUniqueDynamic(this, &ThisClass::HandleHealthChanged);
+	HealthComponent->OnHealthStateChanged.AddUniqueDynamic(this, &ThisClass::HandleHealthStateChanged);
+	WeaponComponent->OnWeaponStateChanged.AddUniqueDynamic(this, &ThisClass::HandleWeaponStateChanged);
+}
+
+FGenericTeamId AOutbreakPlayerCharacter::GetGenericTeamId() const
+{
+	return OutbreakTeam::ToGenericTeamId(Team);
 }
 
 void AOutbreakPlayerCharacter::ApplyMovementSettings()
@@ -199,7 +215,38 @@ void AOutbreakPlayerCharacter::SetupPlayerInputComponent(UInputComponent* Player
 		EnhancedInput->BindAction(InputConfig->InteractAction, ETriggerEvent::Started, this, &ThisClass::HandleInteract);
 	}
 
-	// FireAction, AimAction and ReloadAction are bound by the weapon system in Phase 2.
+	if (InputConfig->FireAction)
+	{
+		EnhancedInput->BindAction(InputConfig->FireAction, ETriggerEvent::Started, this, &ThisClass::HandleFireStarted);
+		EnhancedInput->BindAction(InputConfig->FireAction, ETriggerEvent::Completed, this, &ThisClass::HandleFireCompleted);
+		EnhancedInput->BindAction(InputConfig->FireAction, ETriggerEvent::Canceled, this, &ThisClass::HandleFireCompleted);
+	}
+	if (InputConfig->AimAction)
+	{
+		EnhancedInput->BindAction(InputConfig->AimAction, ETriggerEvent::Started, this, &ThisClass::HandleAimStarted);
+		EnhancedInput->BindAction(InputConfig->AimAction, ETriggerEvent::Completed, this, &ThisClass::HandleAimCompleted);
+		EnhancedInput->BindAction(InputConfig->AimAction, ETriggerEvent::Canceled, this, &ThisClass::HandleAimCompleted);
+	}
+	if (InputConfig->ReloadAction)
+	{
+		EnhancedInput->BindAction(InputConfig->ReloadAction, ETriggerEvent::Started, this, &ThisClass::HandleReload);
+	}
+	if (InputConfig->NextWeaponAction)
+	{
+		EnhancedInput->BindAction(InputConfig->NextWeaponAction, ETriggerEvent::Started, this, &ThisClass::HandleNextWeapon);
+	}
+	if (InputConfig->PreviousWeaponAction)
+	{
+		EnhancedInput->BindAction(InputConfig->PreviousWeaponAction, ETriggerEvent::Started, this, &ThisClass::HandlePreviousWeapon);
+	}
+	if (InputConfig->CycleFireModeAction)
+	{
+		EnhancedInput->BindAction(InputConfig->CycleFireModeAction, ETriggerEvent::Started, this, &ThisClass::HandleCycleFireMode);
+	}
+	if (InputConfig->CycleAmmoTypeAction)
+	{
+		EnhancedInput->BindAction(InputConfig->CycleAmmoTypeAction, ETriggerEvent::Started, this, &ThisClass::HandleCycleAmmoType);
+	}
 }
 
 void AOutbreakPlayerCharacter::HandleMove(const FInputActionValue& Value)
@@ -259,4 +306,94 @@ void AOutbreakPlayerCharacter::HandleSprintCompleted()
 void AOutbreakPlayerCharacter::HandleInteract()
 {
 	InteractionComponent->TryInteract();
+}
+
+void AOutbreakPlayerCharacter::HandleFireStarted()
+{
+	WeaponComponent->StartFire();
+}
+
+void AOutbreakPlayerCharacter::HandleFireCompleted()
+{
+	WeaponComponent->StopFire();
+}
+
+void AOutbreakPlayerCharacter::HandleAimStarted()
+{
+	WeaponComponent->SetAiming(true);
+}
+
+void AOutbreakPlayerCharacter::HandleAimCompleted()
+{
+	WeaponComponent->SetAiming(false);
+}
+
+void AOutbreakPlayerCharacter::HandleReload()
+{
+	WeaponComponent->StartReload();
+}
+
+void AOutbreakPlayerCharacter::HandleNextWeapon()
+{
+	WeaponComponent->EquipNextWeapon();
+}
+
+void AOutbreakPlayerCharacter::HandlePreviousWeapon()
+{
+	WeaponComponent->EquipPreviousWeapon();
+}
+
+void AOutbreakPlayerCharacter::HandleCycleFireMode()
+{
+	WeaponComponent->CycleFireMode();
+}
+
+void AOutbreakPlayerCharacter::HandleCycleAmmoType()
+{
+	WeaponComponent->CycleAmmoType();
+}
+
+void AOutbreakPlayerCharacter::HandleHealthChanged(UOutbreakHealthComponent* InHealthComponent, float NewHealth, float Delta)
+{
+	// Basic hit reaction: a small upward view kick for the player who was hit.
+	if (Delta < 0.0f && IsLocallyControlled() && Controller)
+	{
+		Controller->SetControlRotation(Controller->GetControlRotation() + FRotator(HitReactionPitchKick, 0.0f, 0.0f));
+	}
+}
+
+void AOutbreakPlayerCharacter::HandleHealthStateChanged(UOutbreakHealthComponent* InHealthComponent,
+	EOutbreakHealthState NewState, EOutbreakHealthState OldState)
+{
+	if (NewState == EOutbreakHealthState::Alive)
+	{
+		return;
+	}
+
+	// Incapacitated or dead: the player can no longer act. Mission failure is Phase 6.
+	StopSprinting();
+	WeaponComponent->StopFire();
+	WeaponComponent->SetAiming(false);
+	if (HasAuthority())
+	{
+		WeaponComponent->SetWeaponsEnabled(false);
+	}
+
+	GetCharacterMovement()->DisableMovement();
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		if (PlayerController->IsLocalController())
+		{
+			DisableInput(PlayerController);
+		}
+	}
+
+	OnDowned(NewState);
+}
+
+void AOutbreakPlayerCharacter::HandleWeaponStateChanged(UOutbreakWeaponComponent* InWeaponComponent)
+{
+	const UOutbreakWeaponDefinition* Weapon = WeaponComponent->GetActiveWeaponDefinition();
+	const bool bAiming = WeaponComponent->IsAiming() && Weapon;
+	FirstPersonCamera->SetFieldOfView(bAiming ? Weapon->AimFieldOfView : DefaultFieldOfView);
 }

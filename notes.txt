@@ -55,6 +55,59 @@ Nothing is committed yet. When the engine is in, the next step is to build, run 
 ================================
 
 
+Phase 2 is written the same way as Phase 1: all C++, nothing compiled, run or tested in Unreal. Every Phase 2 task is marked [-] in ROADMAP.md, and the blocker table now lists Phase 2 verification.
+
+Your answer on replication is logged as decision D-006, and open decision O-006 is closed. Clients send requests to the server, and the server checks each one (fire rate, ammo, reload state, and that the shot starts near the shooter's eyes). It then applies damage and tells every machine to play the effects. Health and weapon state are copied to all players.
+
+What's implemented
+
+Area	Files
+Weapon data	OutbreakWeaponDefinition.h: magazine, reload time, aim zoom, effects, and a list of fire modes (damage, fire rate, spread, recoil, range). Asset validation catches bad settings in the editor.
+Ammo types	OutbreakAmmoTypeDefinition.h: damage multiplier, damage type, optional explosion radius, impact effects.
+Firing	OutbreakFireBehavior.h: each fire mode is either hitscan or projectile. OutbreakProjectile.h is the projectile itself, visible to all players.
+Weapon component	OutbreakWeaponComponent.h: picking up and switching weapons, fire rate, spread that grows as you fire, recoil, aiming, reload, auto-reload when empty, switching fire mode and ammo type, ammo reserves.
+Health and damage	OutbreakHealthComponent.h: Alive → Incapacitated → Dead, with per-damage-type multipliers. Four damage types (ballistic, armour-piercing, explosive, energy) in OutbreakDamageTypes.h. Damage goes through the engine's standard damage system, so any actor can receive it.
+Test target	OutbreakCombatTestTarget.h: hostile team by default, visible to AI sight, shrinks briefly when hit, comes back after it's destroyed. Set it to the neutral team for a plain damageable target.
+Player	The character now has health, weapons and a team; it binds the weapon keys, kicks the view when hit, zooms when aiming, and disables movement, input and weapons on death. The HUD shows real health, ammo and a weapon line, e.g. Rifle | Automatic | Standard.
+Tests	13 new automation tests in OutbreakWeaponTests.cpp and OutbreakHealthTests.cpp.
+Fixes to Phase 1 code
+
+Test helper: the helper never prepared the test world for play, so spawned actors skipped part of their setup and the Phase 1 movement-settings tests would have failed. It's fixed in OutbreakTestWorld.h.
+Client HUD: the HUD hookup only ran on the server, so a client player would never see their HUD update. It now runs on every machine.
+Docs: Docs/Phase2-EditorSetup.md covers the 4 new input actions, example rifle, launcher and ammo assets, the combat test map, and a checklist for checking it by hand. That checklist includes a 2-player client run to check that the server stays in control. I also added decision D-007 (how weapon data is structured) to the roadmap.
+
+Risks and gaps
+
+Compiling: this is about 2,000 lines that have never been compiled, so expect some fixes on the first build. The asset validation code needs UE 5.3 or later, which ties into the open engine-version decision (O-004).
+Not covered by automated tests: the test world's clock never advances, so hitscan traces, projectiles, timed reloads and automatic fire can only be checked by hand in the editor.
+Client ammo: a remote client's ammo count updates only after the server replies. Recoil is applied on the client straight away.
+No meshes or real effects: there are no weapon models, and muzzle flash and impact effects need Niagara assets to be assigned.
+Nothing is committed. The next roadmap step is Phase 3 (squad architecture), but open decision O-001 (where squad size limits are configured) has to be settled first.
+
+
+
+================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

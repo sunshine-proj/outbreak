@@ -64,6 +64,7 @@ void UOutbreakHUDWidget::BuildDefaultLayout()
 	InteractionPromptText = AddText(TEXT("InteractionPromptText"), FText::GetEmpty(), Centre, FVector2D(0.5f, 0.0f), FVector2D(0.0f, 40.0f));
 	HealthText = AddText(TEXT("HealthText"), HealthPlaceholderText, BottomLeft, FVector2D(0.0f, 1.0f), FVector2D(40.0f, -40.0f));
 	AmmoText = AddText(TEXT("AmmoText"), AmmoPlaceholderText, BottomRight, FVector2D(1.0f, 1.0f), FVector2D(-40.0f, -40.0f));
+	WeaponText = AddText(TEXT("WeaponText"), FText::GetEmpty(), BottomRight, FVector2D(1.0f, 1.0f), FVector2D(-40.0f, -70.0f));
 }
 
 void UOutbreakHUDWidget::SetInteractionPrompt(const FText& Prompt)
@@ -95,6 +96,29 @@ void UOutbreakHUDWidget::SetAmmoDisplay(int32 MagazineAmmo, int32 ReserveAmmo)
 		AmmoText->SetText(FText::Format(LOCTEXT("AmmoFormat", "{0} / {1}"),
 			FText::AsNumber(MagazineAmmo), FText::AsNumber(ReserveAmmo)));
 	}
+}
+
+void UOutbreakHUDWidget::ClearAmmoDisplay()
+{
+	if (AmmoText)
+	{
+		AmmoText->SetText(AmmoPlaceholderText);
+	}
+	if (WeaponText)
+	{
+		WeaponText->SetText(FText::GetEmpty());
+	}
+}
+
+void UOutbreakHUDWidget::SetWeaponDisplay(const FText& WeaponName, const FText& FireModeName, const FText& AmmoTypeName, bool bReloading)
+{
+	if (!WeaponText)
+	{
+		return;
+	}
+
+	const FText Status = bReloading ? LOCTEXT("Reloading", "Reloading") : AmmoTypeName;
+	WeaponText->SetText(FText::Format(LOCTEXT("WeaponFormat", "{0} | {1} | {2}"), WeaponName, FireModeName, Status));
 }
 
 void UOutbreakHUDWidget::HandleInteractionFocusChanged(AActor* FocusedActor, const FText& InteractionPrompt)

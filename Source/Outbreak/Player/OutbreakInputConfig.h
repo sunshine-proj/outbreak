@@ -54,17 +54,33 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Interaction")
 	TObjectPtr<UInputAction> InteractAction;
 
-	/** Digital. Bound by the weapon system (Phase 2). */
+	/** Digital, held for automatic fire modes. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Weapon")
 	TObjectPtr<UInputAction> FireAction;
 
-	/** Digital. Bound by the weapon system (Phase 2). */
+	/** Digital, held. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Weapon")
 	TObjectPtr<UInputAction> AimAction;
 
-	/** Digital. Bound by the weapon system (Phase 2). */
+	/** Digital. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Weapon")
 	TObjectPtr<UInputAction> ReloadAction;
+
+	/** Digital. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Weapon")
+	TObjectPtr<UInputAction> NextWeaponAction;
+
+	/** Digital. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Weapon")
+	TObjectPtr<UInputAction> PreviousWeaponAction;
+
+	/** Digital. Switches between the active weapon's primary and alternative fire modes. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Weapon")
+	TObjectPtr<UInputAction> CycleFireModeAction;
+
+	/** Digital. Selects the next compatible ammunition type and reloads with it. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Actions|Weapon")
+	TObjectPtr<UInputAction> CycleAmmoTypeAction;
 
 	/** If true, the crouch input toggles crouching; otherwise crouch is held. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behaviour")
