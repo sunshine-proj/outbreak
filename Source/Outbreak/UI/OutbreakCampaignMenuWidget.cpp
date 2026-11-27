@@ -23,6 +23,7 @@ namespace
 {
 	constexpr float SensitivityStep = 0.1f;
 	constexpr float FieldOfViewStep = 5.0f;
+	constexpr float VolumeStep = 0.1f;
 	/** Shown when the field-of-view setting is 0 (character default) and the player starts changing it. */
 	constexpr float DefaultFieldOfViewForSteps = 90.0f;
 }
@@ -323,15 +324,15 @@ void UOutbreakCampaignMenuWidget::RebuildSettingsRows()
 		return;
 	}
 
-	auto AddStepper = [this](const FText& Label, const FText& Value, EAction Down, EAction Up)
+	auto AddStepper = [this](const FText& Label, const FText& Value, EAction Down, EAction Up, int32 Index = 0)
 	{
 		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 		Row->AddChildToHorizontalBox(MakeText(Label))->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-		Row->AddChildToHorizontalBox(MakeButton(LOCTEXT("Down", " - "), Down, 0));
+		Row->AddChildToHorizontalBox(MakeButton(LOCTEXT("Down", " - "), Down, Index));
 		Row->AddChildToHorizontalBox(MakeText(Value))->SetPadding(FMargin(12.0f, 4.0f));
 		if (Up != Down)
 		{
-			Row->AddChildToHorizontalBox(MakeButton(LOCTEXT("Up", " + "), Up, 0));
+			Row->AddChildToHorizontalBox(MakeButton(LOCTEXT("Up", " + "), Up, Index));
 		}
 		SettingsList->AddChildToVerticalBox(Row)->SetPadding(FMargin(0.0f, 2.0f));
 	};
@@ -353,6 +354,19 @@ void UOutbreakCampaignMenuWidget::RebuildSettingsRows()
 		Settings->GetFieldOfView() > 0.0f ? FText::AsNumber(FMath::RoundToInt(Settings->GetFieldOfView())) : LOCTEXT("FovDefault", "Default"),
 		EAction::FieldOfViewDown, EAction::FieldOfViewUp);
 	AddToggle(LOCTEXT("Subtitles", "Subtitles"), Settings->AreSubtitlesShown(), EAction::ToggleSubtitles);
+
+	const TPair<EOutbreakVolumeChannel, FText> Volumes[] = {
+		{ EOutbreakVolumeChannel::Master, LOCTEXT("MasterVolume", "Master volume") },
+		{ EOutbreakVolumeChannel::Effects, LOCTEXT("EffectsVolume", "Effects volume") },
+		{ EOutbreakVolumeChannel::Voice, LOCTEXT("VoiceVolume", "Voice volume") },
+		{ EOutbreakVolumeChannel::Music, LOCTEXT("MusicVolume", "Music volume") },
+	};
+	for (const TPair<EOutbreakVolumeChannel, FText>& Volume : Volumes)
+	{
+		const int32 Percent = FMath::RoundToInt(Settings->GetVolume(Volume.Key) * 100.0f);
+		AddStepper(Volume.Value, FText::Format(LOCTEXT("Percent", "{0}%"), Percent), EAction::VolumeDown, EAction::VolumeUp,
+			static_cast<int32>(Volume.Key));
+	}
 
 	UOutbreakMenuButton* Apply = MakeButton(LOCTEXT("Apply", "  APPLY AND SAVE SETTINGS  "), EAction::ApplySettings, 0);
 	SettingsList->AddChildToVerticalBox(Apply)->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
@@ -492,6 +506,15 @@ void UOutbreakCampaignMenuWidget::HandleRowButton(UOutbreakMenuButton* Button)
 		if (Settings)
 		{
 			Settings->SetShowSubtitles(!Settings->AreSubtitlesShown());
+		}
+		break;
+
+	case EAction::VolumeDown:
+	case EAction::VolumeUp:
+		if (Settings)
+		{
+			const EOutbreakVolumeChannel Channel = static_cast<EOutbreakVolumeChannel>(Button->Index);
+			Settings->SetVolume(Channel, Settings->GetVolume(Channel) + (Action == EAction::VolumeUp ? VolumeStep : -VolumeStep));
 		}
 		break;
 

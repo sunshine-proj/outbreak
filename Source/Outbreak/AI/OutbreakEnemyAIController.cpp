@@ -33,6 +33,12 @@
 #include "Stealth/OutbreakVisibility.h"
 #include "Weapons/OutbreakWeaponComponent.h"
 
+// Phase 15 profiling: `stat Outbreak`, Insights and the Outbreak CSV category.
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Enemy AI controllers"), STAT_OutbreakEnemyAICount, STATGROUP_Outbreak);
+DECLARE_CYCLE_STAT(TEXT("Enemy decision update"), STAT_OutbreakEnemyUpdate, STATGROUP_Outbreak);
+DECLARE_CYCLE_STAT(TEXT("Enemy sight and detection"), STAT_OutbreakEnemySight, STATGROUP_Outbreak);
+DECLARE_CYCLE_STAT(TEXT("Enemy perception event"), STAT_OutbreakEnemyPerceptionEvent, STATGROUP_Outbreak);
+
 namespace
 {
 	TAutoConsoleVariable<int32> CVarDebugEnemies(
@@ -88,6 +94,7 @@ bool AOutbreakEnemyAIController::IsAlive(const AActor* Actor)
 
 void AOutbreakEnemyAIController::OnPossess(APawn* InPawn)
 {
+	INC_DWORD_STAT(STAT_OutbreakEnemyAICount);
 	Super::OnPossess(InPawn);
 
 	Enemy = Cast<AOutbreakEnemyCharacter>(InPawn);
@@ -125,6 +132,7 @@ void AOutbreakEnemyAIController::OnPossess(APawn* InPawn)
 
 void AOutbreakEnemyAIController::OnUnPossess()
 {
+	DEC_DWORD_STAT(STAT_OutbreakEnemyAICount);
 	if (APawn* OldPawn = GetPawn())
 	{
 		OldPawn->OnTakeAnyDamage.RemoveDynamic(this, &ThisClass::HandleTakeAnyDamage);
@@ -188,6 +196,8 @@ void AOutbreakEnemyAIController::ReceivePropagatedAlert(const FVector& Location)
 
 void AOutbreakEnemyAIController::HandleTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakEnemyPerceptionEvent);
+
 	// Sight is evaluated at each decision update; hearing arrives here as events.
 	const APawn* ControlledPawn = GetPawn();
 	if (!ControlledPawn || Stimulus.Type != UAISense::GetSenseID<UAISense_Hearing>() || !Stimulus.WasSuccessfullySensed())
@@ -372,6 +382,8 @@ float AOutbreakEnemyAIController::ComputeTargetVisibility(const AActor* Target) 
 
 void AOutbreakEnemyAIController::UpdateSight(float DeltaSeconds)
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakEnemySight);
+
 	VisibleHostiles.Reset();
 	const APawn* ControlledPawn = GetPawn();
 	const UOutbreakEnemyDefinition* Definition = GetDefinition();
@@ -519,6 +531,8 @@ void AOutbreakEnemyAIController::PropagateAlert(const FVector& Location)
 
 void AOutbreakEnemyAIController::UpdateBehavior()
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakEnemyUpdate);
+
 	if (bUpdatingBehavior)
 	{
 		return;

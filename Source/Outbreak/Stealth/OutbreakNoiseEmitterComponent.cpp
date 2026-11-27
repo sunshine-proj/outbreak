@@ -5,6 +5,10 @@
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
+#include "Outbreak.h"
+
+// Phase 15 profiling: `stat Outbreak`, Insights and the Outbreak CSV category.
+DECLARE_CYCLE_STAT(TEXT("Noise event"), STAT_OutbreakNoise, STATGROUP_Outbreak);
 
 UOutbreakNoiseEmitterComponent::UOutbreakNoiseEmitterComponent()
 {
@@ -32,6 +36,8 @@ void UOutbreakNoiseEmitterComponent::EndPlay(const EEndPlayReason::Type EndPlayR
 
 void UOutbreakNoiseEmitterComponent::ReportNoise(EOutbreakNoiseType Type, float Loudness, float RangeOverride)
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakNoise);
+
 	AActor* Owner = GetOwner();
 	if (!Owner)
 	{

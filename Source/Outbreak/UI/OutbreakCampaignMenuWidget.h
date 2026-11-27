@@ -88,7 +88,10 @@ private:
 		FieldOfViewDown,
 		FieldOfViewUp,
 		ToggleSubtitles,
-		ApplySettings
+		ApplySettings,
+		/** Index = EOutbreakVolumeChannel. */
+		VolumeDown,
+		VolumeUp
 	};
 
 	void BuildDefaultLayout();

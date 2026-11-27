@@ -27,6 +27,9 @@ protected:
 
 private:
 
+	/** Applies the player's volume settings (Phase 15). */
+	void HandleUserSettingsChanged();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UOutbreakCampaignMenuWidget> CampaignMenuWidget;
 };

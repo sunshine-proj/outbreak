@@ -7,6 +7,16 @@
 
 DECLARE_MULTICAST_DELEGATE(FOutbreakGameplaySettingsChangedSignature);
 
+/** Player volume controls (Phase 15). Each maps to a sound class in UOutbreakAudioSettings. */
+UENUM(BlueprintType)
+enum class EOutbreakVolumeChannel : uint8
+{
+	Master,
+	Effects,
+	Voice,
+	Music
+};
+
 /**
  * Player settings (Phase 14 settings persistence, D-023). Extends the engine's user settings, so
  * graphics, resolution and window mode persist as they always do and the gameplay settings below
@@ -57,6 +67,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Settings|Audio")
 	void SetShowSubtitles(bool bShow) { bShowSubtitles = bShow; }
 
+	/** 0..1. */
+	UFUNCTION(BlueprintPure, Category = "Settings|Audio")
+	float GetVolume(EOutbreakVolumeChannel Channel) const;
+
+	/** Clamped to 0..1. Takes effect on ApplySettings. */
+	UFUNCTION(BlueprintCallable, Category = "Settings|Audio")
+	void SetVolume(EOutbreakVolumeChannel Channel, float Volume);
+
+	/**
+	 * Applies the volumes to the sound classes in UOutbreakAudioSettings through its sound mix, in
+	 * WorldContext's audio device. Player controllers call this when they start and when settings
+	 * change. Missing assets are skipped.
+	 */
+	void ApplyAudioVolumes(const UObject* WorldContext) const;
+
+	/** The volume a channel's sound class gets: Master for the master class, Master x channel for the others. */
+	static float ComputeClassVolume(float MasterVolume, float ChannelVolume, EOutbreakVolumeChannel Channel);
+
+	static float ClampVolume(float Value);
+
 	/** Fires after ApplySettings, so players pick up the new values. */
 	static FOutbreakGameplaySettingsChangedSignature OnGameplaySettingsChanged;
 
@@ -82,4 +112,20 @@ protected:
 
 	UPROPERTY(Config)
 	bool bShowSubtitles = true;
+
+	UPROPERTY(Config)
+	float MasterVolume = 1.0f;
+
+	UPROPERTY(Config)
+	float EffectsVolume = 1.0f;
+
+	UPROPERTY(Config)
+	float VoiceVolume = 1.0f;
+
+	UPROPERTY(Config)
+	float MusicVolume = 1.0f;
+
+private:
+
+	float* GetVolumeField(EOutbreakVolumeChannel Channel);
 };

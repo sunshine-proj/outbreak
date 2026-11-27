@@ -13,6 +13,7 @@
 #include "Game/OutbreakGameState.h"
 #include "Game/OutbreakPlayerState.h"
 #include "Game/OutbreakGameUserSettings.h"
+#include "Player/OutbreakCheatManager.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Missions/OutbreakMissionText.h"
 #include "Net/UnrealNetwork.h"
@@ -35,6 +36,8 @@ AOutbreakPlayerController::AOutbreakPlayerController()
 	BriefingWidgetClass = UOutbreakBriefingWidget::StaticClass();
 	MissionSummaryWidgetClass = UOutbreakMissionSummaryWidget::StaticClass();
 	SquadCommandComponent = CreateDefaultSubobject<UOutbreakSquadCommandComponent>(TEXT("SquadCommandComponent"));
+	// Phase 15 profiling and QA console commands (non-shipping).
+	CheatClass = UOutbreakCheatManager::StaticClass();
 }
 
 void AOutbreakPlayerController::BeginPlay()
@@ -49,6 +52,10 @@ void AOutbreakPlayerController::BeginPlay()
 	{
 		GetWorldTimerManager().SetTimer(SquadPanelTimer, this, &ThisClass::RefreshSquadPanel, SquadPanelRefreshInterval, true);
 		BindToGameState();
+
+		// Phase 15 volume settings, now and whenever the player applies new ones.
+		HandleUserSettingsChanged();
+		UOutbreakGameUserSettings::OnGameplaySettingsChanged.AddUObject(this, &ThisClass::HandleUserSettingsChanged);
 	}
 
 	// Server: hit markers for this player's hits, and the stealth awareness meter.
@@ -415,6 +422,14 @@ void AOutbreakPlayerController::HandleSummaryRetry()
 void AOutbreakPlayerController::HandleSummaryQuit()
 {
 	QuitMission();
+}
+
+void AOutbreakPlayerController::HandleUserSettingsChanged()
+{
+	if (const UOutbreakGameUserSettings* Settings = UOutbreakGameUserSettings::GetOutbreakUserSettings())
+	{
+		Settings->ApplyAudioVolumes(this);
+	}
 }
 
 void AOutbreakPlayerController::HandleSummaryContinue()

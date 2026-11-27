@@ -11,6 +11,10 @@
 #include "Stealth/OutbreakStealthSettings.h"
 #include "Stealth/OutbreakVisibility.h"
 #include "UObject/UObjectIterator.h"
+#include "Outbreak.h"
+
+// Phase 15 profiling: `stat Outbreak`, Insights and the Outbreak CSV category.
+DECLARE_CYCLE_STAT(TEXT("Gameplay light level query"), STAT_OutbreakLightLevel, STATGROUP_Outbreak);
 
 void UOutbreakLightingSubsystem::RefreshCacheIfNeeded()
 {
@@ -56,6 +60,8 @@ bool UOutbreakLightingSubsystem::IsShadowed(const FVector& From, const FVector& 
 
 float UOutbreakLightingSubsystem::GetLightLevelAt(const FVector& Location, const AActor* IgnoredActor)
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakLightLevel);
+
 	RefreshCacheIfNeeded();
 	const UOutbreakStealthSettings* Settings = GetDefault<UOutbreakStealthSettings>();
 

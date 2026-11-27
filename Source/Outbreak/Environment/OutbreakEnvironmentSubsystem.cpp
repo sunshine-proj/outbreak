@@ -3,6 +3,10 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Stealth/OutbreakStealthSettings.h"
+#include "Outbreak.h"
+
+// Phase 15 profiling: `stat Outbreak`, Insights and the Outbreak CSV category.
+DECLARE_CYCLE_STAT(TEXT("Environment zone query"), STAT_OutbreakEnvironmentQuery, STATGROUP_Outbreak);
 
 void UOutbreakEnvironmentSubsystem::RefreshCacheIfNeeded()
 {
@@ -27,6 +31,8 @@ void UOutbreakEnvironmentSubsystem::RefreshCacheIfNeeded()
 
 FOutbreakEnvironmentPerception UOutbreakEnvironmentSubsystem::GetPerceptionAt(const FVector& Location)
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakEnvironmentQuery);
+
 	RefreshCacheIfNeeded();
 
 	const AOutbreakEnvironmentVolume* Best = nullptr;

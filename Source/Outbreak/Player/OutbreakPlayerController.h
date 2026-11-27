@@ -170,6 +170,9 @@ private:
 	UFUNCTION()
 	void HandleSummaryContinue();
 
+	/** Applies the player's volume settings (Phase 15). */
+	void HandleUserSettingsChanged();
+
 	UFUNCTION()
 	void HandleSummaryCheckpoint();
 

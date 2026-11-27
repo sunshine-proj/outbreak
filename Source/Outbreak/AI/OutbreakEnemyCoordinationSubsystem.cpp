@@ -3,6 +3,10 @@
 #include "AI/OutbreakEnemyAIController.h"
 #include "AI/OutbreakEnemyTactics.h"
 #include "Engine/World.h"
+#include "Outbreak.h"
+
+// Phase 15 profiling: `stat Outbreak`, Insights and the Outbreak CSV category.
+DECLARE_CYCLE_STAT(TEXT("Enemy coordination prune"), STAT_OutbreakCoordination, STATGROUP_Outbreak);
 
 double UOutbreakEnemyCoordinationSubsystem::GetTimeSeconds() const
 {
@@ -12,6 +16,8 @@ double UOutbreakEnemyCoordinationSubsystem::GetTimeSeconds() const
 
 void UOutbreakEnemyCoordinationSubsystem::PruneExpired()
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakCoordination);
+
 	const double Now = GetTimeSeconds();
 	Engagements.RemoveAll([Now](const FEngagement& Entry)
 	{

@@ -1,5 +1,6 @@
 #include "Player/OutbreakFrontEndPlayerController.h"
 
+#include "Game/OutbreakGameUserSettings.h"
 #include "UI/OutbreakCampaignMenuWidget.h"
 
 AOutbreakFrontEndPlayerController::AOutbreakFrontEndPlayerController()
@@ -11,7 +12,13 @@ void AOutbreakFrontEndPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (!IsLocalController() || !CampaignMenuWidgetClass)
+	if (!IsLocalController())
+	{
+		return;
+	}
+	HandleUserSettingsChanged();
+	UOutbreakGameUserSettings::OnGameplaySettingsChanged.AddUObject(this, &ThisClass::HandleUserSettingsChanged);
+	if (!CampaignMenuWidgetClass)
 	{
 		return;
 	}
@@ -26,4 +33,12 @@ void AOutbreakFrontEndPlayerController::BeginPlay()
 	InputMode.SetWidgetToFocus(CampaignMenuWidget->TakeWidget());
 	SetInputMode(InputMode);
 	bShowMouseCursor = true;
+}
+
+void AOutbreakFrontEndPlayerController::HandleUserSettingsChanged()
+{
+	if (const UOutbreakGameUserSettings* Settings = UOutbreakGameUserSettings::GetOutbreakUserSettings())
+	{
+		Settings->ApplyAudioVolumes(this);
+	}
 }

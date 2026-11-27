@@ -17,6 +17,9 @@
 #include "Squad/OutbreakSquadMemberComponent.h"
 #include "TimerManager.h"
 
+// Phase 15 profiling: `stat Outbreak`, Insights and the Outbreak CSV category.
+DECLARE_CYCLE_STAT(TEXT("Mission objective update"), STAT_OutbreakMission, STATGROUP_Outbreak);
+
 #define LOCTEXT_NAMESPACE "OutbreakMission"
 
 void UOutbreakMissionSubsystem::Deinitialize()
@@ -334,6 +337,8 @@ void UOutbreakMissionSubsystem::UpdateMission()
 
 void UOutbreakMissionSubsystem::AdvanceMission(float DeltaSeconds)
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakMission);
+
 	if (MissionState != EOutbreakMissionState::InProgress)
 	{
 		return;

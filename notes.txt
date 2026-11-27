@@ -556,7 +556,48 @@ Nothing is committed.
 ================================
 
 
+I did the four preparation pieces you picked; the rest of Phase 15 (tuning, optimization, art, audio, manual QA) needs a running build. As with every phase so far, nothing is compiled or tested, because Unreal Engine still isn't installed. My only checks were static: brackets balance and every include points to a real file.
 
+Profiling setup (15.4). No optimizations were made; this only makes measurement possible.
+
+Counters: stat Outbreak shows timings for the AI behaviour and combat updates, enemy sight and perception, teammate decisions, light and zone queries, noise, enemy coordination and mission updates. It also shows how many enemy and teammate AIs are running. The same timings appear in Unreal Insights and in an "Outbreak" CSV for csvprofile.
+
+Stress-test console commands (non-shipping builds):
+
+OutbreakSpawnEnemies spawns any number of enemies of a given type around the player.
+OutbreakAlertEnemies puts them all into combat at once, the worst case for AI cost.
+OutbreakKillEnemies clears them.
+OutbreakPerfReport logs the counts.
+Together with ?SquadSize=6 they make the stress procedure in the guide.
+
+QA coverage (15.5). Existing tests already cover every objective type, squad command, ammunition and fire-mode option, the Phase 9 enemy types, and save/load. The audit found two gaps, and I added tests for them in Tests/OutbreakQATests.cpp:
+
+Weapon delivery: nothing tested how hitscan, projectile and melee attacks land.
+Phase 14 enemies: nothing tested the Sentinel and Swarmer.
+One caveat: an existing test notes that traces may not hit actors in the test world. The new weapon test checks hit damage only when a hit registers and logs a note otherwise; the guide covers that case with a check in a real map.
+
+Volume settings (15.3). Master, effects, voice and music volumes are saved with the other player settings and adjustable on the campaign screen. They do nothing until you create the sound class and sound mix assets and assign every sound to a class; the guide lists the steps.
+
+Guide. Docs/Phase15-EditorSetup.md covers:
+
+the test coverage table;
+volume asset setup;
+profiling targets and the stress procedure;
+the settings to adjust before any code change;
+a tuning table for each system;
+the manual QA checklist.
+Roadmap.
+
+In progress ([-]), awaiting a build: CPU and AI profiling, volume settings, and five of the QA tasks.
+Blocked ([!]): everything else, with reasons. Optimization is blocked on profiling results, per AGENTS.md §2.3.
+Also recorded: a Blockers row and decision D-024. The README is updated too.
+Nothing is committed.
+
+Phase 15 was the last phase that could be prepared without the engine. Phases 1–15 add up to a large amount of C++ that has never been compiled, and the first build will need a round of fixes. The next step is installing the engine and doing that first build.
+
+
+
+================================
 
 
 

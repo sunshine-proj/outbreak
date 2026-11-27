@@ -268,5 +268,5 @@ Alarm off: the hive is already awake.
 - **Objective progress:** an objective in progress at the checkpoint restarts from zero (an Eliminate count, a Protect timer).
 - **Composite display:** composite objectives show only their own progress ("1 / 2"), not each sub-objective, on the HUD.
 - **One campaign:** the front end offers the campaign set in Project Settings. Additional campaigns (P3) would need a campaign picker.
-- **No volume setting:** audio volume needs sound class and sound mix assets; it is left for Phase 15 (15.3 audio).
+- **Volume settings:** added in Phase 15; they need sound class and sound mix assets (see `Docs/Phase15-EditorSetup.md`).
 - **Synchronous loading:** the campaign screen loads mission definitions synchronously to show their names and descriptions. This is fine at three missions; a large campaign would want async loading or names cached on the campaign asset.

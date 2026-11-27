@@ -7,6 +7,10 @@
 #include "GameFramework/Pawn.h"
 #include "Weapons/OutbreakWeaponComponent.h"
 #include "Weapons/OutbreakWeaponDefinition.h"
+#include "Outbreak.h"
+
+// Phase 15 profiling: `stat Outbreak`, Insights and the Outbreak CSV category.
+DECLARE_CYCLE_STAT(TEXT("AI combat service"), STAT_OutbreakCombatService, STATGROUP_Outbreak);
 
 UBTService_OutbreakCombat::UBTService_OutbreakCombat()
 {
@@ -19,6 +23,8 @@ UBTService_OutbreakCombat::UBTService_OutbreakCombat()
 
 void UBTService_OutbreakCombat::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakCombatService);
+
 	Super::TickNode(OwnerComp, NodeMemory, DeltaSeconds);
 
 	AAIController* Controller = OwnerComp.GetAIOwner();

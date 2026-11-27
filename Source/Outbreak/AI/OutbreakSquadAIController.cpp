@@ -30,6 +30,10 @@
 #include "Squad/OutbreakTeammateCharacter.h"
 #include "Weapons/OutbreakWeaponComponent.h"
 
+// Phase 15 profiling: `stat Outbreak`, Insights and the Outbreak CSV category.
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Teammate AI controllers"), STAT_OutbreakTeammateAICount, STATGROUP_Outbreak);
+DECLARE_CYCLE_STAT(TEXT("Teammate decision update"), STAT_OutbreakTeammateUpdate, STATGROUP_Outbreak);
+
 AOutbreakSquadAIController::AOutbreakSquadAIController(const FObjectInitializer& ObjectInitializer)
 	// Detour crowd path following: teammates steer around each other instead of colliding.
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UCrowdFollowingComponent>(TEXT("PathFollowingComponent")))
@@ -54,6 +58,7 @@ const UOutbreakTeammateAIConfig* AOutbreakSquadAIController::GetAIConfig() const
 
 void AOutbreakSquadAIController::OnPossess(APawn* InPawn)
 {
+	INC_DWORD_STAT(STAT_OutbreakTeammateAICount);
 	Super::OnPossess(InPawn);
 
 	if (!InPawn)
@@ -94,6 +99,7 @@ void AOutbreakSquadAIController::OnPossess(APawn* InPawn)
 
 void AOutbreakSquadAIController::OnUnPossess()
 {
+	DEC_DWORD_STAT(STAT_OutbreakTeammateAICount);
 	if (SquadMember)
 	{
 		SquadMember->OnCommandChanged.RemoveDynamic(this, &ThisClass::HandleCommandChanged);
@@ -430,6 +436,8 @@ void AOutbreakSquadAIController::UpdateOrderProgress()
 
 void AOutbreakSquadAIController::UpdateBehavior()
 {
+	OUTBREAK_SCOPE_CYCLE_COUNTER(STAT_OutbreakTeammateUpdate);
+
 	if (bUpdatingBehavior)
 	{
 		return;

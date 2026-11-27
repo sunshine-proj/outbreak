@@ -797,55 +797,56 @@ Additional verification:
 
 ### 15.1 Gameplay Polish
 
-- [ ] Tune movement.
-- [ ] Tune weapons.
-- [ ] Tune enemy difficulty.
-- [ ] Tune squad behaviour.
-- [ ] Tune perception.
-- [ ] Tune stealth.
-- [ ] Improve AI decision-making.
-- [ ] Improve mission pacing.
+- [!] Tune movement. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Tune weapons. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Tune enemy difficulty. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Tune squad behaviour. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Tune perception. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Tune stealth. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Improve AI decision-making. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`); fixes go into the C++ decision rules with a reproducing test first
+- [!] Improve mission pacing. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`)
 
 ### 15.2 Graphics
 
-- [ ] Improve character models.
-- [ ] Improve animations.
-- [ ] Improve materials.
-- [ ] Improve lighting.
-- [ ] Improve environmental assets.
-- [ ] Improve visual effects.
-- [ ] Improve weapon presentation.
+- [!] Improve character models. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve animations. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve materials. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve lighting. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve environmental assets. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve visual effects. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve weapon presentation. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
 
 ### 15.3 Audio
 
-- [ ] Improve weapon sounds.
-- [ ] Improve enemy sounds.
-- [ ] Improve environmental ambience.
-- [ ] Improve squad communication.
-- [ ] Improve spatial audio.
+- [!] Improve weapon sounds. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve enemy sounds. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve environmental ambience. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve squad communication. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [!] Improve spatial audio. — blocked: asset work; needs the engine (see `Docs/Phase15-EditorSetup.md`)
+- [-] Implement volume settings (deferred from 14.2). — C++ written, not compiled (engine not installed). Master, effects, voice and music in `UOutbreakGameUserSettings`, applied through the sound mix and classes in Outbreak Audio settings; assets pending (see `Docs/Phase15-EditorSetup.md`)
 
 ### 15.4 Performance
 
-- [ ] Profile CPU performance.
-- [ ] Profile GPU performance.
-- [ ] Profile AI performance.
-- [ ] Optimize navigation.
-- [ ] Optimize perception updates.
-- [ ] Optimize animation.
-- [ ] Optimize environment rendering.
-- [ ] Test maximum configured squad size.
-- [ ] Test large enemy encounters.
+- [-] Profile CPU performance. — C++ written, not compiled (engine not installed). `stat Outbreak` cycle counters, Outbreak CSV category, stress-test cheats (`UOutbreakCheatManager`); profiling runs blocked: needs a running build and the target hardware (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Profile GPU performance. — blocked: needs a running build and the target hardware (procedure in `Docs/Phase15-EditorSetup.md`)
+- [-] Profile AI performance. — C++ written, not compiled (engine not installed). AI, perception, stealth and mission counters plus AI controller counts; profiling runs blocked: needs a running build and the target hardware (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Optimize navigation. — blocked on profiling: optimize only a measured problem (AGENTS.md §2.3)
+- [!] Optimize perception updates. — blocked on profiling: optimize only a measured problem (AGENTS.md §2.3)
+- [!] Optimize animation. — blocked on profiling and on the Animation Blueprints (Phase 13 assets)
+- [!] Optimize environment rendering. — blocked on profiling and on the environment art
+- [!] Test maximum configured squad size. — blocked: needs a running build and the target hardware (procedure in `Docs/Phase15-EditorSetup.md`); stress procedure uses `?SquadSize=6`
+- [!] Test large enemy encounters. — blocked: needs a running build and the target hardware (procedure in `Docs/Phase15-EditorSetup.md`); stress procedure uses `OutbreakSpawnEnemies` / `OutbreakAlertEnemies`
 
 ### 15.5 Quality Assurance
 
-- [ ] Test all mission objectives.
-- [ ] Test all squad commands.
-- [ ] Test all weapon modes.
-- [ ] Test all enemy archetypes.
-- [ ] Test save/load.
-- [ ] Test multiple display resolutions.
-- [ ] Test graphics settings.
-- [ ] Resolve critical bugs.
+- [-] Test all mission objectives. — existing automation tests cover every objective type (coverage matrix in `Docs/Phase15-EditorSetup.md`); manual pass pending
+- [-] Test all squad commands. — existing automation tests cover every command, formations and stealth mode; manual pass pending
+- [-] Test all weapon modes. — C++ written, not compiled (engine not installed). New `Outbreak.Weapons.FireBehaviors.Delivery` covers hitscan, projectile and melee delivery; manual pass pending
+- [-] Test all enemy archetypes. — C++ written, not compiled (engine not installed). New `Outbreak.Enemy.Archetypes.SentinelAndSwarmer` covers the Phase 14 archetypes; manual pass pending
+- [-] Test save/load. — Phase 14 automation tests; manual pass pending
+- [!] Test multiple display resolutions. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Test graphics settings. — blocked: needs a running build and playtests (procedure in `Docs/Phase15-EditorSetup.md`)
+- [!] Resolve critical bugs. — blocked: no build exists to find them in
 
 ### Phase 15 Acceptance Criteria
 
@@ -876,7 +877,7 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–14 C++ were written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–15 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
 **Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through the `Docs/Phase*-EditorSetup.md` guides in order.
 
@@ -913,6 +914,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 12 (all `[-]` tasks in Phase 12) | Same as above. Most of Phase 12 is level building: the greybox outpost level, lighting, collision, navmesh, door, equipment and destructible Blueprints, environment zones, and every 12.3 validation test. Steps and layout spec: `Docs/Phase12-EditorSetup.md`. | 2026-11-26 |
 | Phase 13 (all `[-]` tasks in Phase 13) | Same as above. Phase 13 is content, presentation assets and playtesting: the slice mission asset and encounters, voices, sounds, montages, Animation Blueprints, effects, and every 13.4 validation run. Steps and mission spec: `Docs/Phase13-EditorSetup.md`. | 2026-11-26 |
 | Phase 14 (all `[-]` tasks in Phase 14) | Same as above. Editor work: front-end level and campaign asset, project campaign settings, checkpoint markers in the missions, the two new missions, levels and enemy archetypes; every 14.x manual check, including save/load across game restarts. Steps and specs: `Docs/Phase14-EditorSetup.md`. | 2026-11-27 |
+| Phase 15 (all `[!]` and `[-]` tasks in Phase 15) | Same as above, plus the target hardware for GPU and frame-rate validation (O-007). Tuning, profiling, optimization, art, audio and QA all need a running build; optimization also needs profiling results first (AGENTS.md §2.3). Prepared: instrumentation, stress cheats, QA tests, volume settings. Procedures: `Docs/Phase15-EditorSetup.md`. | 2026-11-27 |
 
 ## Decision Log
 
@@ -945,6 +947,7 @@ Record architectural and planning decisions here.
 | D-021 | 2026-11-26 | Audio backend is Unreal Audio (closes O-003). Sounds are engine `USoundBase` assets (Sound Waves, Sound Cues, MetaSounds) played with engine audio components and gameplay statics. | Developer decision. Built in, no plugin or licence, works on the Linux development machine, and the existing weapon and zone sound hooks already use it. |
 | D-022 | 2026-11-26 | Vertical slice systems (Phase 13). Alarm (developer decision: configurable): an enemy entering Combat starts the mission's Alarm Delay; the alarm rises only if that spotter is still alive and fighting, so silencing it in time keeps the base quiet; per mission on/off; replicated through the game state; speakers sound it and an alarm panel (switchable link) silences it. Encounters are level actors spawning enemy groups on manual, mission-start, objective, area or alarm triggers, with Guard, Investigate or Hunt orders and a tag for objectives. Squad communication is a player-state component: the server picks callouts from squad, weapon, alarm and objective events, paces them (urgent ones cut in), and multicasts a voice line with a subtitle; voices are data on roles. Weapon presentation is an action event on every machine derived from replicated state; characters play definition montages; an anim-instance base gathers state for Animation Blueprints. Hit markers come from a game-wide damage event filtered by the player controller; the awareness meter is the server's highest enemy detection of the player, replicated to its owner. The Phase 11 deployment selection struct was renamed `FOutbreakDeploymentSelection` (name clash). | Agent decisions on top of the developer's: reuses the stealth detection, mission events and switchable links instead of new systems; event- and timer-driven; the silencing window gives stealth a skill-based payoff. |
 | D-023 | 2026-11-27 | Campaign and persistence (Phase 14). Developer decisions: mission state persistence is checkpoints, the squad is fresh each mission, saves are an autosave plus manual slots. A `UOutbreakCampaignDefinition` lists missions (mission asset, map, unlock rule After Previous / At Campaign Start / After Missions on earlier entries, side-mission flag). A game-instance `UOutbreakCampaignSubsystem` holds the progress and the launched mission across travel; the level's game mode runs the launched mission instead of its own when the map matches, and reports checkpoints and results. Progress is mission records plus one checkpoint; unlocking and completion are always derived. A checkpoint is taken after a required objective completes: objective states (active ones restart), mission time, alarm, and the host squad's deployment selection with each member's health, weapons, ammunition and items; the level itself resets. Saves are `USaveGame` slots (`Campaign_Auto`, `Campaign_1..N`), versioned, validated before writing and after reading (reject or repair). Settings extend `UGameUserSettings`. The front end is a separate level (`AOutbreakFrontEndGameMode`); the mission briefing stays in the mission level (D-019). New objective features: per-objective Time Limit, Composite (N of), Avoid Alarm. | Checkpoints give mission state persistence without serializing every actor of every system; deriving unlocks from records makes damaged saves harmless; the engine's save slots and user settings avoid custom file handling; one checkpoint keeps the save model simple. Agent decisions on top of the developer's are open to change. |
+| D-024 | 2026-11-27 | Phase 15 before the engine is available (developer decision): only preparatory work is done. Instrumentation: a `STATGROUP_Outbreak` stat group and an `Outbreak` CSV category, timed through `OUTBREAK_SCOPE_CYCLE_COUNTER` on the behaviour and combat services, enemy and teammate decision updates, enemy sight and perception events, light-level and environment queries, noise events, coordination and mission updates, plus AI controller counts; stress-test console commands in `UOutbreakCheatManager`. QA: an automation coverage audit against 15.5, with tests added only for the gaps (fire-behaviour delivery, Phase 14 archetypes). Volume settings: four channels in the user settings, applied as per-class overrides on one project sound mix, with each child class getting master × channel directly. Tuning, optimization, art, audio and manual QA tasks are blocked. | Tuning and optimization without play or measurement would be guesses (AGENTS.md §2.3, PRD §16); instrumentation makes the first profiling session productive; tests only for real gaps. Setting effective volumes directly avoids depending on how the mix passes adjustments from parent to child classes. |
 
 ### Open
 

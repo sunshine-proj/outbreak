@@ -40,7 +40,7 @@ This is a spiritual successor, not an asset-level recreation of the original gam
 
 ## Project Status
 
-**Current stage:** Phases 1–6 (the P0 first playable prototype), Phase 7 (formations, cover, tactical squad commands), Phase 8 (stealth: noise, lighting-aware detection, awareness states, squad stealth) and Phase 9 (enemy tactics: cover, flanking, coordination, retreat; melee and heavy archetypes) Phase 10 (inventory, equipment, medical: weight capacity, loadouts, revive) Phase 11 (mission framework: objective dependencies, five new objective types, briefing with squad and equipment selection, deployment, extraction, mission summary) Phase 12 (environment systems: day/night, perception zones and ambience, doors, switchable equipment, destruction; the greybox level itself is editor work) Phase 13 (vertical slice systems: alarm, encounters, squad communication, weapon and enemy audio, animation hooks, HUD polish; the mission content is editor work) and Phase 14 (campaign infrastructure: campaign definition, unlocking and progression, campaign screen, save slots with validation, mission checkpoints, persistent player settings, time-limited, composite and stealth objectives; the new missions are editor work) C++ written; not yet compiled because Unreal Engine is not installed on the development machine.
+**Current stage:** Phases 1–6 (the P0 first playable prototype), Phase 7 (formations, cover, tactical squad commands), Phase 8 (stealth: noise, lighting-aware detection, awareness states, squad stealth) and Phase 9 (enemy tactics: cover, flanking, coordination, retreat; melee and heavy archetypes) Phase 10 (inventory, equipment, medical: weight capacity, loadouts, revive) Phase 11 (mission framework: objective dependencies, five new objective types, briefing with squad and equipment selection, deployment, extraction, mission summary) Phase 12 (environment systems: day/night, perception zones and ambience, doors, switchable equipment, destruction; the greybox level itself is editor work) Phase 13 (vertical slice systems: alarm, encounters, squad communication, weapon and enemy audio, animation hooks, HUD polish; the mission content is editor work) Phase 14 (campaign infrastructure: campaign definition, unlocking and progression, campaign screen, save slots with validation, mission checkpoints, persistent player settings, time-limited, composite and stealth objectives; the new missions are editor work) and Phase 15 preparation (profiling instrumentation and stress-test commands, QA coverage tests, volume settings; tuning, optimization and QA passes need a running build) C++ written; not yet compiled because Unreal Engine is not installed on the development machine.
 
 Development follows the phases described in [ROADMAP.md](ROADMAP.md).
 
@@ -108,7 +108,8 @@ outbreak/
 │   ├── Phase11-EditorSetup.md
 │   ├── Phase12-EditorSetup.md
 │   ├── Phase13-EditorSetup.md
-│   └── Phase14-EditorSetup.md
+│   ├── Phase14-EditorSetup.md
+│   └── Phase15-EditorSetup.md
 │
 └── .gitignore
 ```
@@ -183,7 +184,7 @@ Run the Outbreak automation tests headlessly:
     -testexit="Automation Test Queue Empty"
 ```
 
-Editor assets that C++ depends on (input actions, mapping context, weapon data, Blueprints, test maps) are described in the `Docs/Phase*-EditorSetup.md` guides ([Phase 1](Docs/Phase1-EditorSetup.md), [Phase 2](Docs/Phase2-EditorSetup.md), [Phase 3](Docs/Phase3-EditorSetup.md), [Phase 4](Docs/Phase4-EditorSetup.md), [Phase 5](Docs/Phase5-EditorSetup.md), [Phase 6](Docs/Phase6-EditorSetup.md), [Phase 7](Docs/Phase7-EditorSetup.md), [Phase 8](Docs/Phase8-EditorSetup.md), [Phase 9](Docs/Phase9-EditorSetup.md), [Phase 10](Docs/Phase10-EditorSetup.md), [Phase 11](Docs/Phase11-EditorSetup.md), [Phase 12](Docs/Phase12-EditorSetup.md), [Phase 13](Docs/Phase13-EditorSetup.md), [Phase 14](Docs/Phase14-EditorSetup.md)).
+Editor assets that C++ depends on (input actions, mapping context, weapon data, Blueprints, test maps) are described in the `Docs/Phase*-EditorSetup.md` guides ([Phase 1](Docs/Phase1-EditorSetup.md), [Phase 2](Docs/Phase2-EditorSetup.md), [Phase 3](Docs/Phase3-EditorSetup.md), [Phase 4](Docs/Phase4-EditorSetup.md), [Phase 5](Docs/Phase5-EditorSetup.md), [Phase 6](Docs/Phase6-EditorSetup.md), [Phase 7](Docs/Phase7-EditorSetup.md), [Phase 8](Docs/Phase8-EditorSetup.md), [Phase 9](Docs/Phase9-EditorSetup.md), [Phase 10](Docs/Phase10-EditorSetup.md), [Phase 11](Docs/Phase11-EditorSetup.md), [Phase 12](Docs/Phase12-EditorSetup.md), [Phase 13](Docs/Phase13-EditorSetup.md), [Phase 14](Docs/Phase14-EditorSetup.md), [Phase 15](Docs/Phase15-EditorSetup.md)).
 
 ## Development Philosophy
 
