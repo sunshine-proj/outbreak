@@ -108,6 +108,12 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
 	bool Revive(float HealthFraction);
 
+	/**
+	 * Checkpoint restore (Phase 14): sets health to HealthFraction of maximum (at least 1 point) and
+	 * the revives used, standing; or kills the owner when bDead. Authority.
+	 */
+	void RestoreSavedState(float HealthFraction, int32 InReviveCount, bool bDead);
+
 	/** Ends an incapacitation in death (the bleed-out timer calls this). */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Health")
 	void FinishBleedOut();

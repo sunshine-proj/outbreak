@@ -11,10 +11,13 @@ class AActor;
 class APawn;
 class UOutbreakMissionDefinition;
 class UOutbreakObjective;
+struct FOutbreakMissionCheckpoint;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakMissionStateChangedSignature, EOutbreakMissionState, NewState);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakObjectiveChangedSignature, int32, ObjectiveIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOutbreakObjectiveStateChangedSignature, int32, ObjectiveIndex, EOutbreakObjectiveState, NewState);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakCheckpointReachedSignature, int32, CompletedObjectiveIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOutbreakMissionEndedSignature, const FOutbreakMissionResults&, Results);
 
 /**
  * Runs the current mission (server only).
@@ -51,6 +54,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Mission")
 	void StartMission();
 
+	/**
+	 * Starts from a checkpoint (Phase 14): completed and failed objectives keep their saved state
+	 * without running again, mission time continues, and the rest activate by their dependencies.
+	 * Falls back to StartMission (and returns false, logged) when the checkpoint does not fit this
+	 * mission's objectives. The caller checks it belongs to this mission. From NotStarted or Briefing.
+	 */
+	bool StartMissionFromCheckpoint(const FOutbreakMissionCheckpoint& Checkpoint);
+
+	/** Whether Checkpoint fits the initialized mission's objectives (OutbreakMissionCheckpointRules::Validate). */
+	bool CanResumeFrom(const FOutbreakMissionCheckpoint& Checkpoint, TArray<FText>& OutErrors) const;
+
+	/**
+	 * The mission part of a checkpoint after CompletedObjectiveIndex completed: objective states,
+	 * mission time and the resume marker. The caller adds the squad and the alarm.
+	 */
+	FOutbreakMissionCheckpoint CaptureCheckpoint(int32 CompletedObjectiveIndex) const;
+
 	/** Evaluates the active objectives now without advancing mission time. */
 	UFUNCTION(BlueprintCallable, Category = "Mission")
 	void UpdateMission();
@@ -75,7 +95,7 @@ public:
 	 * deployed player. Returns false and leaves the pawn where it is when the mission has no marker
 	 * or the marker is missing (logged).
 	 */
-	bool MovePawnToDeployment(APawn* PlayerPawn) const;
+	bool MovePawnToDeployment(APawn* PlayerPawn, FName MarkerIdOverride = NAME_None) const;
 
 	/**
 	 * PlayerPawn has left the briefing with its squad. Registers it; during the briefing, starts the
@@ -114,6 +134,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Mission")
 	int32 GetObjectiveCount() const { return Objectives.Num(); }
 
+	/** The objective with ObjectiveId, or null. */
+	UFUNCTION(BlueprintPure, Category = "Mission")
+	UOutbreakObjective* FindObjectiveById(FName ObjectiveId) const;
+
 	/** Seconds of play since StartMission (advanced by the update timer). */
 	UFUNCTION(BlueprintPure, Category = "Mission")
 	float GetMissionTime() const { return MissionTime; }
@@ -140,9 +164,22 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Mission")
 	FOutbreakObjectiveStateChangedSignature OnObjectiveStateChanged;
 
+	/**
+	 * A required objective completed and the mission goes on (Phase 14), after the objectives it
+	 * unlocked have activated. Fires only when the definition enables checkpoints.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "Mission")
+	FOutbreakCheckpointReachedSignature OnCheckpointReached;
+
+	/** The mission ended; Results are final. Fires before the final status is published. */
+	UPROPERTY(BlueprintAssignable, Category = "Mission")
+	FOutbreakMissionEndedSignature OnMissionEnded;
+
 private:
 
 	void ActivateObjective(int32 Index);
+	/** Sets up evaluation once objectives are in place (StartMission and StartMissionFromCheckpoint). */
+	void BeginEvaluation();
 	void FinishObjective(int32 Index, EOutbreakObjectiveState EndState);
 	/** Activates every inactive objective whose prerequisites completed; marks blocked ones failed. */
 	void ActivateReadyObjectives();
@@ -180,6 +217,8 @@ private:
 
 	EOutbreakMissionState MissionState = EOutbreakMissionState::NotStarted;
 	int32 CurrentObjectiveIndex = INDEX_NONE;
+	/** The last required objective completed during this update, for OnCheckpointReached. */
+	int32 PendingCheckpointIndex = INDEX_NONE;
 	float MissionTime = 0.0f;
 	FText ResultText;
 	FOutbreakMissionResults FinalResults;

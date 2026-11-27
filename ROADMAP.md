@@ -758,29 +758,29 @@ Additional verification:
 
 ### 14.1 Campaign
 
-- [ ] Implement campaign definition.
-- [ ] Implement mission progression.
-- [ ] Implement mission unlocking.
-- [ ] Implement campaign state.
-- [ ] Implement campaign briefing.
-- [ ] Implement campaign completion.
+- [-] Implement campaign definition. — C++ written, not compiled (engine not installed). `UOutbreakCampaignDefinition`: missions with map, unlock rule and side-mission flag; validation; asset `DA_Campaign_Outbreak` pending (see `Docs/Phase14-EditorSetup.md`)
+- [-] Implement mission progression. — C++ written, not compiled (engine not installed). Results recorded by `UOutbreakCampaignSubsystem`; summary offers Continue, Last Checkpoint, Replay and Main Menu
+- [-] Implement mission unlocking. — C++ written, not compiled (engine not installed). After Previous, At Campaign Start, After Missions; derived from the records, never stored
+- [-] Implement campaign state. — C++ written, not compiled (engine not installed). `FOutbreakCampaignProgress`: mission records (attempts, completion, best time, optional objectives), checkpoint, total time
+- [-] Implement campaign briefing. — C++ written, not compiled (engine not installed). Campaign screen `UOutbreakCampaignMenuWidget` on a front-end level (`AOutbreakFrontEndGameMode`); level `L_FrontEnd` pending (see `Docs/Phase14-EditorSetup.md`)
+- [-] Implement campaign completion. — C++ written, not compiled (engine not installed). Completion when every required mission is done; completion text on the summary and the campaign screen
 
 ### 14.2 Persistence
 
-- [ ] Implement SaveGame architecture.
-- [ ] Implement settings persistence.
-- [ ] Implement campaign persistence.
-- [ ] Implement mission state persistence.
-- [ ] Implement save validation.
-- [ ] Implement load validation.
+- [-] Implement SaveGame architecture. — C++ written, not compiled (engine not installed). `UOutbreakCampaignSaveGame`, versioned; autosave plus manual slots (D-023)
+- [-] Implement settings persistence. — C++ written, not compiled (engine not installed). `UOutbreakGameUserSettings` (engine user settings): sensitivity, invert, field of view, subtitles
+- [-] Implement campaign persistence. — C++ written, not compiled (engine not installed). Autosave after each mission, checkpoint and new campaign; load, save and delete slots on the campaign screen
+- [-] Implement mission state persistence. — C++ written, not compiled (engine not installed). Checkpoints on required objectives: objective states, mission time, alarm, host squad state; the level resets (D-023)
+- [-] Implement save validation. — C++ written, not compiled (engine not installed). `OutbreakSaveValidation::ValidateForSave`; invalid progress is never written
+- [-] Implement load validation. — C++ written, not compiled (engine not installed). `OutbreakSaveValidation::ValidateLoaded` rejects or repairs; checkpoints re-checked against the mission at resume; settings clamped on load
 
 ### 14.3 Mission Content
 
-- [ ] Create second mission.
-- [ ] Create third mission.
-- [ ] Introduce additional enemy types.
-- [ ] Introduce additional environments.
-- [ ] Introduce more complex objectives.
+- [-] Create second mission. — editor work pending; mission spec "Dead Signal" (see `Docs/Phase14-EditorSetup.md`)
+- [-] Create third mission. — editor work pending; mission spec "Hive Core" (see `Docs/Phase14-EditorSetup.md`)
+- [-] Introduce additional enemy types. — archetypes are data: Sentinel and Swarmer assets described (see `Docs/Phase14-EditorSetup.md`), pending
+- [-] Introduce additional environments. — editor work pending; `L_RelayCanyon` and `L_HiveDepths` specs (see `Docs/Phase14-EditorSetup.md`)
+- [-] Introduce more complex objectives. — C++ written, not compiled (engine not installed). Objective Time Limit, Composite (N of) and Avoid Alarm objectives
 
 ### Phase 14 Acceptance Criteria
 
@@ -876,7 +876,7 @@ They must not delay the initial single-player experience.
 
 ## Current Development State
 
-**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–13 C++ were written ahead of Phase 0 at the developer's request (D-004).
+**Current phase:** Phase 0 — Project Foundation (blocked on engine install). Phases 1–14 C++ were written ahead of Phase 0 at the developer's request (D-004).
 
 **Next task:** Install and verify the Unreal Engine C++ development environment. Then build, run the automation tests, and work through the `Docs/Phase*-EditorSetup.md` guides in order.
 
@@ -912,6 +912,7 @@ Record blocked tasks here. Mark each with `[!]` in its phase.
 | Phase 11 verification (all `[-]` tasks in Phase 11) | Same as above. Editor work: mission items, destructible relay and uplink terminal Blueprints, squad roster names, Phase 11 mission asset, mission test map; optional Widget Blueprints for the briefing and summary. Steps: `Docs/Phase11-EditorSetup.md`. | 2026-11-26 |
 | Phase 12 (all `[-]` tasks in Phase 12) | Same as above. Most of Phase 12 is level building: the greybox outpost level, lighting, collision, navmesh, door, equipment and destructible Blueprints, environment zones, and every 12.3 validation test. Steps and layout spec: `Docs/Phase12-EditorSetup.md`. | 2026-11-26 |
 | Phase 13 (all `[-]` tasks in Phase 13) | Same as above. Phase 13 is content, presentation assets and playtesting: the slice mission asset and encounters, voices, sounds, montages, Animation Blueprints, effects, and every 13.4 validation run. Steps and mission spec: `Docs/Phase13-EditorSetup.md`. | 2026-11-26 |
+| Phase 14 (all `[-]` tasks in Phase 14) | Same as above. Editor work: front-end level and campaign asset, project campaign settings, checkpoint markers in the missions, the two new missions, levels and enemy archetypes; every 14.x manual check, including save/load across game restarts. Steps and specs: `Docs/Phase14-EditorSetup.md`. | 2026-11-27 |
 
 ## Decision Log
 
@@ -943,6 +944,7 @@ Record architectural and planning decisions here.
 | D-020 | 2026-11-26 | Environment systems (Phase 12). Day/night is a level actor (`AOutbreakTimeOfDay`) driving Movable sun, moon and sky lights from a replicated hour, with time passing optional and a per-mission start hour; the stealth light model takes its ambient level and sun/moon contributions from it, and is unchanged without one. Environment-specific perception is box zones (`AOutbreakEnvironmentVolume`, highest priority wins) scaling enemy sight range (lower of viewer's and target's zone), hearing (listener's zone) and footstep loudness (walker's zone). Environmental audio is zone ambience on the same volume (engine audio component) plus engine Ambient Sound and Audio Volume actors; gameplay masking stays separate from audio (D-015). Doors use a navigation modifier (impassable while locked or not AI-openable) with navmesh runtime generation Dynamic Modifiers Only; AI-controlled pawns open unlocked doors by touch. Interactable equipment extends the Phase 11 equipment class (toggle, linked switchable actors and lights) rather than adding a second class; destruction extends the Phase 11 destructible. | Agent decision, open to change: reuses the stealth model, the Phase 11 actors and engine audio and navigation instead of parallel systems; event- and timer-driven only; modifiers-only navmesh keeps runtime cost low (destroyed objects do not open new paths). |
 | D-021 | 2026-11-26 | Audio backend is Unreal Audio (closes O-003). Sounds are engine `USoundBase` assets (Sound Waves, Sound Cues, MetaSounds) played with engine audio components and gameplay statics. | Developer decision. Built in, no plugin or licence, works on the Linux development machine, and the existing weapon and zone sound hooks already use it. |
 | D-022 | 2026-11-26 | Vertical slice systems (Phase 13). Alarm (developer decision: configurable): an enemy entering Combat starts the mission's Alarm Delay; the alarm rises only if that spotter is still alive and fighting, so silencing it in time keeps the base quiet; per mission on/off; replicated through the game state; speakers sound it and an alarm panel (switchable link) silences it. Encounters are level actors spawning enemy groups on manual, mission-start, objective, area or alarm triggers, with Guard, Investigate or Hunt orders and a tag for objectives. Squad communication is a player-state component: the server picks callouts from squad, weapon, alarm and objective events, paces them (urgent ones cut in), and multicasts a voice line with a subtitle; voices are data on roles. Weapon presentation is an action event on every machine derived from replicated state; characters play definition montages; an anim-instance base gathers state for Animation Blueprints. Hit markers come from a game-wide damage event filtered by the player controller; the awareness meter is the server's highest enemy detection of the player, replicated to its owner. The Phase 11 deployment selection struct was renamed `FOutbreakDeploymentSelection` (name clash). | Agent decisions on top of the developer's: reuses the stealth detection, mission events and switchable links instead of new systems; event- and timer-driven; the silencing window gives stealth a skill-based payoff. |
+| D-023 | 2026-11-27 | Campaign and persistence (Phase 14). Developer decisions: mission state persistence is checkpoints, the squad is fresh each mission, saves are an autosave plus manual slots. A `UOutbreakCampaignDefinition` lists missions (mission asset, map, unlock rule After Previous / At Campaign Start / After Missions on earlier entries, side-mission flag). A game-instance `UOutbreakCampaignSubsystem` holds the progress and the launched mission across travel; the level's game mode runs the launched mission instead of its own when the map matches, and reports checkpoints and results. Progress is mission records plus one checkpoint; unlocking and completion are always derived. A checkpoint is taken after a required objective completes: objective states (active ones restart), mission time, alarm, and the host squad's deployment selection with each member's health, weapons, ammunition and items; the level itself resets. Saves are `USaveGame` slots (`Campaign_Auto`, `Campaign_1..N`), versioned, validated before writing and after reading (reject or repair). Settings extend `UGameUserSettings`. The front end is a separate level (`AOutbreakFrontEndGameMode`); the mission briefing stays in the mission level (D-019). New objective features: per-objective Time Limit, Composite (N of), Avoid Alarm. | Checkpoints give mission state persistence without serializing every actor of every system; deriving unlocks from records makes damaged saves harmless; the engine's save slots and user settings avoid custom file handling; one checkpoint keeps the save model simple. Agent decisions on top of the developer's are open to change. |
 
 ### Open
 

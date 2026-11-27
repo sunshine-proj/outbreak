@@ -105,6 +105,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flow", meta = (ClampMin = "0.0", Units = "s"))
 	float RestartDelay = 0.0f;
 
+	/**
+	 * Campaign checkpoints (Phase 14): completing a required objective saves the objective states,
+	 * mission time, alarm and the squad's health, weapons and items to the campaign autosave. Loading
+	 * resumes there with the level reset. Off = a failed or quit mission restarts from the briefing.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flow")
+	bool bCheckpointsEnabled = true;
+
 	/** Seconds between objective evaluations. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flow", meta = (ClampMin = "0.05", Units = "s"))
 	float UpdateInterval = 0.25f;

@@ -12,6 +12,7 @@
 #include "Interaction/OutbreakInteractionComponent.h"
 #include "Inventory/OutbreakInventoryComponent.h"
 #include "Outbreak.h"
+#include "Game/OutbreakGameUserSettings.h"
 #include "Player/OutbreakInputConfig.h"
 #include "Player/OutbreakPlayerController.h"
 #include "Player/OutbreakSquadCommandComponent.h"
@@ -36,8 +37,9 @@ void AOutbreakPlayerCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	FirstPersonCamera->SetFieldOfView(DefaultFieldOfView);
+	FirstPersonCamera->SetFieldOfView(GetBaseFieldOfView());
 	WeaponComponent->OnWeaponStateChanged.AddUniqueDynamic(this, &ThisClass::HandleWeaponStateChanged);
+	UOutbreakGameUserSettings::OnGameplaySettingsChanged.AddUObject(this, &ThisClass::HandleGameplaySettingsChanged);
 }
 
 void AOutbreakPlayerCharacter::HandleEyeHeightChanged()
@@ -247,7 +249,13 @@ void AOutbreakPlayerCharacter::HandleMove(const FInputActionValue& Value)
 
 void AOutbreakPlayerCharacter::HandleLook(const FInputActionValue& Value)
 {
-	const FVector2D LookInput = Value.Get<FVector2D>();
+	FVector2D LookInput = Value.Get<FVector2D>();
+	// Player settings (Phase 14) scale on top of the mapping's own modifiers.
+	if (const UOutbreakGameUserSettings* Settings = UOutbreakGameUserSettings::GetOutbreakUserSettings())
+	{
+		LookInput *= Settings->GetLookSensitivity();
+		LookInput.Y *= Settings->IsLookYInverted() ? -1.0f : 1.0f;
+	}
 	AddControllerYawInput(LookInput.X);
 	AddControllerPitchInput(LookInput.Y);
 }
@@ -393,7 +401,18 @@ void AOutbreakPlayerCharacter::HandleWeaponStateChanged(UOutbreakWeaponComponent
 {
 	const UOutbreakWeaponDefinition* Weapon = WeaponComponent->GetActiveWeaponDefinition();
 	const bool bAiming = WeaponComponent->IsAiming() && Weapon;
-	FirstPersonCamera->SetFieldOfView(bAiming ? Weapon->AimFieldOfView : DefaultFieldOfView);
+	FirstPersonCamera->SetFieldOfView(bAiming ? Weapon->AimFieldOfView : GetBaseFieldOfView());
+}
+
+float AOutbreakPlayerCharacter::GetBaseFieldOfView() const
+{
+	const UOutbreakGameUserSettings* Settings = UOutbreakGameUserSettings::GetOutbreakUserSettings();
+	return Settings && Settings->GetFieldOfView() > 0.0f ? Settings->GetFieldOfView() : DefaultFieldOfView;
+}
+
+void AOutbreakPlayerCharacter::HandleGameplaySettingsChanged()
+{
+	HandleWeaponStateChanged(WeaponComponent);
 }
 
 UOutbreakSquadCommandComponent* AOutbreakPlayerCharacter::GetSquadCommands() const

@@ -56,7 +56,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (Units = "deg"))
 	float HitReactionPitchKick = 1.5f;
 
-	/** Camera field of view when not aiming. Aiming uses the weapon's AimFieldOfView. */
+	/** Camera field of view when not aiming, unless the player's settings set one (Phase 14). Aiming uses the weapon's AimFieldOfView. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera", meta = (ClampMin = "5.0", ClampMax = "170.0", Units = "deg"))
 	float DefaultFieldOfView = 90.0f;
 
@@ -116,4 +116,10 @@ private:
 
 	UFUNCTION()
 	void HandleWeaponStateChanged(UOutbreakWeaponComponent* InWeaponComponent);
+
+	/** The player's field-of-view setting, else DefaultFieldOfView. */
+	float GetBaseFieldOfView() const;
+
+	/** Player settings were applied (Phase 14): refresh the camera. */
+	void HandleGameplaySettingsChanged();
 };

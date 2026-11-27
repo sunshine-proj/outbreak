@@ -55,11 +55,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Mission")
 	void RequestDeploy(const FOutbreakDeploymentSelection& Selection);
 
-	/** Replays the mission after it has ended (the summary's Retry). */
+	/** Replays the mission after it has ended (the summary's Retry); in a campaign, optionally from the last checkpoint. */
 	UFUNCTION(BlueprintCallable, Category = "Mission")
-	void RequestRestartMission();
+	void RequestRestartMission(bool bFromCheckpoint = false);
 
-	/** Quits the game (the summary's Quit). A main menu arrives with the Phase 14 campaign. */
+	/** The summary's Continue: the next campaign mission (Phase 14). */
+	UFUNCTION(BlueprintCallable, Category = "Mission")
+	void RequestContinueCampaign();
+
+	/**
+	 * The summary's Quit / Main Menu: in a campaign the host returns everyone to the campaign
+	 * screen; outside one, or on a co-op client, the game quits.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "Mission")
 	void QuitMission();
 
@@ -133,7 +140,10 @@ private:
 	void ServerRequestDeploy(const FOutbreakDeploymentSelection& Selection);
 
 	UFUNCTION(Server, Reliable)
-	void ServerRequestRestartMission();
+	void ServerRequestRestartMission(bool bFromCheckpoint);
+
+	UFUNCTION(Server, Reliable)
+	void ServerRequestContinueCampaign();
 
 	void BindToGameState();
 
@@ -156,6 +166,12 @@ private:
 
 	UFUNCTION()
 	void HandleSummaryQuit();
+
+	UFUNCTION()
+	void HandleSummaryContinue();
+
+	UFUNCTION()
+	void HandleSummaryCheckpoint();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UOutbreakBriefingWidget> BriefingWidget;

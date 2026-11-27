@@ -160,6 +160,32 @@ bool UOutbreakHealthComponent::Revive(float HealthFraction)
 	return true;
 }
 
+void UOutbreakHealthComponent::RestoreSavedState(float HealthFraction, int32 InReviveCount, bool bDead)
+{
+	const AActor* Owner = GetOwner();
+	if (!Owner || !Owner->HasAuthority())
+	{
+		return;
+	}
+
+	StopBleedOut();
+	ReviveCount = FMath::Max(0, InReviveCount);
+	if (bDead)
+	{
+		SetHealth(0.0f);
+		SetHealthState(EOutbreakHealthState::Dead);
+		return;
+	}
+	if (HealthState == EOutbreakHealthState::Dead)
+	{
+		// The owner's death handling has already run; a restore cannot bring it back.
+		UE_LOG(LogOutbreak, Warning, TEXT("%s: cannot restore a dead soldier to life."), *GetNameSafe(Owner));
+		return;
+	}
+	SetHealth(FMath::Max(1.0f, FMath::Clamp(HealthFraction, 0.0f, 1.0f) * MaxHealth));
+	SetHealthState(EOutbreakHealthState::Alive);
+}
+
 void UOutbreakHealthComponent::FinishBleedOut()
 {
 	const AActor* Owner = GetOwner();

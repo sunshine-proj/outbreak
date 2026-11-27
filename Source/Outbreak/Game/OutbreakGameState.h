@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/NetSerialization.h"
+#include "Campaign/OutbreakCampaignTypes.h"
 #include "GameFramework/GameStateBase.h"
 #include "Missions/OutbreakMissionTypes.h"
 
@@ -48,6 +49,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Mission")
 	UOutbreakSquadConfiguration* GetSquadConfiguration() const { return SquadConfiguration; }
 
+	/** Authority: the campaign this mission belongs to (Phase 14). Set before the final mission status. */
+	void SetCampaignStatus(const FOutbreakCampaignStatus& NewStatus);
+
+	/** bCampaignMission false = a stand-alone mission. */
+	UFUNCTION(BlueprintPure, Category = "Campaign")
+	const FOutbreakCampaignStatus& GetCampaignStatus() const { return CampaignStatus; }
+
 	/** Authority: set by UOutbreakAlarmSubsystem (Phase 13). */
 	void SetAlarm(bool bRaised, const FVector& Location);
 
@@ -80,6 +88,9 @@ private:
 
 	UPROPERTY(Replicated)
 	TObjectPtr<UOutbreakSquadConfiguration> SquadConfiguration;
+
+	UPROPERTY(Replicated)
+	FOutbreakCampaignStatus CampaignStatus;
 
 	UFUNCTION()
 	void OnRep_Alarm();

@@ -12,6 +12,7 @@
 #include "Game/OutbreakGameMode.h"
 #include "Game/OutbreakGameState.h"
 #include "Game/OutbreakPlayerState.h"
+#include "Game/OutbreakGameUserSettings.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Missions/OutbreakMissionText.h"
 #include "Net/UnrealNetwork.h"
@@ -176,7 +177,8 @@ void AOutbreakPlayerController::BindToSquadComms()
 
 void AOutbreakPlayerController::HandleCallout(UOutbreakSquadMemberComponent* Speaker, EOutbreakCallout Callout, const FText& Subtitle)
 {
-	if (!HUDWidget || Subtitle.IsEmpty())
+	const UOutbreakGameUserSettings* Settings = UOutbreakGameUserSettings::GetOutbreakUserSettings();
+	if (!HUDWidget || Subtitle.IsEmpty() || (Settings && !Settings->AreSubtitlesShown()))
 	{
 		return;
 	}
@@ -303,7 +305,11 @@ void AOutbreakPlayerController::ShowMissionSummary()
 	}
 	MissionSummaryWidget->OnRetryRequested.AddUniqueDynamic(this, &ThisClass::HandleSummaryRetry);
 	MissionSummaryWidget->OnQuitRequested.AddUniqueDynamic(this, &ThisClass::HandleSummaryQuit);
+	MissionSummaryWidget->OnContinueRequested.AddUniqueDynamic(this, &ThisClass::HandleSummaryContinue);
+	MissionSummaryWidget->OnCheckpointRequested.AddUniqueDynamic(this, &ThisClass::HandleSummaryCheckpoint);
 	MissionSummaryWidget->AddToViewport(20);
+	// Campaign options first, so ShowResults' Blueprint event sees both.
+	MissionSummaryWidget->ShowCampaignStatus(GameState->GetCampaignStatus(), GameState->GetMissionResults());
 	MissionSummaryWidget->ShowResults(GameState->GetMissionResults());
 }
 
@@ -359,21 +365,40 @@ void AOutbreakPlayerController::ServerRequestDeploy_Implementation(const FOutbre
 	}
 }
 
-void AOutbreakPlayerController::RequestRestartMission()
+void AOutbreakPlayerController::RequestRestartMission(bool bFromCheckpoint)
 {
-	ServerRequestRestartMission();
+	ServerRequestRestartMission(bFromCheckpoint);
 }
 
-void AOutbreakPlayerController::ServerRequestRestartMission_Implementation()
+void AOutbreakPlayerController::ServerRequestRestartMission_Implementation(bool bFromCheckpoint)
 {
 	if (AOutbreakGameMode* GameMode = GetWorld()->GetAuthGameMode<AOutbreakGameMode>())
 	{
-		GameMode->HandleRestartRequest(this);
+		GameMode->HandleRestartRequest(this, bFromCheckpoint);
+	}
+}
+
+void AOutbreakPlayerController::RequestContinueCampaign()
+{
+	ServerRequestContinueCampaign();
+}
+
+void AOutbreakPlayerController::ServerRequestContinueCampaign_Implementation()
+{
+	if (AOutbreakGameMode* GameMode = GetWorld()->GetAuthGameMode<AOutbreakGameMode>())
+	{
+		GameMode->HandleContinueRequest(this);
 	}
 }
 
 void AOutbreakPlayerController::QuitMission()
 {
+	// The host (or the single player) decides where everyone goes; a co-op client just leaves.
+	if (AOutbreakGameMode* GameMode = GetWorld()->GetAuthGameMode<AOutbreakGameMode>())
+	{
+		GameMode->HandleMainMenuRequest(this);
+		return;
+	}
 	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, /*bIgnorePlatformRestrictions=*/ false);
 }
 
@@ -390,6 +415,16 @@ void AOutbreakPlayerController::HandleSummaryRetry()
 void AOutbreakPlayerController::HandleSummaryQuit()
 {
 	QuitMission();
+}
+
+void AOutbreakPlayerController::HandleSummaryContinue()
+{
+	RequestContinueCampaign();
+}
+
+void AOutbreakPlayerController::HandleSummaryCheckpoint()
+{
+	RequestRestartMission(/*bFromCheckpoint=*/ true);
 }
 
 void AOutbreakPlayerController::ToggleInventoryPanel()

@@ -73,6 +73,13 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Weapons")
 	void ClearLoadout();
 
+	/**
+	 * Checkpoint restore (Phase 14): replaces the carried weapons, their magazines and the reserves,
+	 * and equips InActiveIndex. Invalid weapons are dropped; magazines, ammunition types and fire
+	 * modes are clamped to what each weapon allows.
+	 */
+	void RestoreSavedLoadout(const TArray<FOutbreakWeaponSlot>& InWeapons, int32 InActiveIndex, const TArray<FOutbreakAmmoAmount>& InReserves);
+
 	/** Disabled weapons refuse every request (for example when the owner dies). */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Weapons")
 	void SetWeaponsEnabled(bool bEnabled);
@@ -141,6 +148,9 @@ public:
 	TArray<UOutbreakWeaponDefinition*> GetWeaponDefinitions() const;
 
 	const TArray<FOutbreakAmmoAmount>& GetAmmoReserves() const { return AmmoReserves; }
+
+	/** The carried weapons with their magazine state, in slot order. */
+	const TArray<FOutbreakWeaponSlot>& GetWeaponSlots() const { return Weapons; }
 
 	UFUNCTION(BlueprintPure, Category = "Weapons")
 	bool IsReloading() const { return bIsReloading; }

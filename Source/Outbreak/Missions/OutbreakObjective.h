@@ -39,6 +39,12 @@ public:
 	/** Configuration problems, for data validation. */
 	virtual bool Validate(TArray<FText>& OutErrors) const { return true; }
 
+	/**
+	 * Problems with references to other objectives of the same mission (Phase 14), e.g. an Avoid
+	 * Alarm objective naming an unknown objective. ObjectiveIds holds every ID in the mission.
+	 */
+	virtual bool ValidateReferences(const TSet<FName>& ObjectiveIds, TArray<FText>& OutErrors) const { return true; }
+
 	UFUNCTION(BlueprintPure, Category = "Objective")
 	virtual FText GetDescription() const { return Description; }
 
@@ -59,6 +65,15 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Objective")
 	bool IsHidden() const { return bHidden; }
+
+	/** Mission time when the objective last became active (set by the mission subsystem). */
+	void SetActivationTime(float MissionTime) { ActivationTime = MissionTime; }
+
+	/** Seconds left before the time limit fails the objective; negative when it has no time limit. */
+	float GetTimeRemaining(float MissionTime) const { return TimeLimit > 0.0f ? FMath::Max(0.0f, ActivationTime + TimeLimit - MissionTime) : -1.0f; }
+
+	/** The time limit has run out at MissionTime. */
+	bool HasTimedOut(float MissionTime) const { return TimeLimit > 0.0f && MissionTime >= ActivationTime + TimeLimit; }
 
 	EOutbreakObjectiveActivation GetActivation() const { return Activation; }
 	const TArray<FName>& GetPrerequisites() const { return Prerequisites; }
@@ -88,7 +103,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Objective")
 	bool bHidden = false;
 
+	/**
+	 * Seconds to complete the objective once it is active (Phase 14); it fails when they run out.
+	 * The HUD shows the time left. 0 = no time limit.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Objective", meta = (ClampMin = "0.0", Units = "s"))
+	float TimeLimit = 0.0f;
+
+	/**
+	 * Where the squad resumes when a checkpoint saved on completing this objective is loaded
+	 * (AOutbreakMissionMarker::MarkerId). Empty = the mission's deployment marker.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Checkpoint")
+	FName CheckpointMarkerId;
+
 private:
 
 	EOutbreakObjectiveState State = EOutbreakObjectiveState::Inactive;
+	float ActivationTime = 0.0f;
 };

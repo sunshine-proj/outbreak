@@ -508,6 +508,53 @@ Next step: it's unchanged. Install Unreal Engine, build and run the tests, then 
 ================================
 
 
+Phase 14's C++ and documentation are written, but none of it has been compiled or run: Unreal Engine still isn't installed. Every Phase 14 task is marked [-] in ROADMAP.md, the acceptance criteria are left for you, and there's a Blockers row for Phase 14. The only checks I could do were static: brackets balance and every local #include points to a real file.
+
+Your three choices (checkpoints, a fresh squad each mission, an autosave plus manual slots) are recorded as D-023.
+
+14.1 Campaign
+
+Campaign definition: a data asset (Campaign/) listing each mission with its map, its unlock rule (after the previous mission, at campaign start, or after named earlier missions) and whether it's a side mission.
+Running the campaign: it lives on the game instance, so it survives level changes. A mission level runs the campaign's mission when launched from the campaign, and its own mission when opened directly, as before.
+Unlocking and completion are always worked out from the mission records, never stored separately, so a damaged save can't claim progress it doesn't have.
+Summary screen: gains Continue, Last Checkpoint, Replay / Restart Mission and Main Menu.
+Campaign screen: a new front-end level showing the campaign briefing, the missions with lock state and best results, the save slots and the settings.
+14.2 Persistence
+
+Save slots: a versioned save in an autosave slot plus 3 manual slots. Progress is checked before writing. On loading, a bad save is rejected (corrupt, newer version, another campaign) or repaired with a warning.
+
+Checkpoints: completing a required objective saves:
+
+objective states and mission time;
+whether the alarm was up;
+the host's squad: health, weapons, magazines, ammunition and items.
+Loading resets the level and resumes at a checkpoint marker. A checkpoint that no longer fits the mission falls back to the normal briefing.
+
+Settings: look sensitivity, invert look, field of view and subtitles, saved with the engine's own user settings and clamped on load.
+
+14.3 Mission content
+
+New objective features: a time limit on any objective, a "Composite (N of)" objective, and an "Avoid Alarm" objective.
+Still editor work: the two new missions ("Dead Signal", "Hive Core"), the Sentinel and Swarmer enemies and the two new levels are fully specified in Docs/Phase14-EditorSetup.md, but none exist yet.
+Changes to existing code: the mission subsystem, objective base, game mode, game state, player controller, player character, summary widget, and the weapon and health components (new restore functions). Config/DefaultEngine.ini, Config/DefaultGame.ini, README.md and ROADMAP.md are updated.
+
+Tests: 11 new automation tests in Tests/OutbreakCampaignTests.cpp, written but never run. They save only in memory and switch the autosave off, so they won't touch real save slots.
+
+Known limitations (all listed in the guide):
+
+Loading a checkpoint resets the level: killed enemies come back and destroyed objects are intact.
+Encounters triggered by the alarm spawn again when an alarm checkpoint loads.
+In co-op, only the host's squad is saved.
+An objective that was in progress restarts from zero.
+There's no volume setting yet; it needs sound assets, so I left it for Phase 15.
+Next step: install the engine, build, run the Outbreak.* automation tests, then work through the setup guides in order. In Phase 14 that means creating L_FrontEnd and DA_Campaign_Outbreak and setting them in Project Settings.
+
+Nothing is committed.
+
+
+
+================================
+
 
 
 

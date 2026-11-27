@@ -189,6 +189,68 @@ void UOutbreakWeaponComponent::ClearLoadout()
 	BroadcastStateChanged();
 }
 
+void UOutbreakWeaponComponent::RestoreSavedLoadout(const TArray<FOutbreakWeaponSlot>& InWeapons, int32 InActiveIndex,
+	const TArray<FOutbreakAmmoAmount>& InReserves)
+{
+	if (!HasOwnerAuthority())
+	{
+		return;
+	}
+	StopFire();
+	AuthCancelReload();
+	Weapons.Reset();
+	AmmoReserves.Reset();
+	ActiveWeaponIndex = INDEX_NONE;
+	CurrentBloom = 0.0f;
+
+	int32 RestoredActiveIndex = INDEX_NONE;
+	for (int32 SavedIndex = 0; SavedIndex < InWeapons.Num(); ++SavedIndex)
+	{
+		const FOutbreakWeaponSlot& Saved = InWeapons[SavedIndex];
+		UOutbreakWeaponDefinition* Definition = Saved.Definition;
+		TArray<FText> Errors;
+		if (!Definition || !Definition->Validate(Errors))
+		{
+			UE_LOG(LogOutbreak, Warning, TEXT("%s: saved weapon %s is missing or invalid; not restored."),
+				*GetNameSafe(GetOwner()), *GetNameSafe(Definition));
+			continue;
+		}
+		if (Weapons.ContainsByPredicate([Definition](const FOutbreakWeaponSlot& Slot) { return Slot.Definition == Definition; }))
+		{
+			continue;
+		}
+
+		FOutbreakWeaponSlot& Slot = Weapons.AddDefaulted_GetRef();
+		Slot.Definition = Definition;
+		const bool bLoadedCompatible = Saved.LoadedAmmoType && Definition->CompatibleAmmoTypes.Contains(Saved.LoadedAmmoType);
+		Slot.LoadedAmmoType = bLoadedCompatible ? Saved.LoadedAmmoType.Get() : Definition->CompatibleAmmoTypes[0].Get();
+		const bool bSelectedCompatible = Saved.SelectedAmmoType && Definition->CompatibleAmmoTypes.Contains(Saved.SelectedAmmoType);
+		Slot.SelectedAmmoType = bSelectedCompatible ? Saved.SelectedAmmoType.Get() : Slot.LoadedAmmoType.Get();
+		// A magazine of an incompatible (replaced) type would hold the wrong rounds; it starts empty.
+		Slot.AmmoInMagazine = bLoadedCompatible ? FMath::Clamp(Saved.AmmoInMagazine, 0, Definition->MagazineCapacity) : 0;
+		Slot.FireModeIndex = Definition->FireModes.IsValidIndex(Saved.FireModeIndex) ? Saved.FireModeIndex : 0;
+		if (SavedIndex == InActiveIndex)
+		{
+			RestoredActiveIndex = Weapons.Num() - 1;
+		}
+	}
+
+	for (const FOutbreakAmmoAmount& Reserve : InReserves)
+	{
+		if (Reserve.AmmoType && Reserve.Count > 0)
+		{
+			AddReserve(Reserve.AmmoType, Reserve.Count);
+		}
+	}
+
+	if (RestoredActiveIndex == INDEX_NONE && !Weapons.IsEmpty())
+	{
+		RestoredActiveIndex = 0;
+	}
+	ActiveWeaponIndex = RestoredActiveIndex;
+	BroadcastStateChanged();
+}
+
 int32 UOutbreakWeaponComponent::GetTotalAmmo(const UOutbreakAmmoTypeDefinition* AmmoType) const
 {
 	int32 Total = GetReserveAmmo(AmmoType);

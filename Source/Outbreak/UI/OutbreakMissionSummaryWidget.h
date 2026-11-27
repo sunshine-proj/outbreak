@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Campaign/OutbreakCampaignTypes.h"
 #include "Missions/OutbreakMissionTypes.h"
 
 #include "OutbreakMissionSummaryWidget.generated.h"
@@ -13,8 +14,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOutbreakMissionSummaryActionSignature);
 
 /**
  * Mission completion screen (Phase 11): outcome, mission time, objectives and squad report from
- * FOutbreakMissionResults, with Retry and Quit. (Continue to the next mission arrives with the
- * Phase 14 campaign.)
+ * FOutbreakMissionResults, with Retry and Quit. In a campaign (Phase 14) it also shows what the
+ * result changed (unlocked missions, campaign completion) and offers Continue (next mission) and
+ * Last Checkpoint; Quit becomes Main Menu.
  *
  * Designers subclass it as a Widget Blueprint with the bound names below (all optional). Without a
  * designer layout it builds a plain default layout.
@@ -28,6 +30,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Mission Summary")
 	void ShowResults(const FOutbreakMissionResults& Results);
+
+	/** Campaign options and text. Call before ShowResults; a stand-alone mission (bCampaignMission false) hides them. */
+	UFUNCTION(BlueprintCallable, Category = "Mission Summary")
+	void ShowCampaignStatus(const FOutbreakCampaignStatus& Status, const FOutbreakMissionResults& Results);
+
+	UPROPERTY(BlueprintAssignable, Category = "Mission Summary")
+	FOutbreakMissionSummaryActionSignature OnContinueRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "Mission Summary")
+	FOutbreakMissionSummaryActionSignature OnCheckpointRequested;
 
 	UPROPERTY(BlueprintAssignable, Category = "Mission Summary")
 	FOutbreakMissionSummaryActionSignature OnRetryRequested;
@@ -55,6 +67,15 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Mission Summary", meta = (BindWidgetOptional))
 	TObjectPtr<UButton> QuitButton;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Mission Summary", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> CampaignText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Mission Summary", meta = (BindWidgetOptional))
+	TObjectPtr<UButton> ContinueButton;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Mission Summary", meta = (BindWidgetOptional))
+	TObjectPtr<UButton> CheckpointButton;
+
 private:
 
 	void BuildDefaultLayout();
@@ -64,4 +85,10 @@ private:
 
 	UFUNCTION()
 	void HandleQuitClicked();
+
+	UFUNCTION()
+	void HandleContinueClicked();
+
+	UFUNCTION()
+	void HandleCheckpointClicked();
 };

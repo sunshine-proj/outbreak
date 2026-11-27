@@ -6,10 +6,12 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerState.h"
+#include "Missions/OutbreakMissionCheckpoint.h"
 #include "Missions/OutbreakMissionDefinition.h"
 #include "Missions/OutbreakMissionMarker.h"
 #include "Missions/OutbreakObjective.h"
 #include "Missions/OutbreakObjectiveGraph.h"
+#include "Missions/OutbreakObjectiveQueries.h"
 #include "Outbreak.h"
 #include "Squad/OutbreakSquadComponent.h"
 #include "Squad/OutbreakSquadMemberComponent.h"
@@ -72,6 +74,7 @@ bool UOutbreakMissionSubsystem::InitializeMission(const UOutbreakMissionDefiniti
 	ExtractedSoldiers.Reset();
 	MissionState = EOutbreakMissionState::NotStarted;
 	CurrentObjectiveIndex = INDEX_NONE;
+	PendingCheckpointIndex = INDEX_NONE;
 	MissionTime = 0.0f;
 	ResultText = FText::GetEmpty();
 	FinalResults = FOutbreakMissionResults();
@@ -99,6 +102,58 @@ void UOutbreakMissionSubsystem::StartMission()
 	}
 
 	MissionTime = 0.0f;
+	BeginEvaluation();
+}
+
+bool UOutbreakMissionSubsystem::StartMissionFromCheckpoint(const FOutbreakMissionCheckpoint& Checkpoint)
+{
+	if (!Definition || Objectives.IsEmpty()
+		|| (MissionState != EOutbreakMissionState::NotStarted && MissionState != EOutbreakMissionState::Briefing))
+	{
+		return false;
+	}
+
+	// The caller (the campaign) makes sure the checkpoint is this mission's; here it must fit the objectives.
+	TArray<FText> Errors;
+	if (!CanResumeFrom(Checkpoint, Errors))
+	{
+		for (const FText& Error : Errors)
+		{
+			UE_LOG(LogOutbreak, Warning, TEXT("Mission %s: checkpoint not used: %s"), *GetNameSafe(Definition), *Error.ToString());
+		}
+		StartMission();
+		return false;
+	}
+
+	// Finished objectives keep their state without running or broadcasting, so encounters and
+	// equipment tied to them do not fire again.
+	for (int32 Index = 0; Index < Objectives.Num(); ++Index)
+	{
+		Objectives[Index]->SetState(OutbreakMissionCheckpointRules::ToSavedState(Checkpoint.ObjectiveStates[Index]));
+	}
+	MissionTime = Checkpoint.MissionTime;
+	UE_LOG(LogOutbreak, Log, TEXT("Mission %s resumed from a checkpoint at %.0f s."), *GetNameSafe(Definition), MissionTime);
+	BeginEvaluation();
+	return true;
+}
+
+bool UOutbreakMissionSubsystem::CanResumeFrom(const FOutbreakMissionCheckpoint& Checkpoint, TArray<FText>& OutErrors) const
+{
+	if (!Definition)
+	{
+		return false;
+	}
+	TArray<FOutbreakObjectiveNode> Nodes;
+	for (const UOutbreakObjective* Objective : Objectives)
+	{
+		Nodes.Add(FOutbreakObjectiveNode::FromObjective(*Objective));
+	}
+	return OutbreakMissionCheckpointRules::Validate(Checkpoint, Nodes, OutErrors);
+}
+
+void UOutbreakMissionSubsystem::BeginEvaluation()
+{
+	PendingCheckpointIndex = INDEX_NONE;
 	SetMissionState(EOutbreakMissionState::InProgress);
 	ActivateReadyObjectives();
 
@@ -109,6 +164,26 @@ void UOutbreakMissionSubsystem::StartMission()
 	PublishStatus();
 }
 
+FOutbreakMissionCheckpoint UOutbreakMissionSubsystem::CaptureCheckpoint(int32 CompletedObjectiveIndex) const
+{
+	FOutbreakMissionCheckpoint Checkpoint;
+	if (!Definition)
+	{
+		return Checkpoint;
+	}
+	Checkpoint.MissionId = Definition->GetResolvedMissionId();
+	Checkpoint.MissionTime = MissionTime;
+	for (const UOutbreakObjective* Objective : Objectives)
+	{
+		const EOutbreakObjectiveState State = Objective ? Objective->GetState() : EOutbreakObjectiveState::Inactive;
+		Checkpoint.ObjectiveStates.Add(OutbreakMissionCheckpointRules::ToSavedState(State));
+		Checkpoint.CompletedObjectiveCount += State == EOutbreakObjectiveState::Completed ? 1 : 0;
+	}
+	const UOutbreakObjective* Completed = GetObjective(CompletedObjectiveIndex);
+	Checkpoint.ResumeMarkerId = Completed && !Completed->CheckpointMarkerId.IsNone() ? Completed->CheckpointMarkerId : Definition->DeploymentMarkerId;
+	return Checkpoint;
+}
+
 UOutbreakObjective* UOutbreakMissionSubsystem::GetCurrentObjective() const
 {
 	return GetObjective(CurrentObjectiveIndex);
@@ -117,6 +192,22 @@ UOutbreakObjective* UOutbreakMissionSubsystem::GetCurrentObjective() const
 UOutbreakObjective* UOutbreakMissionSubsystem::GetObjective(int32 Index) const
 {
 	return Objectives.IsValidIndex(Index) ? Objectives[Index].Get() : nullptr;
+}
+
+UOutbreakObjective* UOutbreakMissionSubsystem::FindObjectiveById(FName ObjectiveId) const
+{
+	if (ObjectiveId.IsNone())
+	{
+		return nullptr;
+	}
+	for (UOutbreakObjective* Objective : Objectives)
+	{
+		if (Objective && Objective->GetObjectiveId() == ObjectiveId)
+		{
+			return Objective;
+		}
+	}
+	return nullptr;
 }
 
 TArray<EOutbreakObjectiveState> UOutbreakMissionSubsystem::GetObjectiveStates() const
@@ -139,6 +230,7 @@ void UOutbreakMissionSubsystem::ActivateObjective(int32 Index)
 	}
 
 	Objective->SetState(EOutbreakObjectiveState::Active);
+	Objective->SetActivationTime(MissionTime);
 	Objective->Activate(*this);
 	UE_LOG(LogOutbreak, Log, TEXT("Objective %d/%d%s: %s"), Index + 1, Objectives.Num(),
 		Objective->IsOptional() ? TEXT(" (optional)") : TEXT(""), *Objective->GetDescription().ToString());
@@ -162,6 +254,10 @@ void UOutbreakMissionSubsystem::FinishObjective(int32 Index, EOutbreakObjectiveS
 	}
 	UE_LOG(LogOutbreak, Log, TEXT("Objective %d/%d %s: %s"), Index + 1, Objectives.Num(),
 		EndState == EOutbreakObjectiveState::Completed ? TEXT("completed") : TEXT("failed"), *Objective->GetDescription().ToString());
+	if (EndState == EOutbreakObjectiveState::Completed && !Objective->IsOptional())
+	{
+		PendingCheckpointIndex = Index;
+	}
 	OnObjectiveStateChanged.Broadcast(Index, EndState);
 }
 
@@ -265,7 +361,9 @@ void UOutbreakMissionSubsystem::AdvanceMission(float DeltaSeconds)
 	for (const int32 Index : ActiveIndices)
 	{
 		UOutbreakObjective* Objective = Objectives[Index];
-		const EOutbreakObjectiveState Result = Objective->Evaluate(*this);
+		// Phase 14 time limits run out before the objective gets another evaluation.
+		const EOutbreakObjectiveState Result = Objective->HasTimedOut(MissionTime)
+			? EOutbreakObjectiveState::Failed : Objective->Evaluate(*this);
 		if (Result == EOutbreakObjectiveState::Completed)
 		{
 			FinishObjective(Index, EOutbreakObjectiveState::Completed);
@@ -275,7 +373,9 @@ void UOutbreakMissionSubsystem::AdvanceMission(float DeltaSeconds)
 			FinishObjective(Index, EOutbreakObjectiveState::Failed);
 			if (!Objective->IsOptional())
 			{
-				FailMission(FText::Format(LOCTEXT("ObjectiveFailed", "Objective failed: {0}"), Objective->GetDescription()));
+				FailMission(Objective->HasTimedOut(MissionTime)
+					? FText::Format(LOCTEXT("ObjectiveTimedOut", "Out of time: {0}"), Objective->GetDescription())
+					: FText::Format(LOCTEXT("ObjectiveFailed", "Objective failed: {0}"), Objective->GetDescription()));
 				return;
 			}
 		}
@@ -306,6 +406,17 @@ void UOutbreakMissionSubsystem::AdvanceMission(float DeltaSeconds)
 	}
 
 	PublishStatus();
+
+	// After the newly unlocked objectives are active, so a checkpoint resumes with them.
+	if (PendingCheckpointIndex != INDEX_NONE)
+	{
+		const int32 CheckpointIndex = PendingCheckpointIndex;
+		PendingCheckpointIndex = INDEX_NONE;
+		if (Definition && Definition->bCheckpointsEnabled)
+		{
+			OnCheckpointReached.Broadcast(CheckpointIndex);
+		}
+	}
 }
 
 void UOutbreakMissionSubsystem::CompleteMission()
@@ -342,6 +453,7 @@ void UOutbreakMissionSubsystem::EndMission(EOutbreakMissionState EndState, const
 			GameState->SetMissionResults(FinalResults);
 		}
 	}
+	OnMissionEnded.Broadcast(FinalResults);
 
 	if (World && Definition && Definition->RestartDelay > 0.0f)
 	{
@@ -385,7 +497,8 @@ void UOutbreakMissionSubsystem::RestartMission()
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(RestartTimer);
-		// Single-mission flow: replay the level. Campaign progression is Phase 14.
+		// Replay the level. In a campaign the campaign subsystem keeps the launched mission (and
+		// whether to resume its checkpoint) across the travel.
 		World->ServerTravel(TEXT("?restart"));
 	}
 }
@@ -417,18 +530,19 @@ void UOutbreakMissionSubsystem::RegisterPlayer(APawn* PlayerPawn)
 	}
 }
 
-bool UOutbreakMissionSubsystem::MovePawnToDeployment(APawn* PlayerPawn) const
+bool UOutbreakMissionSubsystem::MovePawnToDeployment(APawn* PlayerPawn, FName MarkerIdOverride) const
 {
-	if (!PlayerPawn || !Definition || Definition->DeploymentMarkerId.IsNone())
+	const FName MarkerId = !MarkerIdOverride.IsNone() ? MarkerIdOverride : (Definition ? Definition->DeploymentMarkerId : NAME_None);
+	if (!PlayerPawn || !Definition || MarkerId.IsNone())
 	{
 		return false;
 	}
 
-	const AOutbreakMissionMarker* Marker = AOutbreakMissionMarker::FindMarker(GetWorld(), Definition->DeploymentMarkerId);
+	const AOutbreakMissionMarker* Marker = AOutbreakMissionMarker::FindMarker(GetWorld(), MarkerId);
 	if (!Marker)
 	{
 		UE_LOG(LogOutbreak, Warning, TEXT("Mission %s: no deployment marker '%s'; players deploy at their Player Start."),
-			*GetNameSafe(Definition), *Definition->DeploymentMarkerId.ToString());
+			*GetNameSafe(Definition), *MarkerId.ToString());
 		return false;
 	}
 
@@ -621,10 +735,23 @@ FOutbreakMissionStatus UOutbreakMissionSubsystem::BuildStatus() const
 	Status.ObjectiveCount = Objectives.Num();
 	Status.ResultText = ResultText;
 
+	// Progress with the time left on a time-limited objective (Phase 14), e.g. "2 / 5, 1:30".
+	auto BuildProgress = [this](const UOutbreakObjective& Objective)
+	{
+		const FText Progress = Objective.GetProgressText();
+		const float Remaining = Objective.GetTimeRemaining(MissionTime);
+		if (Remaining < 0.0f || Objective.GetState() != EOutbreakObjectiveState::Active)
+		{
+			return Progress;
+		}
+		const FText Time = OutbreakObjectiveQueries::FormatTime(Remaining);
+		return Progress.IsEmpty() ? Time : FText::Format(LOCTEXT("ProgressWithTime", "{0}, {1}"), Progress, Time);
+	};
+
 	if (const UOutbreakObjective* Objective = GetCurrentObjective())
 	{
 		Status.ObjectiveDescription = Objective->GetDescription();
-		Status.ObjectiveProgress = Objective->GetProgressText();
+		Status.ObjectiveProgress = BuildProgress(*Objective);
 	}
 
 	Status.Objectives.Reserve(Objectives.Num());
@@ -639,7 +766,7 @@ FOutbreakMissionStatus UOutbreakMissionSubsystem::BuildStatus() const
 			Entry.bHidden = Objective->IsHidden();
 			if (Entry.State == EOutbreakObjectiveState::Active)
 			{
-				Entry.Progress = Objective->GetProgressText();
+				Entry.Progress = BuildProgress(*Objective);
 			}
 		}
 	}

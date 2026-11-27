@@ -38,6 +38,19 @@ bool UOutbreakMissionDefinition::Validate(TArray<FText>& OutErrors) const
 	{
 		TArray<TArray<int32>> Prerequisites;
 		OutbreakObjectiveGraph::Resolve(Nodes, Prerequisites, OutErrors);
+
+		TSet<FName> ObjectiveIds;
+		for (const FOutbreakObjectiveNode& Node : Nodes)
+		{
+			if (!Node.Id.IsNone())
+			{
+				ObjectiveIds.Add(Node.Id);
+			}
+		}
+		for (const UOutbreakObjective* Objective : Objectives)
+		{
+			Objective->ValidateReferences(ObjectiveIds, OutErrors);
+		}
 	}
 
 	if (SquadConfiguration)

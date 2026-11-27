@@ -12,6 +12,7 @@ void AOutbreakGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(AOutbreakGameState, MissionResults);
 	DOREPLIFETIME(AOutbreakGameState, MissionDefinition);
 	DOREPLIFETIME(AOutbreakGameState, SquadConfiguration);
+	DOREPLIFETIME(AOutbreakGameState, CampaignStatus);
 	DOREPLIFETIME(AOutbreakGameState, bAlarmRaised);
 	DOREPLIFETIME(AOutbreakGameState, AlarmLocation);
 }
@@ -28,6 +29,14 @@ void AOutbreakGameState::SetMissionStatus(const FOutbreakMissionStatus& NewStatu
 	if (bChanged)
 	{
 		OnMissionStatusChanged.Broadcast(MissionStatus);
+	}
+}
+
+void AOutbreakGameState::SetCampaignStatus(const FOutbreakCampaignStatus& NewStatus)
+{
+	if (HasAuthority())
+	{
+		CampaignStatus = NewStatus;
 	}
 }
 
